@@ -1,115 +1,128 @@
-import React, { useState, useEffect } from 'react';
-import { Gamepad2, Trophy, Video, VolumeX, Volume2, User } from 'lucide-react';
-import { getCurrentUser } from '../utils/auth';
-import UserAuth from './UserAuth';
+import React from 'react';
+import { Home, Trophy, User, Upload } from 'lucide-react';
 
-export default function Navbar({ currentView, onNavigate, isMuted, onToggleMute }) {
-  const [showAuth, setShowAuth] = useState(false);
-  const [currentUser, setCurrentUser] = useState(null);
-
-  useEffect(() => {
-    // Check for logged in user
-    setCurrentUser(getCurrentUser());
-  }, []);
+/**
+ * Bottom Navigation Bar Component
+ * 
+ * Features:
+ * - Fixed bottom position with high z-index (stays above video player)
+ * - Flexbox layout for perfect icon alignment (thumb-friendly)
+ * - Active state with vibrant gradient and glow effect
+ * - Smooth spring transitions between tabs
+ * - Proper prop validation for activeTab and setActiveTab
+ */
+export default function Navbar({ activeTab = 'home', setActiveTab }) {
+  // Validate props and provide defaults
+  if (!setActiveTab) {
+    console.warn('Navbar: setActiveTab prop is required');
+  }
 
   const navItems = [
-    { id: 'game', label: 'Game', icon: Gamepad2 },
-    { id: 'leaderboard', label: 'Leaderboard', icon: Trophy },
-    { id: 'submit', label: 'Submit', icon: Video }
+    { id: 'home', label: 'Home', icon: Home },
+    { id: 'leaderboard', label: 'Trophy', icon: Trophy },
+    { id: 'submit', label: 'Upload', icon: Upload },
+    { id: 'profile', label: 'User', icon: User }
   ];
 
-  return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-[#0a0e27]/90 backdrop-blur-md border-b border-blue-900/30">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          {/* Logo with Image - Links to Game */}
-          <button
-            onClick={() => onNavigate('game')}
-            className="flex items-center gap-2 hover:opacity-80 transition-opacity"
-          >
-            <img src="/logo.png" alt="Smirkle Logo" className="h-10 w-auto" />
-          </button>
+  const handleNavClick = (tabId) => {
+    if (setActiveTab) {
+      setActiveTab(tabId);
+    }
+  };
 
-          {/* Navigation Links */}
-          <div className="flex items-center gap-1">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = currentView === item.id;
+  return (
+    <nav 
+      className="fixed bottom-0 left-0 right-0 z-50 
+                 bg-[#0a0e27]/95 backdrop-blur-xl 
+                 border-t border-blue-500/20 
+                 safe-area-pb"
+      style={{ 
+        paddingBottom: 'env(safe-area-inset-bottom, 20px)' 
+      }}
+    >
+      <div className="flex items-end justify-around h-16 px-2">
+        {navItems.map((item) => {
+          const Icon = item.icon;
+          const isActive = activeTab === item.id;
+          
+          return (
+            <button
+              key={item.id}
+              onClick={() => handleNavClick(item.id)}
+              className={`
+                flex flex-col items-center justify-center 
+                flex-1 h-full min-w-[64px] max-w-[100px]
+                relative overflow-hidden
+                transition-all duration-300 ease-out
+                ${isActive 
+                  ? 'text-white' 
+                  : 'text-gray-400 hover:text-gray-200'
+                }
+              `}
+              aria-label={item.label}
+              role="button"
+              tabIndex={0}
+            >
+              {/* Active indicator - glowing gradient bar at top */}
+              <div 
+                className={`
+                  absolute top-0 left-1/2 -translate-x-1/2 
+                  w-12 h-1 rounded-full
+                  transition-all duration-300 ease-out
+                  ${isActive 
+                    ? 'bg-gradient-to-r from-purple-400 via-pink-500 to-red-500 shadow-lg shadow-purple-500/50' 
+                    : 'opacity-0'
+                  }
+                `}
+              />
               
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => onNavigate(item.id)}
+              {/* Icon container with scale and glow effect */}
+              <div 
+                className={`
+                  relative p-2 rounded-xl
+                  transition-all duration-300 ease-out
+                  ${isActive 
+                    ? 'bg-gradient-to-br from-purple-500/20 to-pink-500/20 shadow-lg shadow-purple-500/25 scale-110' 
+                    : 'hover:bg-white/5 scale-100'
+                  }
+                `}
+              >
+                <Icon 
                   className={`
-                    flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-all duration-200
+                    w-6 h-6 transition-all duration-300
                     ${isActive 
-                      ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/25' 
-                      : 'text-gray-300 hover:text-white hover:bg-white/5'
+                      ? 'text-transparent bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text' 
+                      : ''
                     }
                   `}
-                >
-                  <Icon className="w-4 h-4" />
-                  <span className="hidden sm:inline">{item.label}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Mute Toggle & User/Auth Section */}
-          <div className="hidden md:flex items-center gap-4">
-            <button
-              onClick={onToggleMute}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-colors"
-              title={isMuted ? 'Unmute sounds' : 'Mute sounds'}
-            >
-              {isMuted ? (
-                <VolumeX className="w-4 h-4 text-red-400" />
-              ) : (
-                <Volume2 className="w-4 h-4 text-green-400" />
-              )}
+                  strokeWidth={isActive ? 2.5 : 2}
+                />
+                
+                {/* Glow effect for active icon */}
+                {isActive && (
+                  <div 
+                    className="absolute inset-0 rounded-xl blur-lg bg-gradient-to-r from-purple-500/30 to-pink-500/30 -z-10"
+                  />
+                )}
+              </div>
+              
+              {/* Label with fade transition */}
+              <span 
+                className={`
+                  text-[10px] font-medium mt-1
+                  transition-all duration-300 ease-out
+                  ${isActive 
+                    ? 'text-white opacity-100 transform translate-y-0' 
+                    : 'opacity-60 transform translate-y-1'
+                  }
+                `}
+              >
+                {item.label}
+              </span>
             </button>
-            
-            {/* User Stats */}
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10">
-              <span className="text-yellow-400">🏆</span>
-              <span className="text-sm font-medium text-gray-300">1,247</span>
-            </div>
-            
-            {/* Login Button / User Profile */}
-            {currentUser ? (
-              <button 
-                onClick={() => setShowAuth(true)}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gradient-to-r from-purple-500/20 to-pink-500/20 border border-purple-500/30 hover:from-purple-500/30 hover:to-pink-500/30 transition-all"
-              >
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-sm font-bold text-white">
-                  {currentUser.username.charAt(0).toUpperCase()}
-                </div>
-                <div className="text-left hidden lg:block">
-                  <p className="text-sm font-medium text-white">{currentUser.username}</p>
-                  {currentUser.motto && (
-                    <p className="text-xs text-gray-400 truncate max-w-[120px]">{currentUser.motto}</p>
-                  )}
-                </div>
-              </button>
-            ) : (
-              <button
-                onClick={() => setShowAuth(true)}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-medium transition-all duration-200 shadow-lg shadow-purple-500/25"
-              >
-                <User className="w-4 h-4" />
-                <span>Login</span>
-              </button>
-            )}
-          </div>
-        </div>
+          );
+        })}
       </div>
-      
-      {/* UserAuth Modal */}
-      <UserAuth 
-        isOpen={showAuth} 
-        onClose={() => setShowAuth(false)}
-        onAuthChange={(user) => setCurrentUser(user)}
-      />
     </nav>
   );
 }

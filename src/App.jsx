@@ -9,6 +9,7 @@ import Navbar from './components/Navbar.jsx';
 import Leaderboard from './components/Leaderboard.jsx';
 import SubmitVideoForm from './components/SubmitVideoForm.jsx';
 import AuthGate from './components/AuthGate.jsx';
+import Teams from './components/Teams.jsx';
 import { getCurrentUser, isGuest } from './utils/auth.js';
 
 function App() {
@@ -92,7 +93,6 @@ function App() {
     
     // Don't submit scores for guests
     if (isGuest()) {
-      console.log('Guest score - not submitting to leaderboard');
       return;
     }
     
@@ -117,8 +117,6 @@ function App() {
     
     scores.push(newScore);
     localStorage.setItem('smirkle-scores', JSON.stringify(scores));
-    
-    console.log('Score submitted:', newScore);
   };
 
   return (
@@ -151,14 +149,12 @@ function App() {
         
         {/* Navigation */}
         <Navbar 
-          currentView={currentView} 
-          onNavigate={handleNavigate} 
-          isMuted={isMuted} 
-          onToggleMute={toggleMute} 
+          activeTab={currentView}
+          setActiveTab={setCurrentView}
         />
         
         {/* Main Content */}
-        <div className="pt-20 px-4 pb-8">
+        <div className="pt-6 pb-24 px-4">
           <div className="max-w-7xl mx-auto">
             
             {/* Game View */}
@@ -240,6 +236,9 @@ function App() {
                 </div>
               </div>
             )}
+
+            {/* Teams/Squads View */}
+            {currentView === 'teams' && <Teams />}
 
           </div>
         </div>
