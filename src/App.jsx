@@ -23,9 +23,9 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
+    <div className="min-h-screen bg-slate-900 text-white flex items-center justify-center">
       <div className="max-w-6xl w-full mx-auto px-4">
-        <h1 className="text-6xl font-bold mb-8 text-center">Smirkle</h1>
+        <h1 className="text-6xl font-bold mb-8 text-center text-cyan-400">Smirkle</h1>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
           <div className="lg:col-span-2">
             <div className="bg-gray-800 rounded-lg overflow-hidden shadow-lg relative">
@@ -47,20 +47,20 @@ function App() {
           <div className="lg:col-span-1">
             <Leaderboard isSmiling={isSmiling} />
             <div className="bg-gray-800 rounded-lg p-4 mt-4">
-              <h3 className="text-lg font-bold mb-2 text-center">Smile Meter</h3>
+              <h3 className="text-lg font-bold mb-2 text-center text-cyan-400">Smile Meter</h3>
               <div className="w-full bg-gray-700 rounded-full h-4 mb-2">
                 <div 
                   className="bg-green-500 h-4 rounded-full transition-all duration-300"
-                  style={{ width: `${(happinessScore / 0.3) * 100}%` }}
+                  style={{ width: `${(happinessScore / 0.4) * 100}%` }}
                 ></div>
               </div>
-              <p className="text-center text-sm text-gray-400">{happinessScore.toFixed(2)} / 0.3</p>
+              <p className="text-center text-sm text-gray-400">{happinessScore.toFixed(2)} / 0.4</p>
             </div>
           </div>
         </div>
         <div className="text-center space-y-4">
           <button
-            className="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-lg"
+            className="bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-3 px-6 rounded-lg"
             onClick={handleVideoPlay}
           >
             Start Smiling

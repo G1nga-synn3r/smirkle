@@ -30,7 +30,7 @@ export function useFaceApi(videoRef) {
         const expressions = detections[0].expressions;
         const happiness = expressions.happy;
         setHappinessScore(happiness);
-        const isSmiling = happiness > 0.3;
+        const isSmiling = happiness > 0.4;
         setIsSmiling(isSmiling);
       }
     }, 200);
