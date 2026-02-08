@@ -1,8 +1,6 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useEffect } from 'react';
 
-function VideoPlayer({ stream }) {
-  const videoRef = useRef(null);
-
+function VideoPlayer({ stream, videoRef, isSmiling }) {
   useEffect(() => {
     if (videoRef.current && stream) {
       videoRef.current.srcObject = stream;
@@ -15,6 +13,12 @@ function VideoPlayer({ stream }) {
       }
     };
   }, [stream]);
+
+  useEffect(() => {
+    if (isSmiling && videoRef.current) {
+      videoRef.current.pause();
+    }
+  }, [isSmiling, videoRef]);
 
   return (
     <video

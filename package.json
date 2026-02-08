@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@tailwindcss/postcss": "^4.1.18",
-    "face-api.js": "^0.20.0"
+    "face-api.js": "^0.20.0",
+    "react-webcam": "^7.2.0"
   }
 }
