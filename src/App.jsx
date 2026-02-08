@@ -1,19 +1,12 @@
 import React, { useRef, useState } from 'react';
 import './style.css';
-import CameraView from './components/CameraView.jsx';
-import VideoPlayer from './components/VideoPlayer.jsx';
-import Leaderboard from './components/Leaderboard.jsx';
 import { useFaceApi } from './hooks/useFaceApi.js';
 
 function App() {
   const videoRef = useRef(null);
-  const [stream, setStream] = useState(null);
+  const webcamRef = useRef(null);
   const [isSmiling, setIsSmiling] = useState(false);
-  const { happinessScore, loadModels, handleVideoPlay } = useFaceApi(videoRef);
-
-  const handleStream = (stream) => {
-    setStream(stream);
-  };
+  const { loadModels, handleVideoPlay } = useFaceApi(webcamRef);
 
   const handleResume = () => {
     setIsSmiling(false);
@@ -24,50 +17,51 @@ function App() {
 
   return (
     <div className="min-h-screen bg-slate-900 text-white flex items-center justify-center">
-      <div className="max-w-6xl w-full mx-auto px-4">
-        <h1 className="text-6xl font-bold mb-8 text-center text-cyan-400">Smirkle</h1>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-          <div className="lg:col-span-2">
-            <div className="bg-gray-800 rounded-lg overflow-hidden shadow-lg relative">
-              <CameraView onStream={handleStream} />
-              {stream && (
-                <VideoPlayer
-                  stream={stream}
-                  videoRef={videoRef}
-                  isSmiling={isSmiling}
-                />
-              )}
+      <div className="max-w-7xl w-full mx-auto px-4">
+        <h1 className="text-5xl font-bold mb-8 text-center text-cyan-400">Smirkle</h1>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+          <div className="lg:col-span-1">
+            <div className="bg-gray-800 rounded-2xl overflow-hidden shadow-2xl relative">
+              <video
+                ref={videoRef}
+                className="w-full h-full object-cover"
+                autoPlay
+                loop
+                muted
+                src="https://sample-videos.com/video123/mp4/720/big_buck_bunny_720p_1mb.mp4"
+              />
               {isSmiling && (
                 <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-                  <h2 className="text-6xl font-bold text-white">SMILE DETECTED!</h2>
+                  <h2 className="text-6xl font-bold text-white bg-cyan-500 px-8 py-4 rounded-full">SMILE DETECTED!</h2>
                 </div>
               )}
             </div>
           </div>
           <div className="lg:col-span-1">
-            <Leaderboard isSmiling={isSmiling} />
-            <div className="bg-gray-800 rounded-lg p-4 mt-4">
-              <h3 className="text-lg font-bold mb-2 text-center text-cyan-400">Smile Meter</h3>
-              <div className="w-full bg-gray-700 rounded-full h-4 mb-2">
-                <div 
-                  className="bg-green-500 h-4 rounded-full transition-all duration-300"
-                  style={{ width: `${(happinessScore / 0.4) * 100}%` }}
-                ></div>
+            <div className="bg-gray-800 rounded-2xl overflow-hidden shadow-2xl relative">
+              <video
+                ref={webcamRef}
+                className="w-full h-full object-cover"
+                autoPlay
+                playsInline
+                muted
+              />
+              <div className="absolute top-4 right-4 bg-cyan-500 text-white px-4 py-2 rounded-full">
+                Webcam
               </div>
-              <p className="text-center text-sm text-gray-400">{happinessScore.toFixed(2)} / 0.4</p>
             </div>
           </div>
         </div>
         <div className="text-center space-y-4">
           <button
-            className="bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-3 px-6 rounded-lg"
+            className="bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-3 px-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-200"
             onClick={handleVideoPlay}
           >
             Start Smiling
           </button>
           {isSmiling && (
             <button
-              className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg"
+              className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-200"
               onClick={handleResume}
             >
               Resume

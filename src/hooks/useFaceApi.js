@@ -1,9 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import * as faceapi from 'face-api.js';
 
-export function useFaceApi(videoRef) {
+export function useFaceApi(webcamRef) {
   const [isSmiling, setIsSmiling] = useState(false);
-  const [happinessScore, setHappinessScore] = useState(0);
   const intervalRef = useRef(null);
 
   async function loadModels() {
@@ -15,22 +14,20 @@ export function useFaceApi(videoRef) {
   }
 
   function handleVideoPlay() {
-    if (!videoRef.current || !videoRef.current.videoWidth || !videoRef.current.videoHeight) {
+    if (!webcamRef.current || !webcamRef.current.videoWidth || !webcamRef.current.videoHeight) {
       return;
     }
 
     intervalRef.current = setInterval(async () => {
-      const displaySize = { width: videoRef.current.videoWidth, height: videoRef.current.videoHeight };
+      const displaySize = { width: webcamRef.current.videoWidth, height: webcamRef.current.videoHeight };
       const detections = await faceapi.detectAllFaces(
-        videoRef.current,
+        webcamRef.current,
         new faceapi.TinyFaceDetectorOptions()
       ).withFaceLandmarks().withFaceExpressions();
 
       if (detections && detections.length > 0) {
         const expressions = detections[0].expressions;
-        const happiness = expressions.happy;
-        setHappinessScore(happiness);
-        const isSmiling = happiness > 0.4;
+        const isSmiling = expressions.happy > 0.4;
         setIsSmiling(isSmiling);
       }
     }, 200);
@@ -48,5 +45,5 @@ export function useFaceApi(videoRef) {
     };
   }, []);
 
-  return { isSmiling, happinessScore, loadModels, handleVideoPlay };
+  return { isSmiling, loadModels, handleVideoPlay };
 }
