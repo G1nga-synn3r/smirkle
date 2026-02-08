@@ -10,12 +10,21 @@ import { Home, Trophy, User, Upload } from 'lucide-react';
  * - Active state with vibrant gradient and glow effect
  * - Smooth spring transitions between tabs
  * - Proper prop validation for activeTab and setActiveTab
+ * - Displays current username if user is logged in
  */
-export default function Navbar({ activeTab = 'home', setActiveTab }) {
+export default function Navbar({ activeTab, setActiveTab, user }) {
+  // Fallback to 'home' if activeTab is undefined
+  const activeTabFallback = activeTab || 'home';
   // Validate props and provide defaults
   if (!setActiveTab) {
     console.warn('Navbar: setActiveTab prop is required');
   }
+
+  const getUsername = () => {
+    // Defensive check for null/undefined user prop
+    if (!user) return null;
+    return user.username || user.name || null;
+  };
 
   const navItems = [
     { id: 'home', label: 'Home', icon: Home },
@@ -24,7 +33,9 @@ export default function Navbar({ activeTab = 'home', setActiveTab }) {
     { id: 'profile', label: 'User', icon: User }
   ];
 
-  const handleNavClick = (tabId) => {
+  const handleNavClick = (tabId, e) => {
+    e.preventDefault();
+    e.stopPropagation();
     if (setActiveTab) {
       setActiveTab(tabId);
     }
@@ -41,14 +52,20 @@ export default function Navbar({ activeTab = 'home', setActiveTab }) {
       }}
     >
       <div className="flex items-end justify-around h-16 px-2">
+        {/* Username Display */}
+        {getUsername() && (
+          <div className="absolute top-2 left-4 text-xs text-cyan-400 font-medium">
+            {getUsername()}
+          </div>
+        )}
         {navItems.map((item) => {
           const Icon = item.icon;
-          const isActive = activeTab === item.id;
+          const isActive = activeTabFallback === item.id;
           
           return (
             <button
               key={item.id}
-              onClick={() => handleNavClick(item.id)}
+              onClick={(e) => handleNavClick(item.id, e)}
               className={`
                 flex flex-col items-center justify-center 
                 flex-1 h-full min-w-[64px] max-w-[100px]

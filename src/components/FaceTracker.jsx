@@ -1,5 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import * as faceapi from 'face-api.js';
+import { useHapticFeedback } from '../hooks/useHapticFeedback';
+import { SMILE_THRESHOLD } from '../utils/constants';
 
 function FaceTracker({ onSmirkDetected }) {
   const videoRef = useRef(null);
@@ -9,6 +11,9 @@ function FaceTracker({ onSmirkDetected }) {
   const [isMobile, setIsMobile] = useState(false);
   const streamRef = useRef(null);
   const animationRef = useRef(null);
+  
+  // Use haptic feedback hook
+  const { vibrate, isEnabled: hapticEnabled } = useHapticFeedback();
 
 
   // Detect mobile device
@@ -106,7 +111,18 @@ function FaceTracker({ onSmirkDetected }) {
         }
       } catch (err) {
         console.error('Error accessing webcam:', err);
-        setError('Failed to access webcam. Please allow camera permissions.');
+        // Provide specific error messages based on error type
+        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+          setError('Camera access denied. Please enable camera permissions in your browser settings and reload.');
+        } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+          setError('No camera found. Please connect a camera and reload.');
+        } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+          setError('Camera is in use by another application. Please close other apps using the camera.');
+        } else if (err.name === 'OverconstrainedError') {
+          setError('Camera does not support the required settings. Please try a different camera.');
+        } else {
+          setError(`Failed to access webcam: ${err.message || 'Unknown error'}`);
+        }
       }
     }
 
@@ -134,8 +150,14 @@ function FaceTracker({ onSmirkDetected }) {
         // Process detections here if needed
         if (detections && detections.length > 0) {
           const expressions = detections[0].expressions;
-          // Detect smirk (lower threshold for happy expression)
-          const isSmirking = expressions.happy > 0.3;
+          // Detect smirk using consistent threshold from constants
+          const isSmirking = expressions.happy > SMILE_THRESHOLD;
+          
+          // Guardian Logic: Trigger haptic feedback on smirk detection
+          if (isSmirking && isMobile && hapticEnabled) {
+            vibrate();
+          }
+          
           if (onSmirkDetected) {
             onSmirkDetected(isSmirking);
           }

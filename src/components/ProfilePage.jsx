@@ -11,7 +11,7 @@ const defaultStats = {
 
 const defaultProfile = {
   bio: '',
-  socialLinks: { twitter: '', instagram: '', github: '' },
+  socialLinks: { facebook: '', instagram: '', github: '' },
   location: '',
   avatar: null,
   stats: defaultStats,
@@ -310,7 +310,7 @@ export default function ProfilePage() {
                 Social Links
               </label>
               <div className="space-y-3">
-                {['twitter', 'instagram', 'github'].map((platform) => (
+                {['facebook', 'instagram', 'github'].map((platform) => (
                   <div key={platform} className="flex items-center gap-3">
                     <span className="w-24 text-sm text-gray-400 capitalize">{platform}</span>
                     {isEditing ? (

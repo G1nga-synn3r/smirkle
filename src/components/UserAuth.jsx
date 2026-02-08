@@ -100,7 +100,7 @@ export default function UserAuth({ isOpen, onClose, onAuthChange }) {
     }
 
     try {
-      const user = authenticateUser(formData.email, formData.password);
+      const user = await authenticateUser(formData.email, formData.password);
       if (user) {
         setCurrentUser(user);
         onAuthChange?.(user);
@@ -128,7 +128,7 @@ export default function UserAuth({ isOpen, onClose, onAuthChange }) {
     }
 
     try {
-      const user = registerUser({
+      const user = await registerUser({
         username: formData.username.trim(),
         email: formData.email.trim().toLowerCase(),
         password: formData.password,

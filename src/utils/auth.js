@@ -3,6 +3,8 @@
  * Part of the Smirkle User Profile System
  */
 
+import { hashPassword, verifyPassword, hashPasswordSync } from './passwordHash';
+
 // Storage keys
 const STORAGE_KEYS = {
   CURRENT_USER: 'smirkle_currentUser',
@@ -51,25 +53,47 @@ export function findUserByUsername(username) {
  * Authenticate user with email and password
  * Returns user profile without password if successful, null otherwise
  */
-export function authenticateUser(email, password) {
+export async function authenticateUser(email, password) {
   const users = getUsersFromStorage();
-  const user = users.find(u => u.email === email.toLowerCase() && u.password === password);
+  const user = users.find(u => u.email === email.toLowerCase());
   
   if (user) {
-    // Update last login timestamp
-    const { password: _, ...userWithoutPassword } = user;
-    userWithoutPassword.lastLogin = new Date().toISOString();
+    // Check if password is hashed or plain text (for migration)
+    const isHashed = user.password && user.password.length === 64; // SHA-256 hex length
     
-    // Update in storage
-    const updatedUsers = users.map(u => 
-      u.email === email.toLowerCase() ? { ...u, lastLogin: userWithoutPassword.lastLogin } : u
-    );
-    saveUsersToStorage(updatedUsers);
+    let isValid = false;
+    if (isHashed) {
+      // Verify against hashed password
+      isValid = await verifyPassword(password, user.password);
+    } else {
+      // Fallback for legacy plain text passwords (migrate on successful login)
+      isValid = user.password === password;
+      if (isValid) {
+        // Migrate to hashed password
+        const hashedPassword = await hashPassword(password);
+        const updatedUsers = users.map(u => 
+          u.email === email.toLowerCase() ? { ...u, password: hashedPassword } : u
+        );
+        saveUsersToStorage(updatedUsers);
+      }
+    }
     
-    // Set as current user
-    setCurrentUser(userWithoutPassword);
-    
-    return userWithoutPassword;
+    if (isValid) {
+      // Update last login timestamp
+      const { password: _, ...userWithoutPassword } = user;
+      userWithoutPassword.lastLogin = new Date().toISOString();
+      
+      // Update in storage (without plain password)
+      const updatedUsers = users.map(u => 
+        u.email === email.toLowerCase() ? { ...u, ...userWithoutPassword, password: undefined } : u
+      );
+      saveUsersToStorage(updatedUsers);
+      
+      // Set as current user
+      setCurrentUser(userWithoutPassword);
+      
+      return userWithoutPassword;
+    }
   }
   
   return null;
@@ -78,7 +102,7 @@ export function authenticateUser(email, password) {
 /**
  * Register a new user
  */
-export function registerUser(userData) {
+export async function registerUser(userData) {
   const { username, email, password, bio = '', motto = '' } = userData;
   
   // Validate required fields
@@ -102,6 +126,9 @@ export function registerUser(userData) {
     throw new Error('Email already registered');
   }
   
+  // Hash the password for secure storage
+  const hashedPassword = await hashPassword(password);
+  
   // Create new user profile
   const newUser = {
     id: generateUserId(),
@@ -121,9 +148,9 @@ export function registerUser(userData) {
     }
   };
   
-  // Store with password (in production, use proper hashing)
+  // Store with hashed password
   const users = getUsersFromStorage();
-  users.push({ ...newUser, password });
+  users.push({ ...newUser, password: hashedPassword });
   saveUsersToStorage(users);
   
   // Auto-login

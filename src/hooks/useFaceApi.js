@@ -1,16 +1,27 @@
 import { useState, useEffect, useRef } from 'react';
 import * as faceapi from 'face-api.js';
+import { SMILE_THRESHOLD } from '../utils/constants';
 
 export function useFaceApi(webcamRef) {
   const [isSmiling, setIsSmiling] = useState(false);
+  const [modelError, setModelError] = useState(null);
   const intervalRef = useRef(null);
 
   async function loadModels() {
-    const MODEL_URL = import.meta.env.BASE_URL + '/models' || '/models';
+    const MODEL_URL = '/models';
     
-    await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
-    await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
-    await faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL);
+    try {
+      await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+      await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+      await faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL);
+    } catch (error) {
+      console.error('Error loading face-api models:', error);
+      if (error.message && error.message.includes('fetch')) {
+        setModelError('Failed to load face detection models. Please check that model files exist in /public/models.');
+      } else {
+        setModelError('Failed to initialize face detection: ' + error.message);
+      }
+    }
   }
 
   function handleVideoPlay() {
@@ -27,7 +38,7 @@ export function useFaceApi(webcamRef) {
 
       if (detections && detections.length > 0) {
         const expressions = detections[0].expressions;
-        const isSmiling = expressions.happy > 0.4;
+        const isSmiling = expressions.happy > SMILE_THRESHOLD;
         setIsSmiling(isSmiling);
       }
     }, 200);

@@ -8,9 +8,10 @@ import FaceTracker from './components/FaceTracker.jsx';
 import Navbar from './components/Navbar.jsx';
 import Leaderboard from './components/Leaderboard.jsx';
 import SubmitVideoForm from './components/SubmitVideoForm.jsx';
+import ProfilePage from './components/ProfilePage.jsx';
 import AuthGate from './components/AuthGate.jsx';
 import Teams from './components/Teams.jsx';
-import { getCurrentUser, isGuest } from './utils/auth.js';
+import { getCurrentUser, isGuest, setCurrentUser } from './utils/auth.js';
 
 function App() {
   const [isSmiling, setIsSmiling] = useState(false);
@@ -19,11 +20,46 @@ function App() {
   const [survivalTime, setSurvivalTime] = useState(0);
   const [currentView, setCurrentView] = useState('game');
   const [hasPlayedDing, setHasPlayedDing] = useState(false);
+  const [currentUser, setCurrentUserState] = useState(null);
   const videoRef = useRef(null);
   const startTimeRef = useRef(null);
   const timerRef = useRef(null);
   const { loadModels, handleVideoPlay } = useFaceApi(videoRef);
   const { isMuted, playBuzzer, playDing, toggleMute, resumeAudio } = useSoundEffects();
+
+  // Load user data from localStorage on mount
+  useEffect(() => {
+    // First, get the current user from auth system
+    let user = getCurrentUser();
+    
+    // Check for additional user data in smirkle_user_data
+    const savedUserData = localStorage.getItem('smirkle_user_data');
+    if (savedUserData) {
+      try {
+        const parsedData = JSON.parse(savedUserData);
+        const userName = parsedData.name?.value || '';
+        
+        // If we have a user logged in, merge the name from userData
+        if (user && userName) {
+          user = { ...user, username: userName };
+          setCurrentUser(user);
+        }
+        
+        setCurrentUserState({
+          ...user,
+          name: userName,
+          bio: parsedData.bio?.value || '',
+          motto: parsedData.motto?.value || '',
+          birthdate: parsedData.birthdate?.value || '',
+        });
+      } catch (e) {
+        console.error('Failed to load user data:', e);
+        setCurrentUserState(user);
+      }
+    } else {
+      setCurrentUserState(user);
+    }
+  }, []);
 
   // Start survival timer when entering game view
   useEffect(() => {
@@ -151,6 +187,7 @@ function App() {
         <Navbar 
           activeTab={currentView}
           setActiveTab={setCurrentView}
+          user={currentUser}
         />
         
         {/* Main Content */}
@@ -239,6 +276,13 @@ function App() {
 
             {/* Teams/Squads View */}
             {currentView === 'teams' && <Teams />}
+
+            {/* Profile View */}
+            {currentView === 'profile' && (
+              <div className="rounded-3xl shadow-[0_0_20px_rgba(59,130,246,0.5)] overflow-hidden bg-[#111827]/80">
+                <ProfilePage />
+              </div>
+            )}
 
           </div>
         </div>
