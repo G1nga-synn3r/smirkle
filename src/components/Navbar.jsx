@@ -1,7 +1,7 @@
 import React from 'react';
-import { Gamepad2, Trophy, Video } from 'lucide-react';
+import { Gamepad2, Trophy, Video, VolumeX, Volume2 } from 'lucide-react';
 
-export default function Navbar({ currentView, onNavigate }) {
+export default function Navbar({ currentView, onNavigate, isMuted, onToggleMute }) {
   const navItems = [
     { id: 'game', label: 'Game', icon: Gamepad2 },
     { id: 'leaderboard', label: 'Leaderboard', icon: Trophy },
@@ -45,8 +45,19 @@ export default function Navbar({ currentView, onNavigate }) {
             })}
           </div>
 
-          {/* User Stats */}
+          {/* Mute Toggle & User Stats */}
           <div className="hidden md:flex items-center gap-4">
+            <button
+              onClick={onToggleMute}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-colors"
+              title={isMuted ? 'Unmute sounds' : 'Mute sounds'}
+            >
+              {isMuted ? (
+                <VolumeX className="w-4 h-4 text-red-400" />
+              ) : (
+                <Volume2 className="w-4 h-4 text-green-400" />
+              )}
+            </button>
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10">
               <span className="text-yellow-400">🏆</span>
               <span className="text-sm font-medium text-gray-300">1,247</span>

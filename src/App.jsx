@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './style.css';
 import { useFaceApi } from './hooks/useFaceApi.js';
+import { useSoundEffects } from './hooks/useSoundEffects.js';
 import CameraView from './components/CameraView.jsx';
 import VideoPlayer from './components/VideoPlayer.jsx';
 import FaceTracker from './components/FaceTracker.jsx';
@@ -10,16 +11,63 @@ import SubmitVideoForm from './components/SubmitVideoForm.jsx';
 
 function App() {
   const [isSmiling, setIsSmiling] = useState(false);
+  const [isSmirking, setIsSmirking] = useState(false);
+  const [gameOver, setGameOver] = useState(false);
+  const [survivalTime, setSurvivalTime] = useState(0);
   const [currentView, setCurrentView] = useState('game');
+  const [hasPlayedDing, setHasPlayedDing] = useState(false);
   const videoRef = useRef(null);
+  const startTimeRef = useRef(null);
+  const timerRef = useRef(null);
   const { loadModels, handleVideoPlay } = useFaceApi(videoRef);
+  const { isMuted, playBuzzer, playDing, toggleMute, resumeAudio } = useSoundEffects();
 
+  // Start survival timer when entering game view
   useEffect(() => {
-    loadModels();
-  }, []);
+    if (currentView === 'game' && !gameOver) {
+      startTimeRef.current = Date.now();
+      timerRef.current = setInterval(() => {
+        setSurvivalTime((Date.now() - startTimeRef.current) / 1000);
+      }, 100);
+    }
+
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    };
+  }, [currentView, gameOver]);
+
+  // Trigger game over when smirking (happiness ≥ 0.3)
+  useEffect(() => {
+    if (isSmirking && !gameOver) {
+      setGameOver(true);
+      playBuzzer(); // Play comical buzzer sound on game over
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    }
+  }, [isSmirking, gameOver, playBuzzer]);
+
+  // Play ding sound when surviving 30 seconds
+  useEffect(() => {
+    if (survivalTime >= 30 && !hasPlayedDing && !gameOver) {
+      playDing();
+      setHasPlayedDing(true);
+    }
+  }, [survivalTime, hasPlayedDing, gameOver, playDing]);
 
   const handleResume = () => {
     setIsSmiling(false);
+    setIsSmirking(false);
+    setGameOver(false);
+    setSurvivalTime(0);
+    setHasPlayedDing(false);
+    resumeAudio(); // Resume audio context on interaction
+    startTimeRef.current = Date.now();
+    timerRef.current = setInterval(() => {
+      setSurvivalTime((Date.now() - startTimeRef.current) / 1000);
+    }, 100);
     if (videoRef.current) {
       videoRef.current.play();
     }
@@ -29,10 +77,45 @@ function App() {
     setCurrentView(view);
   };
 
+  // Accept smirk from FaceTracker
+  const handleSmirkDetected = (isSmirking) => {
+    setIsSmirking(isSmirking);
+  };
+
   return (
-    <div className="min-h-screen bg-[#0a0e27] text-white">
+    <div className={`min-h-screen animated-radial-gradient ${gameOver ? 'grayscale-game-over' : ''}`}>
+      {/* Game Over Overlay */}
+      {gameOver && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
+          <div className="wasted-modal">
+            <div className="text-center">
+              <h2 className="wasted-text text-6xl md:text-8xl font-bold text-red-500 mb-8 tracking-wider">
+                WASTED
+              </h2>
+              <div className="survival-time mb-8">
+                <p className="text-gray-400 text-lg mb-2">You survived for</p>
+                <p className="text-4xl md:text-5xl font-bold text-white">
+                  {survivalTime.toFixed(2)} seconds
+                </p>
+              </div>
+              <button
+                onClick={handleResume}
+                className="try-again-btn bg-red-600 hover:bg-red-500 text-white font-bold py-4 px-12 rounded-full shadow-2xl transition-all duration-200 transform hover:scale-110"
+              >
+                TRY AGAIN
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* Navigation */}
-      <Navbar currentView={currentView} onNavigate={handleNavigate} />
+      <Navbar 
+        currentView={currentView} 
+        onNavigate={handleNavigate} 
+        isMuted={isMuted} 
+        onToggleMute={toggleMute} 
+      />
       
       {/* Main Content */}
       <div className="pt-20 px-4 pb-8">
@@ -49,9 +132,9 @@ function App() {
               </div>
               
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-                {/* Video Player - Card with rounded-3xl and blue glow */}
+                {/* Video Player - Glassmorphism Card */}
                 <div className="lg:col-span-1">
-                  <div className="rounded-3xl shadow-[0_0_20px_rgba(59,130,246,0.5)] overflow-hidden bg-[#111827]/80">
+                  <div className="rounded-3xl overflow-hidden bg-white/10 backdrop-blur-xl border border-white/20 shadow-[0_0_30px_rgba(139,92,246,0.3)]">
                     <VideoPlayer isSmiling={isSmiling} videoRef={videoRef} />
                     {isSmiling && (
                       <div className="absolute inset-0 bg-gradient-to-r from-purple-600/90 to-pink-600/90 backdrop-blur-md flex items-center justify-center">
@@ -70,9 +153,9 @@ function App() {
                   </div>
                 </div>
                 
-                {/* Webcam - Card with rounded-3xl and blue glow */}
+                {/* Webcam - Glassmorphism Card */}
                 <div className="lg:col-span-1">
-                  <div className="rounded-3xl shadow-[0_0_20px_rgba(59,130,246,0.5)] overflow-hidden bg-[#111827]/80">
+                  <div className="rounded-3xl overflow-hidden bg-white/10 backdrop-blur-xl border border-white/20 shadow-[0_0_30px_rgba(139,92,246,0.3)]">
                     <CameraView onStream={handleVideoPlay} />
                     <div className="absolute top-4 right-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-2 rounded-full font-semibold text-sm shadow-lg">
                       Webcam
@@ -80,10 +163,10 @@ function App() {
                   </div>
                 </div>
                 
-                {/* Face Tracker - Card with rounded-3xl and blue glow */}
+                {/* Face Tracker - Glassmorphism Card */}
                 <div className="lg:col-span-1">
-                  <div className="rounded-3xl shadow-[0_0_20px_rgba(59,130,246,0.5)] overflow-hidden bg-[#111827]/80">
-                    <FaceTracker />
+                  <div className="rounded-3xl overflow-hidden bg-white/10 backdrop-blur-xl border border-white/20 shadow-[0_0_30px_rgba(139,92,246,0.3)]">
+                    <FaceTracker onSmirkDetected={handleSmirkDetected} />
                   </div>
                 </div>
               </div>
