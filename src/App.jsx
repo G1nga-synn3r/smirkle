@@ -15,6 +15,9 @@ import TutorialOverlay from './components/TutorialOverlay.jsx';
 import CalibrationOverlay from './components/CalibrationOverlay.jsx';
 import { getCurrentUser, isGuest, setCurrentUser } from './utils/auth.js';
 import { VIDEO_DATABASE, videoQueueManager, DIFFICULTY, getVideosByDifficulty } from './data/videoLibrary.js';
+import { saveScore } from './services/scoreService.js';
+
+console.log('[App] App.jsx loaded successfully');
 
 function App() {
   const [isSmiling, setIsSmiling] = useState(false);
@@ -135,6 +138,38 @@ function App() {
     };
   }, [currentView, gameOver]);
 
+  // Submit score to leaderboard (only for non-guests) - defined early to avoid initialization issues
+  const submitScore = useCallback(() => {
+    const user = getCurrentUser();
+    
+    // Don't submit scores for guests
+    if (isGuest()) {
+      return;
+    }
+    
+    if (!user || !survivalTime) return;
+    
+    // Calculate score (survival time in seconds * 100)
+    const score = Math.floor(survivalTime * 100);
+    
+    // Get existing scores
+    const savedScores = localStorage.getItem('smirkle-scores');
+    const scores = savedScores ? JSON.parse(savedScores) : [];
+    
+    // Add new score
+    const newScore = {
+      id: Date.now(),
+      name: user.username,
+      score: score,
+      time: survivalTime,
+      date: new Date().toISOString().split('T')[0],
+      isGuest: false
+    };
+    
+    scores.push(newScore);
+    localStorage.setItem('smirkle-scores', JSON.stringify(scores));
+  }, [survivalTime]);
+
   // Trigger game over when smirking (happiness ≥ 0.3)
   useEffect(() => {
     if (isSmirking && !gameOver) {
@@ -198,38 +233,6 @@ function App() {
   const handleTutorialComplete = useCallback(() => {
     setShowTutorial(false);
   }, []);
-
-  // Submit score to leaderboard (only for non-guests)
-  const submitScore = () => {
-    const user = getCurrentUser();
-    
-    // Don't submit scores for guests
-    if (isGuest()) {
-      return;
-    }
-    
-    if (!user || !survivalTime) return;
-    
-    // Calculate score (survival time in seconds * 100)
-    const score = Math.floor(survivalTime * 100);
-    
-    // Get existing scores
-    const savedScores = localStorage.getItem('smirkle-scores');
-    const scores = savedScores ? JSON.parse(savedScores) : [];
-    
-    // Add new score
-    const newScore = {
-      id: Date.now(),
-      name: user.username,
-      score: score,
-      time: survivalTime,
-      date: new Date().toISOString().split('T')[0],
-      isGuest: false
-    };
-    
-    scores.push(newScore);
-    localStorage.setItem('smirkle-scores', JSON.stringify(scores));
-  };
 
   return (
     <AuthGate>

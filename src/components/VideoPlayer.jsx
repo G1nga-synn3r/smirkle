@@ -75,6 +75,9 @@ function VideoPlayer({
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
   const [fadeState, setFadeState] = useState('idle');
   
+  // Store handleCanPlayThrough in a ref to avoid scope issues
+  const handleCanPlayThroughRef = useRef(null);
+
   /**
    * Get session statistics for debugging
    */
@@ -118,15 +121,20 @@ function VideoPlayer({
         if (onVideoChange) {
           onVideoChange(currentVideo, getSessionStats());
         }
-        video.removeEventListener('canplaythrough', handleCanPlayThrough);
+        video.removeEventListener('canplaythrough', handleCanPlayThroughRef.current);
       };
+      
+      // Store handler in ref for cleanup access
+      handleCanPlayThroughRef.current = handleCanPlayThrough;
       
       video.addEventListener('canplaythrough', handleCanPlayThrough);
     }, 500); // Match transition duration
 
     return () => {
       clearTimeout(fadeOutTimer);
-      video.removeEventListener('canplaythrough', handleCanPlayThrough);
+      if (handleCanPlayThroughRef.current && video) {
+        video.removeEventListener('canplaythrough', handleCanPlayThroughRef.current);
+      }
     };
   }, [currentVideo, onResetHappiness, onVideoChange, getSessionStats]);
 

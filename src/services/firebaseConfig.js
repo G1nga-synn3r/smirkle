@@ -19,7 +19,7 @@
  */
 
 import { initializeApp } from 'firebase/app';
-import { getFirestore, enableIndexedDbPersistence, writeBatch } from 'firebase/firestore';
+import { getFirestore, enableMultiTabIndexedDbPersistence, writeBatch } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import { getStorage } from 'firebase/storage';
 
@@ -52,39 +52,52 @@ if (missingEnvVars.length > 0) {
   }
 }
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
+// Initialize Firebase only if all required environment variables are present
+let app = null;
+let db = null;
+let auth = null;
+let storage = null;
 
-// Initialize services
-export const db = getFirestore(app);
-export const auth = getAuth(app);
-export const storage = getStorage(app);
+const isFirebaseConfigValid = missingEnvVars.length === 0;
 
-/**
- * Enable offline persistence for Firestore
- * This allows the app to work offline and sync when connection is restored
- * 
- * Note: Persistence can only be enabled in one browser tab at a time
- * Multiple tabs will share data through localStorage
- */
-enableIndexedDbPersistence(db).catch((err) => {
-  if (import.meta.env.DEV) {
-    if (err.code === 'failed-precondition') {
-      console.warn(
-        'Firestore Persistence Warning: Multiple tabs open. ' +
-        'Offline persistence can only be enabled in one tab at a time.'
-      );
-    } else if (err.code === 'unimplemented') {
-      console.warn(
-        'Firestore Persistence Warning: The current browser does not support ' +
-        'offline persistence. The app will work online only.'
-      );
-    }
+if (isFirebaseConfigValid) {
+  try {
+    app = initializeApp(firebaseConfig);
+    db = getFirestore(app);
+    auth = getAuth(app);
+    storage = getStorage(app);
+    
+    // Enable offline persistence for Firestore
+    enableMultiTabIndexedDbPersistence(db).catch((err) => {
+      if (import.meta.env.DEV) {
+        if (err.code === 'failed-precondition') {
+          console.warn(
+            'Firestore Persistence Warning: Multiple tabs open with persistence enabled. ' +
+            'Only the primary tab will have write access.'
+          );
+        } else if (err.code === 'unimplemented') {
+          console.warn(
+            'Firestore Persistence Warning: The current browser does not support ' +
+            'offline persistence. The app will work online only.'
+          );
+        } else {
+          console.warn(
+            'Firestore Persistence Warning: Failed to enable persistence.',
+            err
+          );
+        }
+      }
+    });
+  } catch (error) {
+    console.warn('Firebase initialization failed. The app will run in offline mode.', error);
   }
-});
+}
 
-// Export writeBatch for use in other services
-export { writeBatch };
+// Export services (will be null if initialization failed)
+export { db, auth, storage, writeBatch, app };
 
-// Export the app instance for potential advanced configurations
-export default app;
+// Export individual services for convenience
+// (Already exported via named exports above)
+
+// Export a flag to check if Firebase is initialized
+export const isFirebaseInitialized = () => app !== null;

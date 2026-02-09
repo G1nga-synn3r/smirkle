@@ -1,4 +1,3 @@
-import React from 'react';
 import { Home, Trophy, User, Upload } from 'lucide-react';
 
 /**
@@ -20,11 +19,8 @@ export default function Navbar({ activeTab, setActiveTab, user }) {
     console.warn('Navbar: setActiveTab prop is required');
   }
 
-  const getUsername = () => {
-    // Defensive check for null/undefined user prop
-    if (!user) return null;
-    return user.username || user.name || null;
-  };
+  // Get username once to avoid multiple calls
+  const username = user?.username || user?.name || null;
 
   const navItems = [
     { id: 'home', label: 'Home', icon: Home },
@@ -53,9 +49,9 @@ export default function Navbar({ activeTab, setActiveTab, user }) {
     >
       <div className="flex items-end justify-around h-16 px-2">
         {/* Username Display */}
-        {getUsername() && (
+        {username && (
           <div className="absolute top-2 left-4 text-xs text-cyan-400 font-medium">
-            {getUsername()}
+            {username}
           </div>
         )}
         {navItems.map((item) => {

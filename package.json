@@ -18,6 +18,7 @@
     "vite-plugin-pwa": "^0.21.1"
   },
   "dependencies": {
+    "@tensorflow/tfjs": "^2.16.1",
     "@tailwindcss/postcss": "^4.1.18",
     "face-api.js": "^0.20.1",
     "firebase": "^12.9.0",

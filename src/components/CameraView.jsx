@@ -63,7 +63,6 @@ function CameraView({ onStream }) {
         onUserMedia={handleUserMedia}
         className="w-full h-full object-cover"
         screenshotFormat="image/jpeg"
-        forceScreenshotSource={true}
       />
     </div>
   );
