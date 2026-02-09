@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import './style.css';
 import { useFaceApi } from './hooks/useFaceApi.js';
 import { useSoundEffects } from './hooks/useSoundEffects.js';
@@ -11,7 +11,10 @@ import SubmitVideoForm from './components/SubmitVideoForm.jsx';
 import ProfilePage from './components/ProfilePage.jsx';
 import AuthGate from './components/AuthGate.jsx';
 import Teams from './components/Teams.jsx';
+import TutorialOverlay from './components/TutorialOverlay.jsx';
+import CalibrationOverlay from './components/CalibrationOverlay.jsx';
 import { getCurrentUser, isGuest, setCurrentUser } from './utils/auth.js';
+import { VIDEO_DATABASE, videoQueueManager, DIFFICULTY, getVideosByDifficulty } from './data/videoLibrary.js';
 
 function App() {
   const [isSmiling, setIsSmiling] = useState(false);
@@ -21,11 +24,59 @@ function App() {
   const [currentView, setCurrentView] = useState('game');
   const [hasPlayedDing, setHasPlayedDing] = useState(false);
   const [currentUser, setCurrentUserState] = useState(null);
+  // Initialize tutorial state synchronously to prevent render timing issues
+  const shouldShowTutorial = !localStorage.getItem('smirkle_hasSeenTutorial');
+  const [showTutorial, setShowTutorial] = useState(shouldShowTutorial);
+  const [isCameraReady, setIsCameraReady] = useState(false);
+  
+  // Calibration Phase states
+  const [isCalibrating, setIsCalibrating] = useState(false);
+  const [calibrationComplete, setCalibrationComplete] = useState(false);
+  const [calibrationProgress, setCalibrationProgress] = useState(0);
+  const [calibrationStatus, setCalibrationStatus] = useState('waiting'); // 'waiting' | 'detecting' | 'stable' | 'complete' | 'failed'
+  
+  // Video Library State
+  const [currentVideo, setCurrentVideo] = useState(null);
+  const [selectedDifficulty, setSelectedDifficulty] = useState(null); // 'Easy', 'Medium', 'Hard', or null for all
+  const [currentMultiplier, setCurrentMultiplier] = useState(1);
   const videoRef = useRef(null);
   const startTimeRef = useRef(null);
   const timerRef = useRef(null);
   const { loadModels, handleVideoPlay } = useFaceApi(videoRef);
   const { isMuted, playBuzzer, playDing, toggleMute, resumeAudio } = useSoundEffects();
+
+  // Callback when camera is ready from FaceTracker
+  const handleCameraReady = useCallback(() => {
+    setIsCameraReady(true);
+    // Start calibration phase
+    setIsCalibrating(true);
+    setCalibrationStatus('waiting');
+    setCalibrationProgress(0);
+  }, []);
+
+  // Handle calibration updates from FaceTracker
+  const handleCalibrationUpdate = useCallback((data) => {
+    if (!isCalibrating || calibrationComplete) return;
+    
+    if (data.faceDetected) {
+      setCalibrationStatus(data.isStable ? 'stable' : 'detecting');
+      setCalibrationProgress(data.progress);
+    } else {
+      setCalibrationStatus('waiting');
+      setCalibrationProgress(0);
+    }
+  }, [isCalibrating, calibrationComplete]);
+
+  // Handle calibration completion
+  const handleCalibrationComplete = useCallback((success) => {
+    if (success) {
+      setCalibrationComplete(true);
+      setIsCalibrating(false);
+      setCalibrationStatus('complete');
+    } else {
+      setCalibrationStatus('failed');
+    }
+  }, []);
 
   // Load user data from localStorage on mount
   useEffect(() => {
@@ -63,6 +114,12 @@ function App() {
 
   // Start survival timer when entering game view
   useEffect(() => {
+    // Cleanup any existing timer first
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    
     if (currentView === 'game' && !gameOver) {
       startTimeRef.current = Date.now();
       timerRef.current = setInterval(() => {
@@ -73,6 +130,7 @@ function App() {
     return () => {
       if (timerRef.current) {
         clearInterval(timerRef.current);
+        timerRef.current = null;
       }
     };
   }, [currentView, gameOver]);
@@ -88,7 +146,7 @@ function App() {
       // Submit score to leaderboard
       submitScore();
     }
-  }, [isSmirking, gameOver, playBuzzer]);
+  }, [isSmirking, gameOver, playBuzzer, submitScore]);
 
   // Play ding sound when surviving 30 seconds
   useEffect(() => {
@@ -96,7 +154,15 @@ function App() {
       playDing();
       setHasPlayedDing(true);
     }
-  }, [survivalTime, hasPlayedDing, gameOver, playDing]);
+  }, [survivalTime, hasPlayedDing, gameOver, playDing, setHasPlayedDing]);
+
+  // Initialize video queue on first game start
+  useEffect(() => {
+    if (currentView === 'game' && !currentVideo) {
+      const nextVideo = videoQueueManager.getNextVideo();
+      setCurrentVideo(nextVideo);
+    }
+  }, [currentView, currentVideo]);
 
   const handleResume = () => {
     setIsSmiling(false);
@@ -105,6 +171,11 @@ function App() {
     setSurvivalTime(0);
     setHasPlayedDing(false);
     resumeAudio(); // Resume audio context on interaction
+    
+    // Get next video from queue (anti-repeat)
+    const nextVideo = videoQueueManager.getNextVideo();
+    setCurrentVideo(nextVideo);
+    
     startTimeRef.current = Date.now();
     timerRef.current = setInterval(() => {
       setSurvivalTime((Date.now() - startTimeRef.current) / 1000);
@@ -118,10 +189,15 @@ function App() {
     setCurrentView(view);
   };
 
-  // Accept smirk from FaceTracker
-  const handleSmirkDetected = (isSmirking) => {
+  // Accept smirk and probability from FaceTracker
+  const handleSmirkDetected = useCallback((isSmirking, probability) => {
     setIsSmirking(isSmirking);
-  };
+  }, []);
+
+  // Handle tutorial completion
+  const handleTutorialComplete = useCallback(() => {
+    setShowTutorial(false);
+  }, []);
 
   // Submit score to leaderboard (only for non-guests)
   const submitScore = () => {
@@ -190,6 +266,19 @@ function App() {
           user={currentUser}
         />
         
+        {/* Calibration Overlay - Shows when camera is ready but before tutorial/game */}
+        {isCalibrating && !calibrationComplete && !showTutorial && currentView === 'game' && (
+          <CalibrationOverlay 
+            status={calibrationStatus}
+            progress={calibrationProgress}
+          />
+        )}
+        
+        {/* Tutorial Overlay - Shows once on top of everything */}
+        {showTutorial && (
+          <TutorialOverlay onComplete={handleTutorialComplete} />
+        )}
+        
         {/* Main Content */}
         <div className="pt-6 pb-24 px-4">
           <div className="max-w-7xl mx-auto">
@@ -208,7 +297,7 @@ function App() {
                   {/* Video Player - Glassmorphism Card */}
                   <div className="lg:col-span-1">
                     <div className="rounded-3xl overflow-hidden bg-white/10 backdrop-blur-xl border border-white/20 shadow-[0_0_30px_rgba(139,92,246,0.3)]">
-                      <VideoPlayer isSmiling={isSmiling} videoRef={videoRef} />
+                      <VideoPlayer isSmiling={isSmiling} videoRef={videoRef} currentVideo={currentVideo} />
                       {isSmiling && (
                         <div className="absolute inset-0 bg-gradient-to-r from-purple-600/90 to-pink-600/90 backdrop-blur-md flex items-center justify-center">
                           <div className="text-center">
@@ -239,7 +328,14 @@ function App() {
                   {/* Face Tracker - Glassmorphism Card */}
                   <div className="lg:col-span-1">
                     <div className="rounded-3xl overflow-hidden bg-white/10 backdrop-blur-xl border border-white/20 shadow-[0_0_30px_rgba(139,92,246,0.3)]">
-                      <FaceTracker onSmirkDetected={handleSmirkDetected} />
+                      <FaceTracker 
+                        onSmirkDetected={handleSmirkDetected} 
+                        onCameraReady={handleCameraReady}
+                        onCalibrationUpdate={handleCalibrationUpdate}
+                        onCalibrationComplete={handleCalibrationComplete}
+                        isCalibrating={isCalibrating}
+                        calibrationComplete={calibrationComplete}
+                      />
                     </div>
                   </div>
                 </div>

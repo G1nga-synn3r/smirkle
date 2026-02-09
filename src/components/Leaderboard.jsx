@@ -1,41 +1,70 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Trophy, Medal, Crown, Timer, RefreshCw } from 'lucide-react';
+import { getGlobalLeaderboard } from '../services/scoreService';
 
 export default function Leaderboard() {
   const [scores, setScores] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const abortControllerRef = useRef(null);
 
   useEffect(() => {
     loadScores();
+    
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
   }, []);
 
-  const loadScores = () => {
+  const loadScores = async () => {
+    // Cancel any ongoing request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    
+    abortControllerRef.current = new AbortController();
     setIsLoading(true);
     try {
-      const savedScores = localStorage.getItem('smirkle-scores');
-      if (savedScores) {
-        const parsed = JSON.parse(savedScores);
-        // Sort by score descending
-        const sorted = parsed.sort((a, b) => b.score - a.score);
-        setScores(sorted);
+      // Try to fetch from Firestore first
+      const firestoreScores = await getGlobalLeaderboard(10, { signal: abortControllerRef.current.signal });
+      
+      if (firestoreScores && firestoreScores.length > 0) {
+        // Map Firestore field names to UI field names
+        const mappedScores = firestoreScores.map(score => ({
+          id: score.id,
+          name: score.username,
+          score: score.score_value,
+          time: score.survival_time,
+          date: score.date
+        }));
+        setScores(mappedScores);
       } else {
-        // Default scores for demo
-        setScores([
-          { id: 1, name: 'Alex Chen', score: 2847, time: 45, date: '2026-02-07' },
-          { id: 2, name: 'Sarah Miller', score: 2653, time: 52, date: '2026-02-06' },
-          { id: 3, name: 'Jordan Lee', score: 2431, time: 58, date: '2026-02-05' },
-          { id: 4, name: 'Casey Kim', score: 2198, time: 65, date: '2026-02-04' },
-          { id: 5, name: 'Riley Johnson', score: 1982, time: 72, date: '2026-02-03' },
-          { id: 6, name: 'Morgan Davis', score: 1756, time: 80, date: '2026-02-02' },
-          { id: 7, name: 'Taylor Smith', score: 1523, time: 95, date: '2026-02-01' },
-          { id: 8, name: 'Avery Brown', score: 1289, time: 110, date: '2026-01-31' },
-        ]);
+        // Fallback to demo scores when Firestore is empty
+        setScores(getDemoScores());
       }
     } catch (error) {
-      console.error('Error loading scores:', error);
+      if (error.name === 'AbortError') {
+        return; // Request was cancelled
+      }
+      console.error('Error loading scores from Firestore:', error);
+      // Fallback to demo scores on error
+      setScores(getDemoScores());
     }
     setIsLoading(false);
   };
+
+  // Demo scores for when Firestore is empty or not configured
+  const getDemoScores = () => [
+    { id: 'demo1', name: 'Alex Chen', score: 2847, time: 45, date: '2026-02-07' },
+    { id: 'demo2', name: 'Sarah Miller', score: 2653, time: 52, date: '2026-02-06' },
+    { id: 'demo3', name: 'Jordan Lee', score: 2431, time: 58, date: '2026-02-05' },
+    { id: 'demo4', name: 'Casey Kim', score: 2198, time: 65, date: '2026-02-04' },
+    { id: 'demo5', name: 'Riley Johnson', score: 1982, time: 72, date: '2026-02-03' },
+    { id: 'demo6', name: 'Morgan Davis', score: 1756, time: 80, date: '2026-02-02' },
+    { id: 'demo7', name: 'Taylor Smith', score: 1523, time: 95, date: '2026-02-01' },
+    { id: 'demo8', name: 'Avery Brown', score: 1289, time: 110, date: '2026-01-31' },
+  ];
 
   const getRankIcon = (rank) => {
     if (rank === 1) return <Crown className="w-6 h-6 text-yellow-400" />;
@@ -58,7 +87,11 @@ export default function Leaderboard() {
   };
 
   const formatDate = (dateStr) => {
+    if (!dateStr) return 'N/A';
     const date = new Date(dateStr);
+    if (isNaN(date.getTime())) {
+      return 'N/A';
+    }
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
@@ -95,7 +128,7 @@ export default function Leaderboard() {
               <span className="text-2xl font-bold text-gray-800">2</span>
             </div>
             <p className="font-medium text-gray-300">{scores[1]?.name}</p>
-            <p className="text-lg font-bold text-gray-400">{scores[1]?.score.toLocaleString()}</p>
+            <p className="text-lg font-bold text-gray-400">{scores[1]?.score?.toLocaleString() ?? 'N/A'}</p>
             <div className="w-24 h-20 bg-gradient-to-t from-gray-400/30 to-gray-400/10 rounded-t-lg mt-2 flex items-end justify-center pb-2">
               <span className="text-xs text-gray-500">{formatTime(scores[1]?.time)}</span>
             </div>

@@ -3,14 +3,59 @@ import * as faceapi from 'face-api.js';
 import { useHapticFeedback } from '../hooks/useHapticFeedback';
 import { SMILE_THRESHOLD } from '../utils/constants';
 
-function FaceTracker({ onSmirkDetected }) {
+// Face API expression names (face-api labels "happy" for smile/smirk detection)
+// We use this for smirk detection in the game
+const SMILE_EXPRESSION = 'happy';
+
+// Calibration constants
+const CALIBRATION_STABILITY_DURATION = 3000; // 3 seconds stable detection
+const CALIBRATION_DETECTION_INTERVAL = 100; // Check every 100ms
+const NEUTRAL_EXPRESSION_THRESHOLD = 0.15; // Happiness below 15% considered neutral
+
+// Punchline detection constants
+const PUNCHLINE_THRESHOLD_REDUCTION = 0.2; // 20% reduction
+const PUNCHLINE_WINDOW_DURATION = 3000; // 3 seconds window
+
+// ========== DETECTION OPTIMIZATION CONSTANTS ==========
+const DETECTION_FRAME_SKIP = 2; // Skip N frames between detections (every 3rd frame)
+const DETECTION_MIN_INTERVAL = 100; // Minimum ms between detections
+const SMIRK_CONFIDENCE_THRESHOLD = 0.85; // Higher threshold to reduce false positives
+const SMIRK_DEBOUNCE_COUNT = 3; // Require N consecutive detections before triggering
+
+function FaceTracker({ 
+  onSmirkDetected, 
+  onCameraReady,
+  onCalibrationUpdate,
+  onCalibrationComplete,
+  isCalibrating = false,
+  calibrationComplete = false,
+  currentVideo = null
+}) {
   const videoRef = useRef(null);
   const [isModelsLoaded, setIsModelsLoaded] = useState(false);
   const [isVideoReady, setIsVideoReady] = useState(false);
   const [error, setError] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
+  const [smirkProbability, setSmirkProbability] = useState(0);
   const streamRef = useRef(null);
   const animationRef = useRef(null);
+  
+  // Calibration tracking refs
+  const calibrationStartRef = useRef(null);
+  const lastStableTimeRef = useRef(null);
+  const calibrationTimerRef = useRef(null);
+  
+  // Punchline detection refs
+  const punchlineWindowRef = useRef(false);
+  const punchlineTimerRef = useRef(null);
+  const lastPunchlineProcessedRef = useRef(null);
+  
+  // ========== OPTIMIZATION REFS ==========
+  const frameCountRef = useRef(0); // Frame counter for throttling
+  const lastDetectionTimeRef = useRef(0); // Last detection timestamp
+  const smirkConsecutiveCountRef = useRef(0); // Consecutive smirk detections
+  const lastSmirkStateRef = useRef(false); // Previous smirk state to detect changes
+  const isSmirkingRef = useRef(false); // Debounced smirk state (ref for performance)
   
   // Use haptic feedback hook
   const { vibrate, isEnabled: hapticEnabled } = useHapticFeedback();
@@ -52,7 +97,7 @@ function FaceTracker({ onSmirkDetected }) {
   useEffect(() => {
     async function loadModels() {
       try {
-        const MODEL_URL = import.meta.env.BASE_URL + '/models' || '/models';
+        const MODEL_URL = (import.meta.env?.BASE_URL || '') + '/models' || '/models';
         
         await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
         await faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL);
@@ -74,8 +119,85 @@ function FaceTracker({ onSmirkDetected }) {
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current);
       }
+      // Cleanup calibration timer
+      if (calibrationTimerRef.current) {
+        clearTimeout(calibrationTimerRef.current);
+      }
+      // Cleanup punchline timer
+      if (punchlineTimerRef.current) {
+        clearTimeout(punchlineTimerRef.current);
+      }
     };
   }, []);
+
+  // Punchline detection: Monitor video playback time and trigger sensitivity boost
+  useEffect(() => {
+    if (!currentVideo || !currentVideo.punchlineTimestamp) return;
+
+    const checkPunchlineTime = () => {
+      if (!videoRef.current) return;
+
+      const currentTime = videoRef.current.currentTime;
+      const punchlineTime = currentVideo.punchlineTimestamp;
+
+      // Check if we've reached the punchline timestamp (with 500ms buffer)
+      if (currentTime >= punchlineTime && currentTime < punchlineTime + 0.5) {
+        // Only trigger if not already in punchline window and not recently triggered
+        const now = Date.now();
+        if (!punchlineWindowRef.current && 
+            (!lastPunchlineProcessedRef.current || now - lastPunchlineProcessedRef.current > 4000)) {
+          
+          // Enter punchline window - increase sensitivity by 20% (reduce threshold from 0.3 to 0.24)
+          punchlineWindowRef.current = true;
+          lastPunchlineProcessedRef.current = now;
+          
+          console.log('🎯 Punchline reached - increasing happiness sensitivity by 20%');
+          
+          // Set timer to exit punchline window after 3 seconds
+          if (punchlineTimerRef.current) {
+            clearTimeout(punchlineTimerRef.current);
+          }
+          
+          punchlineTimerRef.current = setTimeout(() => {
+            punchlineWindowRef.current = false;
+            console.log('🔄 Punchline window ended - sensitivity reset');
+          }, PUNCHLINE_WINDOW_DURATION);
+        }
+      }
+    };
+
+    // Use requestAnimationFrame to continuously check video time during playback
+    let animationId;
+    const checkLoop = () => {
+      checkPunchlineTime();
+      if (videoRef.current && !videoRef.current.paused) {
+        animationId = requestAnimationFrame(checkLoop);
+      }
+    };
+
+    // Start checking when video is ready and playing
+    if (videoRef.current && !videoRef.current.paused) {
+      animationId = requestAnimationFrame(checkLoop);
+    }
+
+    // Also listen for timeupdate events as backup
+    const handleTimeUpdate = () => checkPunchlineTime();
+    if (videoRef.current) {
+      videoRef.current.addEventListener('timeupdate', handleTimeUpdate);
+    }
+
+    return () => {
+      if (animationId) {
+        cancelAnimationFrame(animationId);
+      }
+      if (punchlineTimerRef.current) {
+        clearTimeout(punchlineTimerRef.current);
+      }
+      if (videoRef.current) {
+        videoRef.current.removeEventListener('timeupdate', handleTimeUpdate);
+      }
+    };
+  }, [currentVideo]);
 
   // Initialize webcam when models are loaded
   useEffect(() => {
@@ -107,6 +229,10 @@ function FaceTracker({ onSmirkDetected }) {
           videoRef.current.onloadedmetadata = () => {
             setIsVideoReady(true);
             startFaceDetection();
+            // Notify parent that camera is ready
+            if (onCameraReady) {
+              onCameraReady(true);
+            }
           };
         }
       } catch (err) {
@@ -130,11 +256,45 @@ function FaceTracker({ onSmirkDetected }) {
   }, [isModelsLoaded, isMobile]);
 
   // Start face detection when video is ready
-  function startFaceDetection() {
+  const startFaceDetection = useCallback(() => {
     if (!videoRef.current || !isVideoReady) return;
+    
+    // Reset optimization refs on new detection session
+    frameCountRef.current = 0;
+    lastDetectionTimeRef.current = 0;
+    smirkConsecutiveCountRef.current = 0;
+    isSmirkingRef.current = false;
 
     const detectFaces = async () => {
       if (!videoRef.current) return;
+      
+      const now = Date.now();
+      
+      // ========== OPTIMIZATION 1: Frame Throttling ==========
+      // Skip frames to reduce CPU usage
+      frameCountRef.current += 1;
+      if (frameCountRef.current <= DETECTION_FRAME_SKIP) {
+        // Skip this frame, continue loop
+        if (videoRef.current && !videoRef.current.paused && animationRef.current) {
+          animationRef.current = requestAnimationFrame(detectFaces);
+        }
+        return;
+      }
+      
+      // ========== OPTIMIZATION 2: Time-Based Throttling ==========
+      // Only run detection if enough time has passed
+      if (now - lastDetectionTimeRef.current < DETECTION_MIN_INTERVAL) {
+        // Reset frame count to try again soon
+        frameCountRef.current = 0;
+        if (videoRef.current && !videoRef.current.paused && animationRef.current) {
+          animationRef.current = requestAnimationFrame(detectFaces);
+        }
+        return;
+      }
+      
+      // Update last detection time
+      lastDetectionTimeRef.current = now;
+      frameCountRef.current = 0;
 
       try {
         const displaySize = {
@@ -150,30 +310,155 @@ function FaceTracker({ onSmirkDetected }) {
         // Process detections here if needed
         if (detections && detections.length > 0) {
           const expressions = detections[0].expressions;
-          // Detect smirk using consistent threshold from constants
-          const isSmirking = expressions.happy > SMILE_THRESHOLD;
+          // Face-api uses "happy" for smile/smirk detection (always lowercase)
+          // Use safe access pattern to handle any case variations
+          const probability = expressions.happy ?? expressions.Happy ?? expressions['happy'] ?? 0;
+          const isNeutral = probability < NEUTRAL_EXPRESSION_THRESHOLD;
+          const detection = detections[0];
+          
+          // ========== OPTIMIZATION 3: Higher Confidence Threshold ==========
+          // Only consider smirk if confidence exceeds higher threshold
+          const highConfidenceSmirk = probability >= SMIRK_CONFIDENCE_THRESHOLD;
+          
+          // ========== OPTIMIZATION 4: Debouncing ==========
+          // Require multiple consecutive detections before triggering
+          // Use dynamic threshold (lower during punchline window)
+          const baseThreshold = SMILE_THRESHOLD;
+          const isInPunchlineWindow = punchlineWindowRef.current;
+          const currentThreshold = isInPunchlineWindow 
+            ? baseThreshold * (1 - PUNCHLINE_THRESHOLD_REDUCTION) 
+            : baseThreshold;
+          
+          const aboveDynamicThreshold = probability > currentThreshold;
+          
+          // Update consecutive count based on dynamic threshold
+          if (aboveDynamicThreshold) {
+            smirkConsecutiveCountRef.current += 1;
+          } else {
+            smirkConsecutiveCountRef.current = 0;
+          }
+          
+          // Only trigger if we have consecutive detections AND high confidence
+          const isSmirking = highConfidenceSmirk && 
+                            (smirkConsecutiveCountRef.current >= SMIRK_DEBOUNCE_COUNT || isInPunchlineWindow);
+          
+          // Update the ref for next iteration
+          isSmirkingRef.current = isSmirking;
+          
+          // Only update state and trigger callbacks when state changes
+          const smirkStateChanged = isSmirking !== lastSmirkStateRef.current;
+          lastSmirkStateRef.current = isSmirking;
+          
+          // Batch state updates to reduce re-renders
+          if (smirkStateChanged || probability !== smirkProbability) {
+            // Use functional update to batch smirkProbability updates
+            setSmirkProbability(prev => {
+              // Only update if probability changed significantly (performance optimization)
+              if (Math.abs(prev - probability) > 0.01) {
+                return probability;
+              }
+              return prev;
+            });
+          }
+          
+          // ========== CALIBRATION PHASE LOGIC ==========
+          if (isCalibrating && !calibrationComplete && onCalibrationUpdate) {
+            const now = Date.now();
+            
+            // Check if expression is neutral (no smile)
+            if (isNeutral) {
+              // Initialize calibration start time on first neutral detection
+              if (!calibrationStartRef.current) {
+                calibrationStartRef.current = now;
+              }
+              
+              // Check if we've been stable for 3 seconds
+              const elapsedStable = now - calibrationStartRef.current;
+              const progress = Math.min((elapsedStable / CALIBRATION_STABILITY_DURATION) * 100, 100);
+              
+              // Send calibration update
+              onCalibrationUpdate({
+                faceDetected: true,
+                isNeutral: true,
+                isStable: elapsedStable >= CALIBRATION_STABILITY_DURATION,
+                progress: progress,
+                elapsed: elapsedStable
+              });
+              
+              // Check for calibration completion
+              if (elapsedStable >= CALIBRATION_STABILITY_DURATION) {
+                // Clear any existing timer
+                if (calibrationTimerRef.current) {
+                  clearTimeout(calibrationTimerRef.current);
+                  calibrationTimerRef.current = null;
+                }
+                
+                // Mark calibration complete
+                if (onCalibrationComplete) {
+                  onCalibrationComplete(true);
+                }
+                
+                // Reset calibration refs
+                calibrationStartRef.current = null;
+              }
+            } else {
+              // Expression not neutral - reset calibration
+              calibrationStartRef.current = null;
+              
+              onCalibrationUpdate({
+                faceDetected: true,
+                isNeutral: false,
+                isStable: false,
+                progress: 0,
+                elapsed: 0
+              });
+            }
+          }
+          // ===========================================
           
           // Guardian Logic: Trigger haptic feedback on smirk detection
-          if (isSmirking && isMobile && hapticEnabled) {
+          // Only trigger when state changes to reduce unnecessary vibrations
+          if (isSmirking && smirkStateChanged && isMobile && hapticEnabled) {
             vibrate();
           }
           
-          if (onSmirkDetected) {
-            onSmirkDetected(isSmirking);
+          // Only trigger callback on state change to reduce redundant calls
+          if (onSmirkDetected && smirkStateChanged) {
+            onSmirkDetected(isSmirking, probability, isInPunchlineWindow);
           }
+        } else {
+          // No face detected - reset debounce counter
+          smirkConsecutiveCountRef.current = 0;
+          
+          // ========== CALIBRATION PHASE LOGIC ==========
+          if (isCalibrating && !calibrationComplete && onCalibrationUpdate) {
+            // Reset calibration on no face detected
+            calibrationStartRef.current = null;
+            
+            onCalibrationUpdate({
+              faceDetected: false,
+              isNeutral: false,
+              isStable: false,
+              progress: 0,
+              elapsed: 0
+            });
+          }
+          // ===========================================
         }
       } catch (err) {
         console.error('Face detection error:', err);
+        // Stop animation loop on error to prevent infinite error loop
+        return;
       }
 
-      // Continue detection loop
-      if (videoRef.current && !videoRef.current.paused) {
+      // Continue detection loop only if video is still valid
+      if (videoRef.current && !videoRef.current.paused && animationRef.current) {
         animationRef.current = requestAnimationFrame(detectFaces);
       }
     };
 
     detectFaces();
-  }
+  }, [isVideoReady, isCalibrating, calibrationComplete, onCalibrationUpdate, onCalibrationComplete, onSmirkDetected, isMobile, hapticEnabled]);
 
   if (error) {
     return (
@@ -215,6 +500,15 @@ function FaceTracker({ onSmirkDetected }) {
       {isModelsLoaded && (
         <div className="absolute top-2 right-2 md:top-4 md:right-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white px-3 py-1 md:px-4 md:py-2 rounded-full font-semibold text-xs md:text-sm shadow-lg">
           🦁 Eye of the Beholder
+        </div>
+      )}
+
+      {/* Smirk Probability Display */}
+      {isModelsLoaded && (
+        <div className="absolute top-2 left-2 md:top-4 md:left-4 bg-black/50 backdrop-blur-sm px-3 py-1 md:px-3 md:py-1 rounded-full">
+          <span className="text-white text-xs font-medium">
+            Smirk Probability: {(smirkProbability * 100).toFixed(1)}%
+          </span>
         </div>
       )}
 
