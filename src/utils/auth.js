@@ -103,7 +103,7 @@ export async function authenticateUser(email, password) {
  * Register a new user
  */
 export async function registerUser(userData) {
-  const { username, email, password, bio = '', motto = '' } = userData;
+  const { username, email, password, bio = '', motto = '', birthdate = '' } = userData;
   
   // Validate required fields
   if (!username || !email || !password) {
@@ -136,6 +136,7 @@ export async function registerUser(userData) {
     email: email.toLowerCase(),
     bio,
     motto,
+    birthdate,
     createdAt: new Date().toISOString(),
     lastLogin: new Date().toISOString(),
     stats: {

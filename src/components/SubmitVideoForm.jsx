@@ -1,9 +1,13 @@
 import React, { useState } from 'react';
-import { Video, Upload, CheckCircle, AlertCircle, Link, Loader2 } from 'lucide-react';
+import { Video, Upload, CheckCircle, AlertCircle, Link, Loader2, Shield, Scan } from 'lucide-react';
+import { checkContentModeration, findBannedKeywords } from '../data/bannedWords.js';
 
 export default function SubmitVideoForm() {
   const [videoUrl, setVideoUrl] = useState('');
+  const [videoTitle, setVideoTitle] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isAISCanning, setIsAISCanning] = useState(false);
+  const [aiScanResult, setAiScanResult] = useState(null);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState(null);
 
@@ -13,9 +17,30 @@ export default function SubmitVideoForm() {
     return urlPattern.test(url);
   };
 
+  /**
+   * Simulated AI Content Check using promise
+   * Scans metadata for banned keywords before allowing upload
+   * @param {string} url - Video URL to scan
+   * @param {string} title - Video title to scan
+   * @returns {Promise<Object>} Scan result with passed/failed status
+   */
+  const performAIContentCheck = (url, title) => {
+    return new Promise((resolve) => {
+      // Combine URL and title for scanning
+      const contentToScan = `${url} ${title}`;
+      
+      // Simulate AI scanning delay
+      setTimeout(() => {
+        const result = checkContentModeration(contentToScan);
+        resolve(result);
+      }, 1000 + Math.random() * 1000); // Random delay between 1-2 seconds
+    });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
+    setAiScanResult(null);
 
     if (!videoUrl.trim()) {
       setError('Please enter a video URL');
@@ -29,7 +54,30 @@ export default function SubmitVideoForm() {
 
     setIsSubmitting(true);
 
-    // Simulate API call for admin workflow
+    // Step 1: AI Content Check
+    setIsAISCanning(true);
+    try {
+      const scanResult = await performAIContentCheck(videoUrl, videoTitle);
+      setAiScanResult(scanResult);
+      
+      if (!scanResult.passed) {
+        const flaggedWords = scanResult.flaggedKeywords
+          .map(f => f.keyword)
+          .join(', ');
+        setError(`AI Content Check Failed: Content contains banned keywords: ${flaggedWords}`);
+        setIsSubmitting(false);
+        setIsAISCanning(false);
+        return;
+      }
+    } catch (err) {
+      setError('AI Content Check failed. Please try again.');
+      setIsSubmitting(false);
+      setIsAISCanning(false);
+      return;
+    }
+    setIsAISCanning(false);
+
+    // Step 2: Submit to API
     try {
       await new Promise(resolve => setTimeout(resolve, 1500));
       
@@ -38,7 +86,9 @@ export default function SubmitVideoForm() {
       const newSubmission = {
         id: Date.now(),
         url: videoUrl,
+        title: videoTitle,
         status: 'pending',
+        aiScanResult: aiScanResult,
         submittedAt: new Date().toISOString()
       };
       submissions.push(newSubmission);
@@ -54,8 +104,10 @@ export default function SubmitVideoForm() {
 
   const handleReset = () => {
     setVideoUrl('');
+    setVideoTitle('');
     setSubmitted(false);
     setError(null);
+    setAiScanResult(null);
   };
 
   if (submitted) {
@@ -127,6 +179,24 @@ export default function SubmitVideoForm() {
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Title Input */}
+        <div>
+          <label htmlFor="videoTitle" className="block text-sm font-medium text-gray-300 mb-2">
+            Video Title
+          </label>
+          <div className="relative">
+            <input
+              type="text"
+              id="videoTitle"
+              value={videoTitle}
+              onChange={(e) => setVideoTitle(e.target.value)}
+              placeholder="Enter a descriptive title for your video"
+              className="w-full px-4 py-3 pl-12 rounded-xl bg-white/5 border border-white/10 focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 focus:outline-none text-white placeholder-gray-500 transition-all"
+            />
+            <Scan className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+          </div>
+        </div>
+
         {/* URL Input */}
         <div>
           <label htmlFor="videoUrl" className="block text-sm font-medium text-gray-300 mb-2">
@@ -150,6 +220,28 @@ export default function SubmitVideoForm() {
             </div>
           )}
         </div>
+
+        {/* AI Content Check Status */}
+        {aiScanResult && (
+          <div className={`p-4 rounded-xl border ${
+            aiScanResult.passed 
+              ? 'bg-green-500/10 border-green-500/30' 
+              : 'bg-red-500/10 border-red-500/30'
+          }`}>
+            <div className="flex items-center gap-2 mb-2">
+              {aiScanResult.passed ? (
+                <><CheckCircle className="w-5 h-5 text-green-400" /><span className="text-green-400 font-medium">AI Content Check Passed</span></>
+              ) : (
+                <><AlertCircle className="w-5 h-5 text-red-400" /><span className="text-red-400 font-medium">AI Content Check Failed</span></>
+              )}
+            </div>
+            {!aiScanResult.passed && (
+              <p className="text-sm text-red-300">
+                Flagged keywords: {aiScanResult.flaggedKeywords.map(f => f.keyword).join(', ')}
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Requirements */}
         <div className="bg-white/5 rounded-xl p-4 border border-white/10">
@@ -177,17 +269,22 @@ export default function SubmitVideoForm() {
         {/* Submit Button */}
         <button
           type="submit"
-          disabled={isSubmitting}
+          disabled={isSubmitting || isAISCanning}
           className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
         >
-          {isSubmitting ? (
+          {isAISCanning ? (
+            <>
+              <Loader2 className="w-5 h-5 animate-spin" />
+              AI Scanning...
+            </>
+          ) : isSubmitting ? (
             <>
               <Loader2 className="w-5 h-5 animate-spin" />
               Submitting...
             </>
           ) : (
             <>
-              <Upload className="w-5 h-5" />
+              <Shield className="w-5 h-5" />
               Submit Video
             </>
           )}

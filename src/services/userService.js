@@ -55,6 +55,7 @@ export async function createOrUpdateUser(userId, profileData) {
     motto: profileData.motto || '',
     profile_picture_url: profileData.profile_picture_url || '',
     bio: profileData.bio || '',
+    birthdate: profileData.birthdate || '',
     updated_at: now
   };
   

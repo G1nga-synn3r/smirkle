@@ -262,6 +262,81 @@ export class VideoQueueManager {
   }
 }
 
+/**
+ * Pre-loader for video caching
+ * Uses <link rel='preload' as='video'> to cache upcoming videos
+ */
+export class VideoPreFetcher {
+  /**
+   * Create preload links for the next N videos in queue
+   * @param {Array} videos - Array of video objects to preload
+   * @param {number} count - Number of videos to preload (default: 3)
+   */
+  static preloadVideos(videos, count = 3) {
+    const videosToPreload = videos.slice(0, count);
+    
+    videosToPreload.forEach((video, index) => {
+      // Check if link already exists
+      const existingLink = document.querySelector(
+        `link[rel="preload"][as="video"][data-video-id="${video.id}"]`
+      );
+      
+      if (!existingLink) {
+        const link = document.createElement('link');
+        link.rel = 'preload';
+        link.as = 'video';
+        link.href = video.url;
+        link.setAttribute('data-video-id', video.id);
+        link.setAttribute('data-preload-index', index);
+        document.head.appendChild(link);
+        
+        console.log(`[VideoPreFetcher] Preloading video ${index + 1}/${count}: ${video.title}`);
+      }
+    });
+    
+    // Clean up old preload links (keep only current preloads)
+    const preloadLinks = document.querySelectorAll('link[rel="preload"][as="video"]');
+    preloadLinks.forEach(link => {
+      const linkVideoId = link.getAttribute('data-video-id');
+      const isInCurrentPreload = videosToPreload.some(v => v.id === linkVideoId);
+      if (!isInCurrentPreload) {
+        link.remove();
+      }
+    });
+  }
+  
+  /**
+   * Clear all video preload links
+   */
+  static clearPreloads() {
+    const preloadLinks = document.querySelectorAll('link[rel="preload"][as="video"]');
+    preloadLinks.forEach(link => link.remove());
+    console.log('[VideoPreFetcher] Cleared all preload links');
+  }
+  
+  /**
+   * Preload a specific video by ID
+   * @param {string} videoId - ID of video to preload
+   */
+  static preloadVideoById(videoId) {
+    const video = VIDEO_DATABASE.find(v => v.id === videoId);
+    if (video) {
+      const existingLink = document.querySelector(
+        `link[rel="preload"][as="video"][data-video-id="${videoId}"]`
+      );
+      if (!existingLink) {
+        const link = document.createElement('link');
+        link.rel = 'preload';
+        link.as = 'video';
+        link.href = video.url;
+        link.setAttribute('data-video-id', videoId);
+        document.head.appendChild(link);
+        console.log(`[VideoPreFetcher] Preloading: ${video.title}`);
+      }
+    }
+  }
+}
+
 // Export singleton instance for app-wide access
 export const videoQueueManager = new VideoQueueManager(VIDEO_DATABASE);
 
@@ -270,6 +345,7 @@ export default {
   VIDEO_DATABASE,
   DIFFICULTY,
   videoQueueManager,
+  VideoPreFetcher,
   getAllVideos,
   getVideosByDifficulty,
   getVideoById,

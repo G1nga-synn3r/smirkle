@@ -5,6 +5,7 @@ import { useSoundEffects } from './hooks/useSoundEffects.js';
 import CameraView from './components/CameraView.jsx';
 import VideoPlayer from './components/VideoPlayer.jsx';
 import FaceTracker from './components/FaceTracker.jsx';
+import WarningBox from './components/WarningBox.jsx';
 import Navbar from './components/Navbar.jsx';
 import Leaderboard from './components/Leaderboard.jsx';
 import SubmitVideoForm from './components/SubmitVideoForm.jsx';
@@ -16,6 +17,7 @@ import CalibrationOverlay from './components/CalibrationOverlay.jsx';
 import { getCurrentUser, isGuest, setCurrentUser } from './utils/auth.js';
 import { VIDEO_DATABASE, videoQueueManager, DIFFICULTY, getVideosByDifficulty } from './data/videoLibrary.js';
 import { saveScore } from './services/scoreService.js';
+import { SMILE_THRESHOLD } from './utils/constants.js';
 
 console.log('[App] App.jsx loaded successfully');
 
@@ -38,8 +40,17 @@ function App() {
   const [calibrationProgress, setCalibrationProgress] = useState(0);
   const [calibrationStatus, setCalibrationStatus] = useState('waiting'); // 'waiting' | 'detecting' | 'stable' | 'complete' | 'failed'
   
-  // Video Library State
-  const [currentVideo, setCurrentVideo] = useState(null);
+  // Guardian Logic: Warning states
+  const [isFaceDetected, setIsFaceDetected] = useState(true);
+  const [isFaceCentered, setIsFaceCentered] = useState(true);
+  const [isLowLight, setIsLowLight] = useState(false);
+  
+  // Video Library State - Initialize with random video from database
+  // Video starts paused until camera initialization is complete
+  const [currentVideo, setCurrentVideo] = useState(() => {
+    const randomIndex = Math.floor(Math.random() * VIDEO_DATABASE.length);
+    return VIDEO_DATABASE[randomIndex];
+  });
   const [selectedDifficulty, setSelectedDifficulty] = useState(null); // 'Easy', 'Medium', 'Hard', or null for all
   const [currentMultiplier, setCurrentMultiplier] = useState(1);
   const videoRef = useRef(null);
@@ -79,6 +90,16 @@ function App() {
     } else {
       setCalibrationStatus('failed');
     }
+  }, []);
+
+  // Guardian Logic: Handle face centering updates from FaceTracker
+  const handleFaceCenteredUpdate = useCallback((isCentered) => {
+    setIsFaceCentered(isCentered);
+  }, []);
+
+  // Guardian Logic: Handle low-light warnings from FaceTracker
+  const handleLowLightWarning = useCallback((isLow) => {
+    setIsLowLight(isLow);
   }, []);
 
   // Load user data from localStorage on mount
@@ -330,14 +351,25 @@ function App() {
                   
                   {/* Face Tracker - Glassmorphism Card */}
                   <div className="lg:col-span-1">
-                    <div className="rounded-3xl overflow-hidden bg-white/10 backdrop-blur-xl border border-white/20 shadow-[0_0_30px_rgba(139,92,246,0.3)]">
+                    <div className="rounded-3xl overflow-hidden bg-white/10 backdrop-blur-xl border border-white/20 shadow-[0_0_30px_rgba(139,92,246,0.3)] relative">
                       <FaceTracker 
                         onSmirkDetected={handleSmirkDetected} 
                         onCameraReady={handleCameraReady}
                         onCalibrationUpdate={handleCalibrationUpdate}
                         onCalibrationComplete={handleCalibrationComplete}
+                        onFaceCenteredUpdate={handleFaceCenteredUpdate}
+                        onLowLightWarning={handleLowLightWarning}
                         isCalibrating={isCalibrating}
                         calibrationComplete={calibrationComplete}
+                      />
+                      {/* Guardian Logic Warning Boxes */}
+                      <WarningBox 
+                        type="faceNotCentered"
+                        visible={!isFaceCentered && isFaceDetected}
+                      />
+                      <WarningBox 
+                        type="lowLight"
+                        visible={isLowLight}
                       />
                     </div>
                   </div>

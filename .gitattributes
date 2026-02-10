@@ -1,0 +1,18 @@
+# Set default line endings
+* text=auto
+
+# Ensure scripts are executable
+*.sh text eol=lf
+
+# Binary files (do not modify)
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.bin binary
+
+# Model files (do not modify)
+*.bin binary
+*.json text

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Mail, Lock, Eye, EyeOff, Sparkles, UserPlus } from 'lucide-react';
+import { User, Mail, Lock, Eye, EyeOff, Sparkles, UserPlus, Calendar } from 'lucide-react';
 import { getCurrentUser, setCurrentUser, registerUser, authenticateUser } from '../utils/auth';
 
 /**
@@ -12,7 +12,7 @@ export default function AuthGate({ children }) {
   const [isLoading, setIsLoading] = useState(true);
   const [showAuthForm, setShowAuthForm] = useState(false);
   const [authMode, setAuthMode] = useState('login'); // 'login' | 'register'
-  const [formData, setFormData] = useState({ username: '', email: '', password: '' });
+  const [formData, setFormData] = useState({ username: '', email: '', password: '', birthdate: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState({});
   const [generalError, setGeneralError] = useState('');
@@ -64,6 +64,18 @@ export default function AuthGate({ children }) {
     return newErrors;
   };
 
+  const passwordRequirements = [
+    { label: 'At least 8 characters', test: (p) => p.length >= 8 },
+    { label: 'One uppercase letter', test: (p) => /[A-Z]/.test(p) },
+    { label: 'One lowercase letter', test: (p) => /[a-z]/.test(p) },
+    { label: 'One number', test: (p) => /\d/.test(p) },
+    { label: 'One symbol', test: (p) => /[!@#$%^&*()_+\-=\[\]{};:'"|,.<>\/?]/.test(p) },
+  ];
+
+  const isPasswordValid = () => {
+    return passwordRequirements.every((req) => req.test(formData.password));
+  };
+
   const validateRegisterForm = () => {
     const newErrors = {};
     if (!formData.username.trim()) {
@@ -80,9 +92,23 @@ export default function AuthGate({ children }) {
       }
     }
     if (!formData.password) {
-      newErrors.password = 'Password is required (min 6 characters)';
-    } else if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
+      newErrors.password = 'Password is required';
+    } else if (!isPasswordValid()) {
+      newErrors.password = 'Password does not meet all requirements';
+    }
+    if (!formData.birthdate) {
+      newErrors.birthdate = 'Birthdate is required';
+    } else {
+      const birthDate = new Date(formData.birthdate);
+      const today = new Date();
+      let age = today.getFullYear() - birthDate.getFullYear();
+      const monthDiff = today.getMonth() - birthDate.getMonth();
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+      }
+      if (age < 14) {
+        newErrors.birthdate = 'You must be at least 14 years old to create an account';
+      }
     }
     return newErrors;
   };
@@ -130,7 +156,8 @@ export default function AuthGate({ children }) {
       const user = await registerUser({
         username: formData.username.trim(),
         email: formData.email.trim().toLowerCase(),
-        password: formData.password
+        password: formData.password,
+        birthdate: formData.birthdate
       });
       setUser(user);
       setShowAuthForm(false);
@@ -378,6 +405,24 @@ export default function AuthGate({ children }) {
                   </div>
 
                   <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Birthdate</label>
+                    <div className="relative">
+                      <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                      <input
+                        type="date"
+                        name="birthdate"
+                        value={formData.birthdate}
+                        onChange={handleInputChange}
+                        max={new Date().toISOString().split('T')[0]}
+                        className={`w-full pl-10 pr-4 py-3 rounded-xl bg-white/5 border ${
+                          errors.birthdate ? 'border-red-500' : 'border-blue-500/30'
+                        } text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 transition-colors`}
+                      />
+                    </div>
+                    {errors.birthdate && <p className="mt-1 text-sm text-red-400">{errors.birthdate}</p>}
+                  </div>
+
+                  <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">Password</label>
                     <div className="relative">
                       <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -400,6 +445,24 @@ export default function AuthGate({ children }) {
                       </button>
                     </div>
                     {errors.password && <p className="mt-1 text-sm text-red-400">{errors.password}</p>}
+                    
+                    {/* Password Requirements Display */}
+                    <div className="mt-3 space-y-1">
+                      {passwordRequirements.map((req, index) => (
+                        <div key={index} className="flex items-center gap-2 text-xs">
+                          <span className={`w-4 h-4 rounded-full flex items-center justify-center ${
+                            req.test(formData.password) 
+                              ? 'bg-green-500/20 text-green-400' 
+                              : 'bg-white/5 text-gray-500'
+                          }`}>
+                            {req.test(formData.password) ? '✓' : '○'}
+                          </span>
+                          <span className={req.test(formData.password) ? 'text-green-400' : 'text-gray-500'}>
+                            {req.label}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
 
                   <button

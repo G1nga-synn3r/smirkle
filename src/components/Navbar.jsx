@@ -12,8 +12,8 @@ import { Home, Trophy, User, Upload } from 'lucide-react';
  * - Displays current username if user is logged in
  */
 export default function Navbar({ activeTab, setActiveTab, user }) {
-  // Fallback to 'home' if activeTab is undefined
-  const activeTabFallback = activeTab || 'home';
+  // Fallback to 'game' if activeTab is undefined
+  const activeTabFallback = activeTab || 'game';
   // Validate props and provide defaults
   if (!setActiveTab) {
     console.warn('Navbar: setActiveTab prop is required');
@@ -23,7 +23,7 @@ export default function Navbar({ activeTab, setActiveTab, user }) {
   const username = user?.username || user?.name || null;
 
   const navItems = [
-    { id: 'home', label: 'Home', icon: Home },
+    { id: 'game', label: 'Home', icon: Home },
     { id: 'leaderboard', label: 'Trophy', icon: Trophy },
     { id: 'submit', label: 'Upload', icon: Upload },
     { id: 'profile', label: 'User', icon: User }

@@ -138,11 +138,16 @@ function VideoPlayer({
     };
   }, [currentVideo, onResetHappiness, onVideoChange, getSessionStats]);
 
-  // Handle smile detection pause
+  // Handle smile detection pause with haptic feedback
   useEffect(() => {
     const video = videoElement.current;
     if (video && isSmiling) {
       video.pause();
+      // Trigger haptic feedback on player failure (smiling)
+      if (window.navigator && window.navigator.vibrate) {
+        window.navigator.vibrate(200);
+        console.log('[Haptic] Vibration triggered: player failed (smiling)');
+      }
     }
   }, [isSmiling]);
 

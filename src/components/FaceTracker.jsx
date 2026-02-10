@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useState, useCallback } from 'react';
 import * as faceapi from 'face-api.js';
 import { useHapticFeedback } from '../hooks/useHapticFeedback';
 import { SMILE_THRESHOLD } from '../utils/constants';
+import WarningBox from './WarningBox.jsx';
 
 // Face API expression names (face-api labels "happy" for smile/smirk detection)
 // We use this for smirk detection in the game
@@ -22,11 +23,17 @@ const DETECTION_MIN_INTERVAL = 100; // Minimum ms between detections
 const SMIRK_CONFIDENCE_THRESHOLD = 0.85; // Higher threshold to reduce false positives
 const SMIRK_DEBOUNCE_COUNT = 3; // Require N consecutive detections before triggering
 
+// ========== LOW-LIGHT DETECTION CONSTANTS ==========
+const LOW_LIGHT_THRESHOLD = 40; // Average pixel value below this triggers warning
+const BRIGHTNESS_CHECK_INTERVAL = 500; // Check brightness every 500ms
+
 function FaceTracker({ 
   onSmirkDetected, 
   onCameraReady,
   onCalibrationUpdate,
   onCalibrationComplete,
+  onFaceCenteredUpdate,
+  onLowLightWarning,
   isCalibrating = false,
   calibrationComplete = false,
   currentVideo = null
@@ -37,6 +44,9 @@ function FaceTracker({
   const [error, setError] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
   const [smirkProbability, setSmirkProbability] = useState(0);
+  const [isFaceDetected, setIsFaceDetected] = useState(false);
+  const [isFaceCentered, setIsFaceCentered] = useState(true);
+  const [isLowLight, setIsLowLight] = useState(false);
   const streamRef = useRef(null);
   const animationRef = useRef(null);
   
@@ -56,6 +66,9 @@ function FaceTracker({
   const smirkConsecutiveCountRef = useRef(0); // Consecutive smirk detections
   const lastSmirkStateRef = useRef(false); // Previous smirk state to detect changes
   const isSmirkingRef = useRef(false); // Debounced smirk state (ref for performance)
+  
+  // Low-light detection refs
+  const brightnessCheckTimerRef = useRef(null);
   
   // Use haptic feedback hook
   const { vibrate, isEnabled: hapticEnabled } = useHapticFeedback();
@@ -126,6 +139,10 @@ function FaceTracker({
       // Cleanup punchline timer
       if (punchlineTimerRef.current) {
         clearTimeout(punchlineTimerRef.current);
+      }
+      // Cleanup brightness check timer
+      if (brightnessCheckTimerRef.current) {
+        clearInterval(brightnessCheckTimerRef.current);
       }
     };
   }, []);
@@ -198,6 +215,74 @@ function FaceTracker({
       }
     };
   }, [currentVideo]);
+
+  // ========== LOW-LIGHT DETECTION ==========
+  // Calculate average brightness of video frame
+  const calculateFrameBrightness = useCallback(() => {
+    if (!videoRef.current) return null;
+    
+    const video = videoRef.current;
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    
+    // Use smaller sample size for performance
+    const sampleWidth = 64;
+    const sampleHeight = 48;
+    canvas.width = sampleWidth;
+    canvas.height = sampleHeight;
+    
+    // Draw video frame to canvas (downscaled)
+    ctx.drawImage(video, 0, 0, sampleWidth, sampleHeight);
+    
+    // Get image data
+    const imageData = ctx.getImageData(0, 0, sampleWidth, sampleHeight);
+    const data = imageData.data;
+    
+    // Calculate average brightness (luminance)
+    let totalBrightness = 0;
+    for (let i = 0; i < data.length; i += 4) {
+      // Use luminance formula: 0.299*R + 0.587*G + 0.114*B
+      const r = data[i];
+      const g = data[i + 1];
+      const b = data[i + 2];
+      const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
+      totalBrightness += luminance;
+    }
+    
+    const avgBrightness = totalBrightness / (data.length / 4);
+    return avgBrightness;
+  }, []);
+
+  // Check brightness periodically
+  useEffect(() => {
+    if (!isVideoReady) return;
+    
+    const checkBrightness = () => {
+      const brightness = calculateFrameBrightness();
+      
+      if (brightness !== null) {
+        const isLow = brightness < LOW_LIGHT_THRESHOLD;
+        setIsLowLight(isLow);
+        
+        // Callback to parent with low-light state
+        if (onLowLightWarning) {
+          onLowLightWarning(isLow);
+        }
+      }
+    };
+    
+    // Initial check
+    checkBrightness();
+    
+    // Periodic checks
+    brightnessCheckTimerRef.current = setInterval(checkBrightness, BRIGHTNESS_CHECK_INTERVAL);
+    
+    return () => {
+      if (brightnessCheckTimerRef.current) {
+        clearInterval(brightnessCheckTimerRef.current);
+      }
+    };
+  }, [isVideoReady, calculateFrameBrightness, onLowLightWarning]);
 
   // Initialize webcam when models are loaded
   useEffect(() => {
@@ -309,12 +394,44 @@ function FaceTracker({
 
         // Process detections here if needed
         if (detections && detections.length > 0) {
-          const expressions = detections[0].expressions;
+          // ========== FACE DETECTION STATE ==========
+          // Properly map face-api.js detection result to isFaceDetected state
+          setIsFaceDetected(true);
+          
+          const detection = detections[0];
+          
+          // ========== FACE CENTERING DETECTION ==========
+          // Check if face is centered in the frame
+          const videoWidth = videoRef.current.videoWidth;
+          const videoHeight = videoRef.current.videoHeight;
+          const box = detection.detection.box;
+          
+          // Calculate face center
+          const faceCenterX = box.x + box.width / 2;
+          const faceCenterY = box.y + box.height / 2;
+          
+          // Frame center
+          const frameCenterX = videoWidth / 2;
+          const frameCenterY = videoHeight / 2;
+          
+          // Allow 30% deviation from center
+          const maxOffsetX = videoWidth * 0.15;
+          const maxOffsetY = videoHeight * 0.15;
+          const isCentered = Math.abs(faceCenterX - frameCenterX) <= maxOffsetX &&
+                            Math.abs(faceCenterY - frameCenterY) <= maxOffsetY;
+          
+          setIsFaceCentered(isCentered);
+          
+          // Callback to parent with face centering state
+          if (onFaceCenteredUpdate) {
+            onFaceCenteredUpdate(isCentered);
+          }
+          
+          const expressions = detection.expressions;
           // Face-api uses "happy" for smile/smirk detection (always lowercase)
           // Use safe access pattern to handle any case variations
           const probability = expressions.happy ?? expressions.Happy ?? expressions['happy'] ?? 0;
           const isNeutral = probability < NEUTRAL_EXPRESSION_THRESHOLD;
-          const detection = detections[0];
           
           // ========== OPTIMIZATION 3: Higher Confidence Threshold ==========
           // Only consider smirk if confidence exceeds higher threshold
@@ -430,6 +547,16 @@ function FaceTracker({
           // No face detected - reset debounce counter
           smirkConsecutiveCountRef.current = 0;
           
+          // ========== FACE DETECTION STATE ==========
+          // Update isFaceDetected state when no face is detected
+          setIsFaceDetected(false);
+          setIsFaceCentered(true);
+          
+          // Callback to parent
+          if (onFaceCenteredUpdate) {
+            onFaceCenteredUpdate(true);
+          }
+          
           // ========== CALIBRATION PHASE LOGIC ==========
           if (isCalibrating && !calibrationComplete && onCalibrationUpdate) {
             // Reset calibration on no face detected
@@ -458,7 +585,7 @@ function FaceTracker({
     };
 
     detectFaces();
-  }, [isVideoReady, isCalibrating, calibrationComplete, onCalibrationUpdate, onCalibrationComplete, onSmirkDetected, isMobile, hapticEnabled]);
+  }, [isVideoReady, isCalibrating, calibrationComplete, onCalibrationUpdate, onCalibrationComplete, onSmirkDetected, onFaceCenteredUpdate, onLowLightWarning, isMobile, hapticEnabled]);
 
   if (error) {
     return (
@@ -494,6 +621,18 @@ function FaceTracker({
         playsInline
         muted
         className={`w-full h-full object-cover ${!isModelsLoaded ? 'opacity-0' : 'opacity-100'}`}
+      />
+
+      {/* Warning Box - Face Not Centered */}
+      <WarningBox 
+        type="faceNotCentered"
+        visible={isModelsLoaded && isFaceDetected && !isFaceCentered}
+      />
+
+      {/* Warning Box - Low Light */}
+      <WarningBox 
+        type="lowLight"
+        visible={isModelsLoaded && isLowLight}
       />
 
       {/* Status Badge - responsive positioning for mobile */}

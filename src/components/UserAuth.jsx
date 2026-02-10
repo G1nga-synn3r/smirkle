@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, User, Mail, Lock, MessageSquare, Sparkles, Eye, EyeOff } from 'lucide-react';
+import { X, User, Mail, Lock, MessageSquare, Sparkles, Eye, EyeOff, Calendar } from 'lucide-react';
 import { 
   registerUser, 
   authenticateUser, 
@@ -20,6 +20,7 @@ export default function UserAuth({ isOpen, onClose, onAuthChange }) {
     email: '',
     password: '',
     confirmPassword: '',
+    birthdate: '',
     bio: '',
     motto: ''
   });
@@ -28,6 +29,15 @@ export default function UserAuth({ isOpen, onClose, onAuthChange }) {
   const [isLoading, setIsLoading] = useState(false);
   const [generalError, setGeneralError] = useState('');
   const [currentUser, setCurrentUser] = useState(null);
+
+  // Password requirements for real-time feedback
+  const passwordRequirements = [
+    { regex: /.{8,}/, label: 'At least 8 characters' },
+    { regex: /[A-Z]/, label: 'One uppercase letter (A-Z)' },
+    { regex: /[a-z]/, label: 'One lowercase letter (a-z)' },
+    { regex: /\d/, label: 'One number (0-9)' },
+    { regex: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/, label: 'One symbol (!@#$%^&*...)' }
+  ];
 
   useEffect(() => {
     if (isOpen) {
@@ -74,14 +84,37 @@ export default function UserAuth({ isOpen, onClose, onAuthChange }) {
       }
     }
     
+    // Password validation (Requirement #3 - Strong password)
     if (!formData.password) {
       newErrors.password = 'Password is required';
-    } else if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
+    } else {
+      const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{8,}$/;
+      if (!passwordRegex.test(formData.password)) {
+        newErrors.password = 'Password does not meet complexity requirements';
+      }
     }
     
     if (formData.password !== formData.confirmPassword) {
       newErrors.confirmPassword = 'Passwords do not match';
+    }
+
+    // Age Gate validation (Requirement #16 - Must be 14+)
+    if (!formData.birthdate) {
+      newErrors.birthdate = 'Birthdate is required';
+    } else {
+      const birthDate = new Date(formData.birthdate);
+      const today = new Date();
+      let age = today.getFullYear() - birthDate.getFullYear();
+      const monthDiff = today.getMonth() - birthDate.getMonth();
+      
+      // Adjust age if birthday hasn't occurred yet this year
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+      }
+      
+      if (age < 14) {
+        newErrors.birthdate = 'You must be at least 14 years old to create an account';
+      }
     }
     
     return newErrors;
@@ -132,6 +165,7 @@ export default function UserAuth({ isOpen, onClose, onAuthChange }) {
         username: formData.username.trim(),
         email: formData.email.trim().toLowerCase(),
         password: formData.password,
+        birthdate: formData.birthdate,
         bio: formData.bio.trim(),
         motto: formData.motto.trim()
       });
@@ -158,6 +192,7 @@ export default function UserAuth({ isOpen, onClose, onAuthChange }) {
       email: '',
       password: '',
       confirmPassword: '',
+      birthdate: '',
       bio: '',
       motto: ''
     });
@@ -372,6 +407,29 @@ export default function UserAuth({ isOpen, onClose, onAuthChange }) {
                       {errors.email && <p className="mt-1 text-sm text-red-400">{errors.email}</p>}
                     </div>
 
+                    {/* Age Gate - Birthdate Field (Requirement #16) */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                        <Calendar className="inline w-4 h-4 mr-2" />
+                        Birthdate
+                      </label>
+                      <div className="relative">
+                        <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                        <input
+                          type="date"
+                          name="birthdate"
+                          value={formData.birthdate}
+                          onChange={handleInputChange}
+                          max={new Date().toISOString().split('T')[0]}
+                          className={`w-full pl-10 pr-4 py-3 rounded-xl bg-white/5 border ${
+                            errors.birthdate ? 'border-red-500' : 'border-blue-500/30'
+                          } text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 transition-colors`}
+                        />
+                      </div>
+                      {errors.birthdate && <p className="mt-1 text-sm text-red-400">{errors.birthdate}</p>}
+                      <p className="text-xs text-gray-500 mt-1">You must be at least 14 years old to create an account</p>
+                    </div>
+
                     <div>
                       <label className="block text-sm font-medium text-gray-300 mb-2">Password</label>
                       <div className="relative">
@@ -395,6 +453,26 @@ export default function UserAuth({ isOpen, onClose, onAuthChange }) {
                         </button>
                       </div>
                       {errors.password && <p className="mt-1 text-sm text-red-400">{errors.password}</p>}
+                      
+                      {/* Password Requirements Display (Requirement #3) */}
+                      <div className="mt-3 space-y-1">
+                        {passwordRequirements.map((req, index) => {
+                          const isMet = req.regex.test(formData.password);
+                          return (
+                            <div 
+                              key={index} 
+                              className={`flex items-center gap-2 text-xs transition-colors ${
+                                isMet ? 'text-green-400' : 'text-gray-500'
+                              }`}
+                            >
+                              <span className={`inline-block w-2 h-2 rounded-full ${
+                                isMet ? 'bg-green-400' : 'bg-gray-500'
+                              }`} />
+                              {req.label}
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
 
                     <div>
