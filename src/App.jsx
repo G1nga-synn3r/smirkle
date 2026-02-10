@@ -83,6 +83,7 @@ function App() {
   });
   const [selectedDifficulty, setSelectedDifficulty] = useState(null); // 'Easy', 'Medium', 'Hard', or null for all
   const [currentMultiplier, setCurrentMultiplier] = useState(1);
+  const [isVideoFullscreen, setIsVideoFullscreen] = useState(false); // Track fullscreen state
   const videoRef = useRef(null);
   const startTimeRef = useRef(null);
   const timerRef = useRef(null);
@@ -283,14 +284,27 @@ function App() {
       }
       // Submit score to leaderboard
       submitScore();
+      // Exit fullscreen on game over
+      setIsVideoFullscreen(false);
     }
   }, [isSmirking, gameOver, playBuzzer, submitScore]);
+
+  // Auto-trigger fullscreen when game is ready and conditions met
+  // This ensures video plays in full screen with camera corner immediately
+  useEffect(() => {
+    if (isGameReady && !isSmiling && currentView === 'game' && !isVideoFullscreen) {
+      console.log('[Game] Auto-triggering fullscreen video...');
+      setIsVideoFullscreen(true);
+    } else if ((gameOver || isSmiling) && isVideoFullscreen) {
+      setIsVideoFullscreen(false);
+    }
+  }, [isGameReady, isSmiling, gameOver, currentView, isVideoFullscreen]);
 
   // Trigger haptic feedback and visual effects when smile is detected
   useEffect(() => {
     if (isSmiling && currentView === 'game') {
       // Trigger strong haptic feedback pattern
-      triggerVibration([100, 200, 100]); // Heavy vibration pattern
+      triggerVibration([100, 50, 100, 50, 100]); // Escalating vibration pattern
     }
   }, [isSmiling, currentView, triggerVibration]);
 
@@ -311,6 +325,7 @@ function App() {
   }, [currentView, currentVideo]);
 
   const handleResume = () => {
+    console.log('[Game] Resetting game state...');
     setIsSmiling(false);
     setIsSmirking(false);
     setGameOver(false);
@@ -318,17 +333,21 @@ function App() {
     setHasPlayedDing(false);
     setCheckpointsHit([]);
     setCheckpointBonus(0);
+    setIsVideoFullscreen(false); // Exit fullscreen on reset
     resumeAudio(); // Resume audio context on interaction
     
     // Get next video from queue (anti-repeat)
     const nextVideo = videoQueueManager.getNextVideo();
     setCurrentVideo(nextVideo);
+    console.log('[Game] Next video set:', nextVideo.title);
     
     // Note: Timer will start automatically via useEffect when isGameReady becomes true
     // This happens when: isCameraReady && calibrationComplete && isFaceDetected && currentVideo !== null
     
     if (videoRef.current) {
-      videoRef.current.play();
+      videoRef.current.currentTime = 0; // Reset video to start
+      videoRef.current.play().catch(err => console.warn('Auto-play error on resume:', err));
+      console.log('[Game] Video playing...');
     }
   };
 
@@ -501,17 +520,19 @@ function App() {
                   </div>
                 </div>
                 
-                <div className="text-center">
-                  <button
-                    onClick={handleVideoPlay}
-                    className="bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 text-white font-bold py-4 px-12 rounded-full shadow-2xl hover:shadow-xl transition-all duration-200 transform hover:scale-105 hover:rotate-1"
-                  >
-                    {isSmiling ? 'Start Over' : 'Start Smiling'}
-                  </button>
-                  <p className="mt-4 text-gray-400 text-sm">
-                    Smile at the camera to pause the video!
-                  </p>
-                </div>
+                {!isVideoFullscreen && (
+                  <div className="text-center">
+                    <button
+                      onClick={handleResume}
+                      className="bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 text-white font-bold py-4 px-12 rounded-full shadow-2xl hover:shadow-xl transition-all duration-200 transform hover:scale-105 hover:rotate-1"
+                    >
+                      {gameOver ? '🔄 Try Again' : 'Start Game'}
+                    </button>
+                    <p className="mt-4 text-gray-400 text-sm">
+                      Keep a poker face! Smile = Game Over 😮
+                    </p>
+                  </div>
+                )}
               </>
             )}
 
