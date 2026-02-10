@@ -1,7 +1,14 @@
-/**
+ /**
  * Application constants
  * Shared constants across the Smirkle application
  */
+
+/**
+ * Face API model URL
+ * Points to /models directory in public folder
+ * Works on both localhost:5173 and smirkle.vercel.app
+ */
+export const MODEL_URL = '/models';
 
 /**
  * Happiness/smile detection threshold

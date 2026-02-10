@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import * as faceapi from 'face-api.js';
-import { SMILE_THRESHOLD } from '../utils/constants';
+import { SMILE_THRESHOLD, MODEL_URL } from '../utils/constants';
 
 export function useFaceApi(webcamRef) {
   const [isSmiling, setIsSmiling] = useState(false);
@@ -8,8 +8,6 @@ export function useFaceApi(webcamRef) {
   const intervalRef = useRef(null);
 
   async function loadModels() {
-    const MODEL_URL = '/models';
-    
     try {
       await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
       await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);

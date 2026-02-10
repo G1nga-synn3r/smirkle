@@ -1,7 +1,7 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+aimport React, { useRef, useEffect, useState, useCallback } from 'react';
 import * as faceapi from 'face-api.js';
 import { useHapticFeedback } from '../hooks/useHapticFeedback';
-import { SMILE_THRESHOLD } from '../utils/constants';
+import { SMILE_THRESHOLD, MODEL_URL } from '../utils/constants';
 import WarningBox from './WarningBox.jsx';
 import { isCapacitorNative } from '../utils/platform.js';
 import { requestCameraPermission } from '../services/capacitorBridge.js';
@@ -167,18 +167,17 @@ function FaceTracker({
   useEffect(() => {
     async function loadModels() {
       try {
-        // Try to load from local /models first, fall back to CDN
-        const LOCAL_MODEL_URL = '/models';
+        // CDN fallback URL for face-api.js models
         const CDN_MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model';
         
-        let MODEL_URL = LOCAL_MODEL_URL;
+        let currentModelUrl = MODEL_URL;
         
         console.log('[FaceTracker] Attempting to load AI models from:', MODEL_URL);
         
         // Try loading TinyFaceDetector from local models
         try {
-          console.log('[FaceTracker] Loading TinyFaceDetector from:', `${MODEL_URL}/tiny_face_detector_model-weights_manifest.json`);
-          await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+          console.log('[FaceTracker] Loading TinyFaceDetector from:', `${currentModelUrl}/tiny_face_detector_model-weights_manifest.json`);
+          await faceapi.nets.tinyFaceDetector.loadFromUri(currentModelUrl);
           console.log('[FaceTracker] TinyFaceDetector loaded successfully');
         } catch (localError) {
           console.warn('[FaceTracker] Local TinyFaceDetector failed, trying CDN...', localError.message);
@@ -187,13 +186,13 @@ function FaceTracker({
           console.log('[FaceTracker] Loading TinyFaceDetector from CDN:', `${CDN_MODEL_URL}/tiny_face_detector_model-weights_manifest.json`);
           await faceapi.nets.tinyFaceDetector.loadFromUri(CDN_MODEL_URL);
           console.log('[FaceTracker] TinyFaceDetector loaded from CDN successfully');
-          MODEL_URL = CDN_MODEL_URL; // Use CDN for remaining models
+          currentModelUrl = CDN_MODEL_URL; // Use CDN for remaining models
         }
         
         // Try loading FaceExpressionNet
         try {
-          console.log('[FaceTracker] Loading FaceExpressionNet from:', `${MODEL_URL}/face_expression_model-weights_manifest.json`);
-          await faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL);
+          console.log('[FaceTracker] Loading FaceExpressionNet from:', `${currentModelUrl}/face_expression_model-weights_manifest.json`);
+          await faceapi.nets.faceExpressionNet.loadFromUri(currentModelUrl);
           console.log('[FaceTracker] FaceExpressionNet loaded successfully');
         } catch (exprError) {
           console.warn('[FaceTracker] FaceExpressionNet failed, trying CDN...', exprError.message);
@@ -214,7 +213,7 @@ function FaceTracker({
           console.error('[FaceTracker] Network error while fetching models - check that /models directory is accessible on Vercel');
         }
         
-        trackModelError(err, { modelUrl: LOCAL_MODEL_URL });
+        trackModelError(err, { modelUrl: MODEL_URL });
         setError('Failed to load AI models. Please refresh the page. If the problem persists, check the browser console for details.');
       }
     }
