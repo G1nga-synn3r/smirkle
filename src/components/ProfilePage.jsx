@@ -1,5 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
-import { Camera, MapPin, Link as LinkIcon, Award, Trophy, Flame } from 'lucide-react';
+import { Camera, MapPin, Link as LinkIcon, Award, Trophy, Flame, Eye, EyeOff, Lock } from 'lucide-react';
+import { getCurrentUser } from '../utils/auth';
+import { getUserBestScore, getUserScores, getUserLifetimeScore } from '../services/scoreService';
+import { calculateLevel, getEarnedBadges, getNextBadge } from '../utils/levels';
 
 const STORAGE_KEY = 'smirkle_user_profile';
 
@@ -15,6 +18,12 @@ const defaultProfile = {
   location: '',
   avatar: null,
   stats: defaultStats,
+  privacy: {
+    bio: 'public',
+    location: 'public',
+    socialLinks: 'public',
+    stats: 'public'
+  }
 };
 
 export default function ProfilePage() {
@@ -26,6 +35,13 @@ export default function ProfilePage() {
   const [originalImage, setOriginalImage] = useState(null);
   const [cropArea, setCropArea] = useState({ x: 0, y: 0, width: 200, height: 200 });
   const [zoom, setZoom] = useState(1);
+  const [bestScore, setBestScore] = useState(null);
+  const [allScores, setAllScores] = useState([]);
+  const [isLoadingScores, setIsLoadingScores] = useState(true);
+  const [lifetimeScore, setLifetimeScore] = useState(0);
+  const [userLevel, setUserLevel] = useState(null);
+  const [earnedBadges, setEarnedBadges] = useState([]);
+  const [nextBadge, setNextBadge] = useState(null);
   const fileInputRef = useRef(null);
   const canvasRef = useRef(null);
 
@@ -38,6 +54,57 @@ export default function ProfilePage() {
         setProfile({ ...defaultProfile, ...parsed });
         setEditForm({ ...defaultProfile, ...parsed });
       } catch (e) {
+
+    // Load user's best score from Firestore
+    const loadUserScores = async () => {
+      try {
+        const currentUser = getCurrentUser();
+        if (currentUser?.id) {
+          const best = await getUserBestScore(currentUser.id);
+          if (best) {
+            setBestScore(best);
+          }
+          
+          // Also load all recent scores for later display
+          const scores = await getUserScores(currentUser.id, 10);
+          if (scores && scores.length > 0) {
+            setAllScores(scores);
+            
+            // Update stats from best score
+            setProfile(prev => ({
+              ...prev,
+              stats: {
+                ...prev.stats,
+                highestScore: best?.score_value || 0,
+                totalScoresSubmitted: scores.length
+              }
+            }));
+          }
+          
+          // Load lifetime score and calculate level
+          const lifetime = await getUserLifetimeScore(currentUser.id);
+          setLifetimeScore(lifetime);
+          
+          // Calculate level based on lifetime score
+          const levelInfo = calculateLevel(lifetime);
+          setUserLevel(levelInfo);
+          
+          // Get earned badges
+          const badges = getEarnedBadges(levelInfo.level);
+          setEarnedBadges(badges);
+          
+          // Get next badge info
+          const nextBadgeInfo = getNextBadge(levelInfo.level);
+          setNextBadge(nextBadgeInfo);
+        }
+      } catch (error) {
+        console.error('Error loading user scores:', error);
+      } finally {
+        setIsLoadingScores(false);
+      }
+    };
+
+    loadUserScores();
         console.error('Failed to load profile:', e);
       }
     }
@@ -106,6 +173,11 @@ export default function ProfilePage() {
   };
 
   const stats = profile.stats;
+
+  // Helper function to check if a field is visible to others
+  const isFieldPublic = (fieldName) => {
+    return profile.privacy?.[fieldName] === 'public';
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-6">
@@ -233,40 +305,209 @@ export default function ProfilePage() {
 
           {/* Stats Card */}
           <div className="bg-gradient-to-br from-amber-500/20 to-orange-600/20 rounded-2xl p-6 mb-8 border border-amber-500/30">
-            <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-              <Award className="text-amber-400" size={20} />
-              Stats
-            </h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                <Award className="text-amber-400" size={20} />
+                {isLoadingScores ? 'Loading Stats...' : 'Game Stats'}
+              </h2>
+              {isEditing && (
+                <button
+                  onClick={() => 
+                    setEditForm({
+                      ...editForm,
+                      privacy: {
+                        ...editForm.privacy,
+                        stats: editForm.privacy?.stats === 'public' ? 'private' : 'public'
+                      }
+                    })
+                  }
+                  className="flex items-center gap-1 px-2 py-1 text-xs rounded-lg transition-colors"
+                  title={editForm.privacy?.stats === 'public' ? 'Everyone can see this' : 'Only you can see this'}
+                >
+                  {editForm.privacy?.stats === 'public' ? (
+                    <>
+                      <Eye size={14} className="text-cyan-400" />
+                      <span className="text-cyan-400">Public</span>
+                    </>
+                  ) : (
+                    <>
+                      <Lock size={14} className="text-amber-400" />
+                      <span className="text-amber-400">Private</span>
+                    </>
+                  )}
+                </button>
+              )}
+              {!isEditing && profile.privacy?.stats === 'private' && (
+                <Lock size={14} className="text-amber-400" title="This field is private" />
+              )}
+            </div>
             <div className="grid grid-cols-3 gap-4">
               <div className="text-center">
-                <div className="flex items-center justify-center gap-1 text-amber-400 mb-1">
-                  <Flame size={24} />
-                  <span className="text-2xl font-bold">{stats.longestStreak}</span>
+                <div className="flex items-center justify-center gap-1 text-yellow-400 mb-1">
+                  <Trophy size={24} />
+                  <span className="text-2xl font-bold">{bestScore ? Math.floor(bestScore.score_value) : 0}</span>
                 </div>
-                <p className="text-sm text-gray-300">Longest Streak</p>
+                <p className="text-sm text-gray-300">Best Score</p>
               </div>
               <div className="text-center">
                 <div className="flex items-center justify-center gap-1 text-purple-400 mb-1">
-                  <Trophy size={24} />
-                  <span className="text-2xl font-bold">{stats.totalWins}</span>
+                  <Flame size={24} />
+                  <span className="text-2xl font-bold">{bestScore ? bestScore.survival_time.toFixed(1) : '0'}s</span>
                 </div>
-                <p className="text-sm text-gray-300">Total Wins</p>
+                <p className="text-sm text-gray-300">Best Time</p>
               </div>
               <div className="text-center">
                 <div className="flex items-center justify-center gap-1 text-cyan-400 mb-1">
                   <Award size={24} />
-                  <span className="text-2xl font-bold">{stats.pokerFaceLevel}</span>
+                  <span className="text-2xl font-bold">{allScores.length}</span>
                 </div>
-                <p className="text-sm text-gray-300">Poker Face</p>
+                <p className="text-sm text-gray-300">Games Played</p>
               </div>
             </div>
           </div>
+
+          {/* Level & Progress Card */}
+          {userLevel && (
+            <div className="bg-gradient-to-br from-purple-600/20 to-blue-600/20 rounded-2xl p-6 mb-8 border border-purple-500/30">
+              <div className="text-center mb-6">
+                <p className="text-sm text-gray-300 mb-2">Current Level</p>
+                <div className="text-6xl font-bold bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
+                  {userLevel.level}
+                </div>
+              </div>
+              
+              {/* Lifetime Score */}
+              <div className="text-center mb-6">
+                <p className="text-sm text-gray-400 mb-1">Lifetime Score</p>
+                <p className="text-2xl font-bold text-cyan-300">
+                  {lifetimeScore.toLocaleString()}
+                </p>
+              </div>
+              
+              {/* Progress to Next Level */}
+              {userLevel.level < 100 && (
+                <div className="mb-6">
+                  <div className="flex justify-between items-center mb-2">
+                    <p className="text-sm text-gray-300">Progress to Level {userLevel.level + 1}</p>
+                    <p className="text-xs text-gray-400">{userLevel.progressPercentage}%</p>
+                  </div>
+                  <div className="w-full h-3 bg-slate-700 rounded-full overflow-hidden border border-purple-500/30">
+                    <div
+                      className="h-full bg-gradient-to-r from-purple-500 to-blue-500 transition-all duration-300"
+                      style={{ width: `${userLevel.progressPercentage}%` }}
+                    />
+                  </div>
+                  {userLevel.pointsNeededForNext > 0 && (
+                    <p className="text-xs text-gray-400 mt-2">
+                      {userLevel.pointsNeededForNext.toLocaleString()} points until next level
+                    </p>
+                  )}
+                </div>
+              )}
+              
+              {userLevel.level === 100 && (
+                <div className="text-center mb-6">
+                  <p className="text-lg font-bold text-yellow-400">🏆 You've Reached Maximum Level! 🏆</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Badges Card */}
+          {earnedBadges.length > 0 || nextBadge && (
+            <div className="bg-gradient-to-br from-amber-600/20 to-orange-600/20 rounded-2xl p-6 mb-8 border border-amber-500/30">
+              <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                <Award size={20} className="text-amber-400" />
+                Achievements
+              </h2>
+              
+              {/* Earned Badges */}
+              {earnedBadges.length > 0 && (
+                <div className="mb-6">
+                  <p className="text-sm text-gray-300 mb-3">Earned Badges ({earnedBadges.length})</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                    {earnedBadges.map((badge) => (
+                      <div key={badge.level} className="flex flex-col items-center">
+                        <div className="text-4xl mb-2">{badge.emoji}</div>
+                        <p className="text-xs text-center text-amber-300 font-semibold">{badge.name}</p>
+                        <p className="text-xs text-gray-400">Level {badge.level}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Next Badge */}
+              {nextBadge && (
+                <div className="border-t border-amber-500/20 pt-4">
+                  <p className="text-sm text-gray-300 mb-3">Next Badge</p>
+                  <div className="bg-slate-800/50 rounded-xl p-4 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="text-3xl opacity-50">{nextBadge.emoji}</div>
+                      <div>
+                        <p className="text-sm font-semibold text-amber-300">{nextBadge.name}</p>
+                        <p className="text-xs text-gray-400">Level {nextBadge.level}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-gray-400">Points needed</p>
+                      <p className="text-sm font-bold text-cyan-400">
+                        {Math.max(0, nextBadge.pointsNeeded - lifetimeScore).toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Privacy Notice - shown during edit */}
+          {isEditing && (
+            <div className="bg-cyan-500/10 border border-cyan-500/30 rounded-2xl p-4 mb-6">
+              <p className="text-sm text-cyan-300 flex items-start gap-2">
+                <Eye size={16} className="mt-0.5 flex-shrink-0" />
+                <span><strong>Public fields</strong> are visible to other players. <strong>Private fields</strong> are only visible to you.</span>
+              </p>
+            </div>
+          )}
 
           {/* Profile Fields */}
           <div className="space-y-6">
             {/* Bio */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">Bio</label>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-medium text-gray-300">Bio</label>
+                {isEditing && (
+                  <button
+                    onClick={() => 
+                      setEditForm({
+                        ...editForm,
+                        privacy: {
+                          ...editForm.privacy,
+                          bio: editForm.privacy?.bio === 'public' ? 'private' : 'public'
+                        }
+                      })
+                    }
+                    className="flex items-center gap-1 px-2 py-1 text-xs rounded-lg transition-colors"
+                    title={editForm.privacy?.bio === 'public' ? 'Everyone can see this' : 'Only you can see this'}
+                  >
+                    {editForm.privacy?.bio === 'public' ? (
+                      <>
+                        <Eye size={14} className="text-cyan-400" />
+                        <span className="text-cyan-400">Public</span>
+                      </>
+                    ) : (
+                      <>
+                        <Lock size={14} className="text-amber-400" />
+                        <span className="text-amber-400">Private</span>
+                      </>
+                    )}
+                  </button>
+                )}
+                {!isEditing && profile.privacy?.bio === 'private' && (
+                  <Lock size={14} className="text-amber-400" title="This field is private" />
+                )}
+              </div>
               {isEditing ? (
                 <textarea
                   value={editForm.bio}
@@ -282,10 +523,42 @@ export default function ProfilePage() {
 
             {/* Location */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2 flex items-center gap-2">
-                <MapPin size={16} />
-                Location
-              </label>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-medium text-gray-300 flex items-center gap-2">
+                  <MapPin size={16} />
+                  Location
+                </label>
+                {isEditing && (
+                  <button
+                    onClick={() => 
+                      setEditForm({
+                        ...editForm,
+                        privacy: {
+                          ...editForm.privacy,
+                          location: editForm.privacy?.location === 'public' ? 'private' : 'public'
+                        }
+                      })
+                    }
+                    className="flex items-center gap-1 px-2 py-1 text-xs rounded-lg transition-colors"
+                    title={editForm.privacy?.location === 'public' ? 'Everyone can see this' : 'Only you can see this'}
+                  >
+                    {editForm.privacy?.location === 'public' ? (
+                      <>
+                        <Eye size={14} className="text-cyan-400" />
+                        <span className="text-cyan-400">Public</span>
+                      </>
+                    ) : (
+                      <>
+                        <Lock size={14} className="text-amber-400" />
+                        <span className="text-amber-400">Private</span>
+                      </>
+                    )}
+                  </button>
+                )}
+                {!isEditing && profile.privacy?.location === 'private' && (
+                  <Lock size={14} className="text-amber-400" title="This field is private" />
+                )}
+              </div>
               {isEditing ? (
                 <input
                   type="text"
@@ -305,10 +578,42 @@ export default function ProfilePage() {
 
             {/* Social Links */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2 flex items-center gap-2">
-                <LinkIcon size={16} />
-                Social Links
-              </label>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-medium text-gray-300 flex items-center gap-2">
+                  <LinkIcon size={16} />
+                  Social Links
+                </label>
+                {isEditing && (
+                  <button
+                    onClick={() => 
+                      setEditForm({
+                        ...editForm,
+                        privacy: {
+                          ...editForm.privacy,
+                          socialLinks: editForm.privacy?.socialLinks === 'public' ? 'private' : 'public'
+                        }
+                      })
+                    }
+                    className="flex items-center gap-1 px-2 py-1 text-xs rounded-lg transition-colors"
+                    title={editForm.privacy?.socialLinks === 'public' ? 'Everyone can see this' : 'Only you can see this'}
+                  >
+                    {editForm.privacy?.socialLinks === 'public' ? (
+                      <>
+                        <Eye size={14} className="text-cyan-400" />
+                        <span className="text-cyan-400">Public</span>
+                      </>
+                    ) : (
+                      <>
+                        <Lock size={14} className="text-amber-400" />
+                        <span className="text-amber-400">Private</span>
+                      </>
+                    )}
+                  </button>
+                )}
+                {!isEditing && profile.privacy?.socialLinks === 'private' && (
+                  <Lock size={14} className="text-amber-400" title="This field is private" />
+                )}
+              </div>
               <div className="space-y-3">
                 {['facebook', 'instagram', 'github'].map((platform) => (
                   <div key={platform} className="flex items-center gap-3">
@@ -337,6 +642,32 @@ export default function ProfilePage() {
                 ))}
               </div>
             </div>
+
+            {/* Recent Scores */}
+            {allScores.length > 0 && (
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-3 flex items-center gap-2">
+                  <Trophy size={16} />
+                  Recent Scores
+                </label>
+                <div className="space-y-2">
+                  {allScores.slice(0, 5).map((score, index) => (
+                    <div key={score.id} className="flex items-center justify-between p-3 bg-slate-700/30 rounded-lg border border-white/10">
+                      <div className="flex items-center gap-3">
+                        <span className="text-yellow-400 font-bold">#{index + 1}</span>
+                        <div>
+                          <p className="text-white font-medium">{Math.floor(score.score_value)} points</p>
+                          <p className="text-xs text-gray-400">{score.survival_time.toFixed(1)}s • {score.date}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-cyan-400 font-semibold">{Math.floor(score.survival_time)}s</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

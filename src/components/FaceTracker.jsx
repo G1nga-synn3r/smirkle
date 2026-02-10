@@ -3,6 +3,21 @@ import * as faceapi from 'face-api.js';
 import { useHapticFeedback } from '../hooks/useHapticFeedback';
 import { SMILE_THRESHOLD } from '../utils/constants';
 import WarningBox from './WarningBox.jsx';
+import { isCapacitorNative } from '../utils/platform.js';
+import { requestCameraPermission } from '../services/capacitorBridge.js';
+import {
+  initErrorTracker,
+  trackError,
+  trackModelError,
+  trackWebcamError,
+  trackFaceDetectionError,
+  trackLowConfidence,
+  trackCalibrationEvent,
+  trackDetectionSuccess,
+  trackBrightnessWarning,
+  getStoredErrors,
+  exportErrors
+} from '../services/errorTracker';
 
 // Face API expression names (face-api labels "happy" for smile/smirk detection)
 // We use this for smirk detection in the game
@@ -36,7 +51,8 @@ function FaceTracker({
   onLowLightWarning,
   isCalibrating = false,
   calibrationComplete = false,
-  currentVideo = null
+  currentVideo = null,
+  cameraCanvasRef = null
 }) {
   const videoRef = useRef(null);
   const [isModelsLoaded, setIsModelsLoaded] = useState(false);
@@ -73,6 +89,17 @@ function FaceTracker({
   // Use haptic feedback hook
   const { vibrate, isEnabled: hapticEnabled } = useHapticFeedback();
 
+  // Initialize error tracking on component mount
+  useEffect(() => {
+    initErrorTracker({
+      isMobile,
+      videoWidth: videoRef.current?.videoWidth || 0,
+      videoHeight: videoRef.current?.videoHeight || 0
+    });
+    
+    console.log('[FaceTracker] Error tracking initialized');
+  }, [isMobile]);
+
 
   // Detect mobile device
   useEffect(() => {
@@ -86,7 +113,37 @@ function FaceTracker({
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // Guardian Logic: Handle screen orientation changes
+  // Expose camera feed to cameraCanvasRef for fullscreen display
+  useEffect(() => {
+    if (!isVideoReady || !cameraCanvasRef?.current || !videoRef?.current) return;
+
+    const canvas = cameraCanvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const video = videoRef.current;
+    let animId;
+
+    const drawCameraFrame = () => {
+      if (canvas && ctx && video && video.readyState === video.HAVE_ENOUGH_DATA) {
+        // Set canvas dimensions to match video
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        
+        // Mirror the video horizontally (flip)
+        ctx.scale(-1, 1);
+        ctx.drawImage(video, -canvas.width, 0);
+        ctx.scale(-1, 1); // Reset scale
+      }
+      animId = requestAnimationFrame(drawCameraFrame);
+    };
+
+    drawCameraFrame();
+
+    return () => {
+      if (animId) cancelAnimationFrame(animId);
+    };
+  }, [isVideoReady, cameraCanvasRef]);
   const handleOrientationChange = useCallback(() => {
     if (videoRef.current && streamRef.current) {
       // Recalculate display size on orientation change
@@ -110,15 +167,55 @@ function FaceTracker({
   useEffect(() => {
     async function loadModels() {
       try {
-        const MODEL_URL = (import.meta.env?.BASE_URL || '') + '/models' || '/models';
+        // Try to load from local /models first, fall back to CDN
+        const LOCAL_MODEL_URL = '/models';
+        const CDN_MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model';
         
-        await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
-        await faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL);
+        let MODEL_URL = LOCAL_MODEL_URL;
+        
+        console.log('[FaceTracker] Attempting to load AI models from:', MODEL_URL);
+        
+        // Try loading TinyFaceDetector from local models
+        try {
+          console.log('[FaceTracker] Loading TinyFaceDetector from:', `${MODEL_URL}/tiny_face_detector_model-weights_manifest.json`);
+          await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+          console.log('[FaceTracker] TinyFaceDetector loaded successfully');
+        } catch (localError) {
+          console.warn('[FaceTracker] Local TinyFaceDetector failed, trying CDN...', localError.message);
+          
+          // Try CDN as fallback
+          console.log('[FaceTracker] Loading TinyFaceDetector from CDN:', `${CDN_MODEL_URL}/tiny_face_detector_model-weights_manifest.json`);
+          await faceapi.nets.tinyFaceDetector.loadFromUri(CDN_MODEL_URL);
+          console.log('[FaceTracker] TinyFaceDetector loaded from CDN successfully');
+          MODEL_URL = CDN_MODEL_URL; // Use CDN for remaining models
+        }
+        
+        // Try loading FaceExpressionNet
+        try {
+          console.log('[FaceTracker] Loading FaceExpressionNet from:', `${MODEL_URL}/face_expression_model-weights_manifest.json`);
+          await faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL);
+          console.log('[FaceTracker] FaceExpressionNet loaded successfully');
+        } catch (exprError) {
+          console.warn('[FaceTracker] FaceExpressionNet failed, trying CDN...', exprError.message);
+          console.log('[FaceTracker] Loading FaceExpressionNet from CDN:', `${CDN_MODEL_URL}/face_expression_model-weights_manifest.json`);
+          await faceapi.nets.faceExpressionNet.loadFromUri(CDN_MODEL_URL);
+          console.log('[FaceTracker] FaceExpressionNet loaded from CDN successfully');
+        }
         
         setIsModelsLoaded(true);
+        console.log('[FaceTracker] All AI models loaded successfully');
       } catch (err) {
-        console.error('Error loading models:', err);
-        setError('Failed to load AI models. Please refresh the page.');
+        console.error('[FaceTracker] Error loading models:', err);
+        console.error('[FaceTracker] Error message:', err.message);
+        console.error('[FaceTracker] Error stack:', err.stack);
+        
+        // Log more details about what was being fetched
+        if (err.message && err.message.includes('fetch')) {
+          console.error('[FaceTracker] Network error while fetching models - check that /models directory is accessible on Vercel');
+        }
+        
+        trackModelError(err, { modelUrl: LOCAL_MODEL_URL });
+        setError('Failed to load AI models. Please refresh the page. If the problem persists, check the browser console for details.');
       }
     }
 
@@ -264,6 +361,11 @@ function FaceTracker({
         const isLow = brightness < LOW_LIGHT_THRESHOLD;
         setIsLowLight(isLow);
         
+        // Track low light warning
+        if (isLow) {
+          trackBrightnessWarning(brightness, LOW_LIGHT_THRESHOLD);
+        }
+        
         // Callback to parent with low-light state
         if (onLowLightWarning) {
           onLowLightWarning(isLow);
@@ -290,6 +392,23 @@ function FaceTracker({
 
     async function initWebcam() {
       try {
+        // If running as a Capacitor native app, request camera permission first
+        if (isCapacitorNative()) {
+          try {
+            const perm = await requestCameraPermission();
+            if (!perm.granted) {
+              const permErr = new Error('Capacitor camera permission denied');
+              trackWebcamError(permErr);
+              setError('Camera access denied in app. Please enable camera permissions in your app settings.');
+              return;
+            }
+          } catch (permErr) {
+            console.warn('Capacitor permission request failed:', permErr);
+            trackWebcamError(permErr);
+            setError('Failed to request camera permission. Please check app settings.');
+            return;
+          }
+        }
         // Guardian Logic: Mobile-optimized camera constraints
         const mobileConstraints = isMobile ? {
           width: { ideal: 720 },
@@ -322,6 +441,8 @@ function FaceTracker({
         }
       } catch (err) {
         console.error('Error accessing webcam:', err);
+        trackWebcamError(err);
+        
         // Provide specific error messages based on error type
         if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
           setError('Camera access denied. Please enable camera permissions in your browser settings and reload.');
@@ -515,12 +636,26 @@ function FaceTracker({
                   onCalibrationComplete(true);
                 }
                 
+                trackCalibrationEvent('completed', {
+                  duration: elapsedStable,
+                  progress: 100
+                });
+                
                 // Reset calibration refs
                 calibrationStartRef.current = null;
+              } else {
+                trackCalibrationEvent('progress', {
+                  elapsed: elapsedStable,
+                  progress: progress
+                });
               }
             } else {
               // Expression not neutral - reset calibration
               calibrationStartRef.current = null;
+              
+              trackCalibrationEvent('not_neutral', {
+                probability
+              });
               
               onCalibrationUpdate({
                 faceDetected: true,
@@ -541,11 +676,26 @@ function FaceTracker({
           
           // Only trigger callback on state change to reduce redundant calls
           if (onSmirkDetected && smirkStateChanged) {
+            // Track successful smirk detection
+            trackDetectionSuccess({
+              probability,
+              isSmirking,
+              isFaceCentered: isCentered,
+              consecutiveCount: smirkConsecutiveCountRef.current,
+              isInPunchlineWindow
+            });
+            
             onSmirkDetected(isSmirking, probability, isInPunchlineWindow);
           }
         } else {
           // No face detected - reset debounce counter
           smirkConsecutiveCountRef.current = 0;
+          
+          // Track no face detected event
+          trackFaceDetectionError(null, {
+            noFaceDetected: true,
+            detectionAttempts: smirkConsecutiveCountRef.current
+          });
           
           // ========== FACE DETECTION STATE ==========
           // Update isFaceDetected state when no face is detected
@@ -562,6 +712,10 @@ function FaceTracker({
             // Reset calibration on no face detected
             calibrationStartRef.current = null;
             
+            trackCalibrationEvent('interrupted', {
+              reason: 'no_face_detected'
+            });
+            
             onCalibrationUpdate({
               faceDetected: false,
               isNeutral: false,
@@ -574,6 +728,9 @@ function FaceTracker({
         }
       } catch (err) {
         console.error('Face detection error:', err);
+        trackFaceDetectionError(err, {
+          error: err.message
+        });
         // Stop animation loop on error to prevent infinite error loop
         return;
       }

@@ -29,3 +29,16 @@ dist-ssr
 .env.*.local
 *.pem
 *.key
+
+# Capacitor / Android
+android/
+android/*
+!android/README.md
+.gradle/
+**/build/
+**/outputs/
+
+# Keystore files
+*.jks
+
+.vercel

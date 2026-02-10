@@ -13,7 +13,10 @@ import {
   where,
   orderBy,
   limit,
-  serverTimestamp
+  serverTimestamp,
+  doc,
+  getDoc,
+  updateDoc
 } from 'firebase/firestore';
 import { db } from './firebaseConfig.js';
 
@@ -131,10 +134,69 @@ export async function getUserRank(userId) {
   return snapshot.size + 1;
 }
 
+/**
+ * Get user's lifetime total score from user stats
+ * 
+ * @param {string} userId - The user ID
+ * @returns {Promise<number>} The user's lifetime total score
+ */
+export async function getUserLifetimeScore(userId) {
+  try {
+    const userRef = doc(db, 'users', userId);
+    const userDoc = await getDoc(userRef);
+    
+    if (!userDoc.exists()) {
+      return 0;
+    }
+    
+    const userData = userDoc.data();
+    return userData.stats?.lifetime_score || 0;
+  } catch (error) {
+    console.error('Error fetching lifetime score:', error);
+    return 0;
+  }
+}
+
+/**
+ * Update user's lifetime score after submitting a new score
+ * Adds the new score to the existing lifetime total
+ * 
+ * @param {string} userId - The user ID
+ * @param {number} scoreValue - The new score value to add
+ * @returns {Promise<number>} The new lifetime total
+ */
+export async function updateUserLifetimeScore(userId, scoreValue) {
+  try {
+    const userRef = doc(db, 'users', userId);
+    const userDoc = await getDoc(userRef);
+    
+    if (!userDoc.exists()) {
+      console.warn('User not found when updating lifetime score');
+      return scoreValue;
+    }
+    
+    const userData = userDoc.data();
+    const currentLifetimeScore = userData.stats?.lifetime_score || 0;
+    const newLifetimeScore = currentLifetimeScore + scoreValue;
+    
+    // Update the user's lifetime score in their stats
+    await updateDoc(userRef, {
+      'stats.lifetime_score': newLifetimeScore
+    });
+    
+    return newLifetimeScore;
+  } catch (error) {
+    console.error('Error updating lifetime score:', error);
+    throw error;
+  }
+}
+
 export default {
   saveScore,
   getGlobalLeaderboard,
   getUserScores,
   getUserBestScore,
-  getUserRank
+  getUserRank,
+  getUserLifetimeScore,
+  updateUserLifetimeScore
 };

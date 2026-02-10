@@ -1,26 +1,25 @@
 import { useState, useEffect } from 'react';
-import { User, Calendar, FileText, Quote, Eye, EyeOff, Save, X, Smartphone, SmartphoneVibrate } from 'lucide-react';
+import { User, Calendar, FileText, Quote, Eye, EyeOff, Save, X, Vibrate, Volume2, VolumeX, Settings, Monitor, Check } from 'lucide-react';
 
-const STORAGE_KEY = 'smirkle_profile_settings';
+const STORAGE_KEY = 'smirkle_app_settings';
 const HAPTIC_STORAGE_KEY = 'smirkle_haptic_enabled';
+const VOLUME_STORAGE_KEY = 'smirkle_volume';
+const VIDEO_QUALITY_STORAGE_KEY = 'smirkle_video_quality';
 
+// Video quality options
+const VIDEO_QUALITY_OPTIONS = [
+  { value: '240', label: '240p (Low)', description: 'Best for slow connections' },
+  { value: '360', label: '360p (Medium)', description: 'Balanced quality' },
+  { value: '480', label: '480p (SD)', description: 'Standard definition' },
+  { value: '720', label: '720p (HD)', description: 'High definition' },
+  { value: '1080', label: '1080p (Full HD)', description: 'Best quality' },
+];
+
+// Default settings
 const defaultSettings = {
-  name: {
-    value: '',
-    isPrivate: false,
-  },
-  birthdate: {
-    value: '',
-    isPrivate: false,
-  },
-  bio: {
-    value: '',
-    isPrivate: false,
-  },
-  motto: {
-    value: '',
-    isPrivate: false,
-  },
+  hapticEnabled: true,
+  volume: 100,
+  videoQuality: '720',
 };
 
 const fieldLabels = {
@@ -49,12 +48,38 @@ export default function ProfileSettings() {
   const [isDirty, setIsDirty] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [hapticEnabled, setHapticEnabled] = useState(true);
+  const [volume, setVolume] = useState(100);
+  const [videoQuality, setVideoQuality] = useState('720');
 
-  // Load haptic preference from localStorage on mount
+  // Load all settings from localStorage on mount
   useEffect(() => {
-    const saved = localStorage.getItem(HAPTIC_STORAGE_KEY);
-    if (saved !== null) {
-      setHapticEnabled(JSON.parse(saved));
+    // Load haptic preference
+    const savedHaptic = localStorage.getItem(HAPTIC_STORAGE_KEY);
+    if (savedHaptic !== null) {
+      setHapticEnabled(JSON.parse(savedHaptic));
+    }
+
+    // Load volume
+    const savedVolume = localStorage.getItem(VOLUME_STORAGE_KEY);
+    if (savedVolume !== null) {
+      setVolume(parseInt(savedVolume, 10));
+    }
+
+    // Load video quality
+    const savedQuality = localStorage.getItem(VIDEO_QUALITY_STORAGE_KEY);
+    if (savedQuality !== null) {
+      setVideoQuality(savedQuality);
+    }
+
+    // Load other settings
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        setSettings(prev => ({ ...defaultSettings, ...parsed }));
+      } catch (e) {
+        console.error('Failed to load settings:', e);
+      }
     }
   }, []);
 
@@ -63,18 +88,15 @@ export default function ProfileSettings() {
     localStorage.setItem(HAPTIC_STORAGE_KEY, JSON.stringify(hapticEnabled));
   }, [hapticEnabled]);
 
-  // Load from localStorage on mount
+  // Save volume to localStorage whenever it changes
   useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        setSettings({ ...defaultSettings, ...parsed });
-      } catch (e) {
-        console.error('Failed to load profile settings:', e);
-      }
-    }
-  }, []);
+    localStorage.setItem(VOLUME_STORAGE_KEY, volume.toString());
+  }, [volume]);
+
+  // Save video quality to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem(VIDEO_QUALITY_STORAGE_KEY, videoQuality);
+  }, [videoQuality]);
 
   // Save to localStorage whenever settings change (debounced)
   useEffect(() => {
@@ -86,30 +108,22 @@ export default function ProfileSettings() {
     }
   }, [settings, isDirty]);
 
-  const handleValueChange = (field, value) => {
-    setSettings((prev) => ({
-      ...prev,
-      [field]: {
-        ...prev[field],
-        value,
-      },
-    }));
+  const handleVolumeChange = (e) => {
+    const newVolume = parseInt(e.target.value, 10);
+    setVolume(newVolume);
     setIsDirty(true);
   };
 
-  const handlePrivacyToggle = (field) => {
-    setSettings((prev) => ({
-      ...prev,
-      [field]: {
-        ...prev[field],
-        isPrivate: !prev[field].isPrivate,
-      },
-    }));
+  const handleVideoQualityChange = (quality) => {
+    setVideoQuality(quality);
     setIsDirty(true);
   };
 
   const handleReset = () => {
     setSettings(defaultSettings);
+    setHapticEnabled(true);
+    setVolume(100);
+    setVideoQuality('720');
     localStorage.removeItem(STORAGE_KEY);
     setIsDirty(false);
     setShowResetConfirm(false);
@@ -120,27 +134,11 @@ export default function ProfileSettings() {
     setIsDirty(false);
   };
 
-  const getPublicData = () => {
-    const publicData = {};
-    Object.entries(settings).forEach(([key, data]) => {
-      if (!data.isPrivate && data.value.trim()) {
-        publicData[key] = data.value;
-      }
-    });
-    return publicData;
-  };
-
-  const getPrivateData = () => {
-    const privateData = {};
-    Object.entries(settings).forEach(([key, data]) => {
-      if (data.isPrivate) {
-        privateData[key] = {
-          value: data.value,
-          isPrivate: true,
-        };
-      }
-    });
-    return privateData;
+  const getVolumeIcon = () => {
+    if (volume === 0) return <VolumeX size={20} />;
+    if (volume < 50) return <Volume2 size={20} className="text-orange-400" />;
+    if (volume < 80) return <Volume2 size={20} className="text-yellow-400" />;
+    return <Volume2 size={20} className="text-green-400" />;
   };
 
   return (
@@ -148,8 +146,9 @@ export default function ProfileSettings() {
       <div className="max-w-2xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
-            Profile Settings
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent flex items-center gap-3">
+            <Settings className="w-8 h-8 text-cyan-400" />
+            Settings
           </h1>
           <div className="flex items-center gap-3">
             {isDirty && (
@@ -218,11 +217,11 @@ export default function ProfileSettings() {
         {/* Settings Card */}
         <div className="bg-gradient-to-br from-slate-800/80 to-purple-900/80 backdrop-blur-xl rounded-3xl p-8 shadow-2xl border border-white/10">
           {/* Haptic Feedback Toggle */}
-          <div className="mb-8 p-5 bg-gradient-to-r from-purple-500/10 to-cyan-500/10 border border-purple-500/20 rounded-xl">
+          <div className="mb-6 p-5 bg-gradient-to-r from-purple-500/10 to-cyan-500/10 border border-purple-500/20 rounded-xl">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <div className={`p-3 rounded-xl ${hapticEnabled ? 'bg-purple-500/20 text-purple-400' : 'bg-slate-700/50 text-gray-400'}`}>
-                  <SmartphoneVibrate size={24} />
+                  <Vibrate size={24} />
                 </div>
                 <div>
                   <h3 className="text-lg font-semibold text-white">Haptic Feedback</h3>
@@ -246,136 +245,82 @@ export default function ProfileSettings() {
             </div>
           </div>
 
-          {/* Info Banner */}
-          <div className="bg-cyan-500/10 border border-cyan-500/30 rounded-xl p-4 mb-8">
-            <p className="text-cyan-300 text-sm">
-              <span className="font-semibold">Privacy Tip:</span> Toggle fields to{' '}
-              <span className="text-red-400 font-medium">Private</span> to hide them from other players.
-              Private fields are flagged in your user data and won't be visible to anyone else.
-            </p>
+          {/* Volume Control */}
+          <div className="mb-6 p-5 bg-gradient-to-r from-blue-500/10 to-cyan-500/10 border border-blue-500/20 rounded-xl">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-4">
+                <div className={`p-3 rounded-xl ${volume > 0 ? 'bg-blue-500/20 text-blue-400' : 'bg-slate-700/50 text-gray-400'}`}>
+                  {getVolumeIcon()}
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-white">Volume</h3>
+                  <p className="text-sm text-gray-400">Adjust sound effects volume</p>
+                </div>
+              </div>
+              <span className="text-white font-bold">{volume}%</span>
+            </div>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              value={volume}
+              onChange={handleVolumeChange}
+              className="w-full h-2 bg-slate-700 rounded-full appearance-none cursor-pointer accent-blue-500"
+            />
+            <div className="flex justify-between text-xs text-gray-500 mt-2">
+              <span>Mute</span>
+              <span>25%</span>
+              <span>50%</span>
+              <span>75%</span>
+              <span>100%</span>
+            </div>
           </div>
 
-          {/* Settings Fields */}
-          <div className="space-y-6">
-            {Object.entries(settings).map(([field, data]) => {
-              const Icon = fieldIcons[field];
-              const isPrivate = data.isPrivate;
-
-              return (
-                <div
-                  key={field}
-                  className={`relative p-4 rounded-xl transition-all ${
-                    isPrivate
-                      ? 'bg-red-500/5 border border-red-500/20'
-                      : 'bg-slate-700/30 border border-white/5'
+          {/* Video Quality Selector */}
+          <div className="mb-6 p-5 bg-gradient-to-r from-green-500/10 to-cyan-500/10 border border-green-500/20 rounded-xl">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="p-3 rounded-xl bg-green-500/20 text-green-400">
+                <Monitor size={24} />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-white">Video Quality</h3>
+                <p className="text-sm text-gray-400">Select video playback quality</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {VIDEO_QUALITY_OPTIONS.map((option) => (
+                <button
+                  key={option.value}
+                  onClick={() => handleVideoQualityChange(option.value)}
+                  className={`relative p-4 rounded-xl text-left transition-all ${
+                    videoQuality === option.value
+                      ? 'bg-gradient-to-br from-green-500/30 to-cyan-500/30 border-2 border-green-500/50'
+                      : 'bg-slate-700/50 border-2 border-transparent hover:bg-slate-700/70'
                   }`}
                 >
-                  <div className="flex items-center justify-between mb-3">
-                    <label className="text-sm font-medium text-gray-300 flex items-center gap-2">
-                      <Icon size={18} className={isPrivate ? 'text-red-400' : 'text-cyan-400'} />
-                      {fieldLabels[field]}
-                    </label>
-                    <button
-                      onClick={() => handlePrivacyToggle(field)}
-                      className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                        isPrivate
-                          ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
-                          : 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
-                      }`}
-                    >
-                      {isPrivate ? <EyeOff size={16} /> : <Eye size={16} />}
-                      {isPrivate ? 'Private' : 'Public'}
-                    </button>
+                  {videoQuality === option.value && (
+                    <div className="absolute top-2 right-2">
+                      <Check size={16} className="text-green-400" />
+                    </div>
+                  )}
+                  <div className={`font-semibold ${videoQuality === option.value ? 'text-white' : 'text-gray-300'}`}>
+                    {option.label}
                   </div>
-
-                  {field === 'birthdate' ? (
-                    <input
-                      type="date"
-                      value={data.value}
-                      onChange={(e) => handleValueChange(field, e.target.value)}
-                      className={`w-full px-4 py-3 rounded-xl text-white placeholder-gray-400 border focus:ring-2 outline-none transition-all ${
-                        isPrivate
-                          ? 'bg-slate-800/50 border-red-500/30 focus:border-red-500 focus:ring-red-500/20'
-                          : 'bg-slate-700/50 border-white/10 focus:border-cyan-400 focus:ring-cyan-400/20'
-                      }`}
-                    />
-                  ) : field === 'bio' ? (
-                    <textarea
-                      value={data.value}
-                      onChange={(e) => handleValueChange(field, e.target.value)}
-                      placeholder={fieldPlaceholders[field]}
-                      rows={3}
-                      className={`w-full px-4 py-3 rounded-xl text-white placeholder-gray-400 border focus:ring-2 outline-none resize-none transition-all ${
-                        isPrivate
-                          ? 'bg-slate-800/50 border-red-500/30 focus:border-red-500 focus:ring-red-500/20'
-                          : 'bg-slate-700/50 border-white/10 focus:border-cyan-400 focus:ring-cyan-400/20'
-                      }`}
-                    />
-                  ) : (
-                    <input
-                      type="text"
-                      value={data.value}
-                      onChange={(e) => handleValueChange(field, e.target.value)}
-                      placeholder={fieldPlaceholders[field]}
-                      className={`w-full px-4 py-3 rounded-xl text-white placeholder-gray-400 border focus:ring-2 outline-none transition-all ${
-                        isPrivate
-                          ? 'bg-slate-800/50 border-red-500/30 focus:border-red-500 focus:ring-red-500/20'
-                          : 'bg-slate-700/50 border-white/10 focus:border-cyan-400 focus:ring-cyan-400/20'
-                      }`}
-                    />
-                  )}
-
-                  {/* Privacy Indicator */}
-                  {isPrivate && data.value.trim() && (
-                    <div className="absolute top-4 right-4">
-                      <span className="text-xs text-red-400/70">Hidden from others</span>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Preview Section */}
-          <div className="mt-8 pt-8 border-t border-white/10">
-            <h3 className="text-lg font-semibold text-white mb-4">What Others See</h3>
-            <div className="bg-gradient-to-br from-slate-700/50 to-purple-800/50 rounded-xl p-4">
-              {Object.keys(getPublicData()).length > 0 ? (
-                <div className="space-y-3">
-                  {Object.entries(getPublicData()).map(([key, value]) => (
-                    <div key={key} className="flex items-center justify-between">
-                      <span className="text-sm text-gray-400 capitalize">{fieldLabels[key]}:</span>
-                      <span className="text-white">{value}</span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-gray-400 text-center py-4">
-                  No public fields yet. Set some fields to Public to share them.
-                </p>
-              )}
+                  <div className="text-xs text-gray-400 mt-1">
+                    {option.description}
+                  </div>
+                </button>
+              ))}
             </div>
           </div>
 
-          {/* Data Structure Preview */}
-          <div className="mt-8 pt-8 border-t border-white/10">
-            <h3 className="text-lg font-semibold text-white mb-4">User Data Object Structure</h3>
-            <div className="bg-slate-900 rounded-xl p-4 overflow-x-auto">
-              <pre className="text-sm text-gray-300">
-                {JSON.stringify(
-                  {
-                    publicProfile: getPublicData(),
-                    privateProfile: getPrivateData(),
-                  },
-                  null,
-                  2
-                )}
-              </pre>
-            </div>
-            <p className="text-xs text-gray-500 mt-2">
-              Private fields are stored separately and won't be exposed in API responses to other users.
-            </p>
-          </div>
+          {/* Reset Button */}
+          <button
+            onClick={handleReset}
+            className="w-full py-3 px-4 bg-red-500/20 hover:bg-red-500/30 border border-red-500/50 text-red-400 font-medium rounded-xl transition-all"
+          >
+            Reset All Settings to Default
+          </button>
         </div>
       </div>
     </div>

@@ -43,7 +43,7 @@ export const TutorialOverlay = ({ onComplete }) => {
 
   return (
     <div 
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 overflow-y-auto"
       role="dialog"
       aria-modal="true"
       aria-labelledby="tutorial-title"
@@ -54,8 +54,9 @@ export const TutorialOverlay = ({ onComplete }) => {
       {/* Tutorial content card */}
       <div 
         className="relative bg-gray-900/95 backdrop-blur-xl rounded-2xl shadow-[0_0_60px_rgba(139,92,246,0.4)] 
-                   border border-purple-500/30 max-w-lg w-full p-6 md:p-8
-                   transform transition-all animate-fade-in"
+                   border border-purple-500/30 max-w-lg w-full p-4 md:p-6
+                   transform transition-all animate-fade-in
+                   max-h-[90vh] overflow-y-auto"
       >
         {/* Header with icon */}
         <div className="text-center mb-6">

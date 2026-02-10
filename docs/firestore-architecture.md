@@ -1,878 +1,441 @@
-# Smirkle Cloud Firestore Architecture
+# Smirkle Firestore Architecture Plan
+## Requirement #4: Centralized User Profile Storage
 
-## Executive Summary
-This document outlines the centralized database architecture for Smirkle using Cloud Firestore, replacing the current LocalStorage-based data persistence with a scalable, real-time cloud solution optimized for the DeveloperWeek 2026 Hackathon.
+## 1. Firestore Collection Schema Design
 
----
+### 1.1 Users Collection Schema
 
-## 1. Firestore Collection Schemas
+```
+Firestore Structure:
+└── smirkle-project (Firestore Database)
+    ├── users (collection)
+    │   └── {userId} (document)
+    │       ├── profile (subcollection)
+    │       │   └── userId, username, email, birthdate, bio, motto, avatarUrl
+    │       ├── stats (subcollection)
+    │       │   └── totalGames, bestSurvivalTime, achievements, pokerFaceLevel
+    │       └── social (subcollection) [Future #5, #7]
+    │           └── friends, friendRequests, blockedUsers, clans
+    ├── scores (collection)
+    │   └── {scoreId}
+    │       └── userId, scoreValue, survivalTime, timestamp
+    └── videos (collection) [Existing]
+```
 
-### 1.1 Users Collection
-**Collection Path:** `users/{userId}`
+### 1.2 User Profile Document Schema
 
-| Field | Type | Description | Index |
-|-------|------|-------------|-------|
-| `id` | string | Unique user identifier (auto-generated) | Primary Key |
-| `username` | string | Display name (3-20 chars, unique) | Unique Index |
-| `email` | string | User email (lowercase, unique) | Unique Index |
-| `password_hash` | string | Hashed password (SHA-256) | - |
-| `motto` | string | Personal mantra/tagline | - |
-| `profile_picture_url` | string | URL to profile image | - |
-| `bio` | string | User biography (max 150 chars) | - |
-| `friend_list` | array | Array of friend user IDs | - |
-| `created_at` | timestamp | Account creation time | Index |
-| `last_login` | timestamp | Last authentication time | Index |
-| `is_online` | boolean | Online status for real-time presence | - |
-| `stats` | map | Nested user statistics object | - |
-
-**Stats Sub-collection Structure:**
 ```typescript
-stats: {
-  total_games: number,
-  total_smirks_detected: number,
-  total_smiles_detected: number,
-  best_survival_time: number,
-  average_survival_time: number,
-  achievements: array,
-  longest_streak: number,
-  poker_face_level: number,
-  experience: number,
-  games_played: number,
-  last_played_date: timestamp
-}
-```
-
-**Firestore Security Rules (users):**
-```
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    // Users can read any user profile
-    match /users/{userId} {
-      allow read: if true;
-      // Users can only write their own data
-      allow write: if request.auth != null && request.auth.uid == userId;
-    }
-  }
-}
-```
-
-### 1.2 Scores Collection
-**Collection Path:** `scores/{scoreId}`
-
-| Field | Type | Description | Index |
-|-------|------|-------------|-------|
-| `id` | string | Unique score identifier (auto-generated) | Primary Key |
-| `user_id` | string | Reference to Users collection | Index |
-| `username` | string | Denormalized username for queries | - |
-| `score_value` | number | Calculated score (survival_time * 100) | Index |
-| `survival_time` | number | Actual survival duration in seconds | Index |
-| `timestamp` | timestamp | When the score was achieved | Index |
-| `date` | string | ISO date string (YYYY-MM-DD) | Index |
-| `is_guest` | boolean | Whether score was from guest session | - |
-
-**Composite Indexes Required:**
-- `scores` collection: `user_id` + `score_value` (for user ranking)
-- `scores` collection: `score_value` DESC (for global leaderboard)
-
-**Firestore Security Rules (scores):**
-```
-match /scores/{scoreId} {
-  allow read: if true;
-  allow create: if request.auth != null;
-  allow update, delete: if request.auth != null && resource.data.user_id == request.auth.uid;
-}
-```
-
-### 1.3 Messages Collection
-**Collection Path:** `messages/{messageId}`
-
-| Field | Type | Description | Index |
-|-------|------|-------------|-------|
-| `id` | string | Unique message identifier (auto-generated) | Primary Key |
-| `sender_id` | string | Reference to Users collection (sender) | Index |
-| `receiver_id` | string | Reference to Users collection (recipient) | Index |
-| `sender_username` | string | Denormalized sender username | - |
-| `text` | string | Message content (max 500 chars) | - |
-| `is_read` | boolean | Read status for recipient | Index |
-| `created_at` | timestamp | Message creation time | Index |
-| `parent_message_id` | string | Optional thread reference | - |
-
-**Sub-collection Pattern for Conversations:**
-For efficient inbox querying, use sub-collections under each user's document:
-```
-users/{userId}/inbox/{messageId}
-users/{userId}/sent/{messageId}
-```
-
-**Firestore Security Rules (messages):**
-```
-match /users/{userId}/inbox/{messageId} {
-  allow read: if request.auth != null && request.auth.uid == userId;
-  allow create: if request.auth != null;
-  allow update: if request.auth != null && resource.data.receiver_id == request.auth.uid;
-}
-
-match /users/{userId}/sent/{messageId} {
-  allow read: if request.auth != null && request.auth.uid == userId;
-  allow create: if request.auth != null;
-}
-```
-
----
-
-## 2. React Service Layer Architecture
-
-### 2.1 Service Layer Directory Structure
-```
-src/services/
-├── firebaseConfig.js        # Firebase initialization
-├── userService.js          # User CRUD operations
-├── scoreService.js         # Score/submission operations
-├── messageService.js       # Messaging operations
-├── presenceService.js     # Online status management
-└── syncManager.js         # Offline-first sync coordinator
-```
-
-### 2.2 Firebase Configuration (`src/services/firebaseConfig.js`)
-```javascript
-import { initializeApp } from 'firebase/app';
-import { getFirestore, enableIndexedDbPersistence } from 'firebase/firestore';
-import { getAuth } from 'firebase/auth';
-import { getStorage } from 'firebase/storage';
-
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID
-};
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-
-// Initialize services
-export const db = getFirestore(app);
-export const auth = getAuth(app);
-export const storage = getStorage(app);
-
-// Enable offline persistence
-enableIndexedDbPersistence(db).catch((err) => {
-  if (err.code === 'failed-precondition') {
-    console.warn('Multiple tabs open, persistence can only be enabled in one tab at a time.');
-  } else if (err.code === 'unimplemented') {
-    console.warn('The current browser does not support offline persistence.');
-  }
-});
-
-export default app;
-```
-
-### 2.3 User Service (`src/services/userService.js`)
-```javascript
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  setDoc,
-  updateDoc,
-  query,
-  where,
-  orderBy,
-  limit,
-  onSnapshot
-} from 'firebase/firestore';
-import { db } from './firebaseConfig';
-import { getCurrentUser, setCurrentUser as saveToLocalStorage } from '../utils/auth';
-
-const USERS_COLLECTION = 'users';
-
-/**
- * Get user by ID
- */
-export async function getUserById(userId) {
-  const userDoc = await getDoc(doc(db, USERS_COLLECTION, userId));
-  if (userDoc.exists()) {
-    return { id: userDoc.id, ...userDoc.data() };
-  }
-  return null;
-}
-
-/**
- * Get user by username
- */
-export async function getUserByUsername(username) {
-  const q = query(
-    collection(db, USERS_COLLECTION),
-    where('username', '==', username.toLowerCase()),
-    limit(1)
-  );
-  const snapshot = await getDocs(q);
-  if (!snapshot.empty) {
-    const doc = snapshot.docs[0];
-    return { id: doc.id, ...doc.data() };
-  }
-  return null;
-}
-
-/**
- * Create or update user profile
- */
-export async function saveUserProfile(userId, userData) {
-  const userRef = doc(db, USERS_COLLECTION, userId);
-  await setDoc(userRef, {
-    ...userData,
-    updated_at: new Date().toISOString()
-  }, { merge: true });
+// users/{userId}/profile/userProfile
+interface UserProfile {
+  // Core Identity (Requirement #4)
+  userId: string;           // Document ID matches collection ID
+  username: string;         // Display name
+  email: string;            // Contact email (with privacy controls)
+  birthdate: string;        // ISO date format (age verification)
+  createdAt: timestamp;     // Account creation
+  updatedAt: timestamp;     // Last profile update
   
-  // Update local session
-  saveToLocalStorage({ id: userId, ...userData });
-}
-
-/**
- * Update user stats
- */
-export async function updateUserStats(userId, stats) {
-  const userRef = doc(db, USERS_COLLECTION, userId);
-  await updateDoc(userRef, {
-    [`stats.${Object.keys(stats)[0]}`]: Object.values(stats)[0]
-  });
-}
-
-/**
- * Add friend to user's friend list
- */
-export async function addFriend(userId, friendId) {
-  const userRef = doc(db, USERS_COLLECTION, userId);
-  await updateDoc(userRef, {
-    friend_list: arrayUnion(friendId)
-  });
-}
-
-/**
- * Real-time user profile subscription
- */
-export function subscribeToUser(userId, callback) {
-  return onSnapshot(doc(db, USERS_COLLECTION, userId), (doc) => {
-    if (doc.exists()) {
-      callback({ id: doc.id, ...doc.data() });
-    }
-  });
-}
-```
-
-### 2.4 Score Service (`src/services/scoreService.js`)
-```javascript
-import {
-  collection,
-  addDoc,
-  getDocs,
-  getDoc,
-  query,
-  where,
-  orderBy,
-  limit,
-  onSnapshot,
-  serverTimestamp
-} from 'firebase/firestore';
-import { db } from './firebaseConfig';
-
-const SCORES_COLLECTION = 'scores';
-
-/**
- * Submit a new score
- */
-export async function submitScore(userId, username, survivalTime) {
-  const scoreValue = Math.floor(survivalTime * 100);
+  // Extended Profile (Future #5)
+  bio?: string;             // Short biography
+  motto?: string;           // Personal tagline
+  avatarUrl?: string;       // Profile picture URL
   
-  const scoreData = {
-    user_id: userId,
-    username: username,
-    score_value: scoreValue,
-    survival_time: survivalTime,
-    timestamp: serverTimestamp(),
-    date: new Date().toISOString().split('T')[0],
-    is_guest: false
+  // Privacy Controls (Future #5)
+  privacySettings: {
+    showOnLeaderboard: boolean;
+    showBirthYear: boolean; // Hide birth year, show age range only
+    allowFriendRequests: boolean;
+    showOnlineStatus: boolean;
   };
-  
-  return await addDoc(collection(db, SCORES_COLLECTION), scoreData);
 }
 
-/**
- * Get top scores for leaderboard
- */
-export async function getTopScores(count = 50) {
-  const q = query(
-    collection(db, SCORES_COLLECTION),
-    orderBy('score_value', 'desc'),
-    limit(count)
-  );
-  
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+// users/{userId}/stats/userStats
+interface UserStats {
+  userId: string;
+  totalGames: number;
+  totalSmirksDetected: number;
+  totalSmilesDetected: number;
+  bestSurvivalTime: number;  // Best score in seconds
+  averageSurvivalTime: number;
+  longestStreak: number;
+  pokerFaceLevel: number;   // Gamification tier (1-100)
+  experience: number;       // XP points
+  achievements: string[];   // Array of achievement IDs
+  lastPlayedDate: timestamp;
 }
 
-/**
- * Get scores for a specific user
- */
-export async function getUserScores(userId) {
-  const q = query(
-    collection(db, SCORES_COLLECTION),
-    where('user_id', '==', userId),
-    orderBy('timestamp', 'desc')
-  );
-  
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-}
-
-/**
- * Get user's best score
- */
-export async function getUserBestScore(userId) {
-  const q = query(
-    collection(db, SCORES_COLLECTION),
-    where('user_id', '==', userId),
-    orderBy('score_value', 'desc'),
-    limit(1)
-  );
-  
-  const snapshot = await getDocs(q);
-  if (!snapshot.empty) {
-    return { id: snapshot.docs[0].id, ...snapshot.docs[0].data() };
-  }
-  return null;
-}
-
-/**
- * Real-time leaderboard subscription
- */
-export function subscribeToLeaderboard(callback) {
-  return onSnapshot(
-    query(collection(db, SCORES_COLLECTION), orderBy('score_value', 'desc'), limit(50)),
-    (snapshot) => {
-      const scores = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      callback(scores);
-    }
-  );
-}
-
-/**
- * Get user's rank globally
- */
-export async function getUserRank(userId) {
-  const userBest = await getUserBestScore(userId);
-  if (!userBest) return null;
-  
-  const q = query(
-    collection(db, SCORES_COLLECTION),
-    where('score_value', '>', userBest.score_value)
-  );
-  
-  const higherScores = await getDocs(q);
-  return higherScores.size + 1;
+// users/{userId}/social/socialData (Future #5, #7)
+interface SocialData {
+  userId: string;
+  friends: string[];              // Array of friend userIds
+  friendRequests: {                // Incoming friend requests
+    requestId: string;
+    fromUserId: string;
+    username: string;
+    timestamp: timestamp;
+    status: 'pending' | 'accepted' | 'rejected';
+  }[];
+  blockedUsers: string[];         // Blocked userIds
+  clanId?: string;                 // Current clan/squad (#7)
+  clanRole?: 'leader' | 'officer' | 'member';
 }
 ```
 
-### 2.5 Message Service (`src/services/messageService.js`)
-```javascript
-import {
-  collection,
-  addDoc,
-  getDocs,
-  query,
-  where,
-  orderBy,
-  onSnapshot,
-  updateDoc,
-  serverTimestamp,
-  doc
-} from 'firebase/firestore';
-import { db } from './firebaseConfig';
+## 2. Success/Failure Feedback Loop Design
 
-const MESSAGES_COLLECTION = 'messages';
-
-/**
- * Send a message to another user
- */
-export async function sendMessage(senderId, receiverId, text) {
-  // Add to sender's sent folder
-  const sentRef = collection(db, 'users', senderId, 'sent');
-  const sentMessage = await addDoc(sentRef, {
-    sender_id: senderId,
-    receiver_id: receiverId,
-    text: text.substring(0, 500), // Limit message length
-    created_at: serverTimestamp(),
-    is_read: false
-  });
-  
-  // Add to receiver's inbox
-  const inboxRef = collection(db, 'users', receiverId, 'inbox');
-  await addDoc(inboxRef, {
-    sender_id: senderId,
-    receiver_id: receiverId,
-    text: text.substring(0, 500),
-    created_at: serverTimestamp(),
-    is_read: false,
-    parent_message_id: sentMessage.id
-  });
-  
-  return sentMessage.id;
-}
-
-/**
- * Get messages received by user
- */
-export async function getInboxMessages(userId) {
-  const q = query(
-    collection(db, 'users', userId, 'inbox'),
-    orderBy('created_at', 'desc')
-  );
-  
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-}
-
-/**
- * Get messages sent by user
- */
-export async function getSentMessages(userId) {
-  const q = query(
-    collection(db, 'users', userId, 'sent'),
-    orderBy('created_at', 'desc')
-  );
-  
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-}
-
-/**
- * Mark message as read
- */
-export async function markMessageAsRead(userId, messageId) {
-  const messageRef = doc(db, 'users', userId, 'inbox', messageId);
-  await updateDoc(messageRef, { is_read: true });
-}
-
-/**
- * Get unread message count
- */
-export async function getUnreadCount(userId) {
-  const q = query(
-    collection(db, 'users', userId, 'inbox'),
-    where('is_read', '==', false)
-  );
-  
-  const snapshot = await getDocs(q);
-  return snapshot.size;
-}
-
-/**
- * Real-time inbox subscription
- */
-export function subscribeToInbox(userId, callback) {
-  return onSnapshot(
-    query(collection(db, 'users', userId, 'inbox'), orderBy('created_at', 'desc')),
-    (snapshot) => {
-      const messages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      callback(messages);
-    }
-  );
-}
-```
-
-### 2.6 Sync Manager - Offline-First Strategy (`src/services/syncManager.js`)
-```javascript
-import {
-  collection,
-  addDoc,
-  getDocs,
-  query,
-  where,
-  serverTimestamp
-} from 'firebase/firestore';
-import { db } from './firebaseConfig';
-
-const PENDING_SYNC_QUEUE = 'pendingSync';
-
-/**
- * Sync Manager - Handles offline-first data synchronization
- * Stores pending operations in IndexedDB/LocalStorage and syncs when online
- */
-class SyncManager {
-  constructor() {
-    this.pendingOperations = [];
-    this.isOnline = navigator.onLine;
-    
-    // Listen for online/offline events
-    window.addEventListener('online', () => this.handleOnline());
-    window.addEventListener('offline', () => this.handleOffline());
-    
-    // Load pending operations from storage
-    this.loadPendingOperations();
-  }
-  
-  /**
-   * Queue an operation for sync
-   */
-  async queueOperation(operation) {
-    const op = {
-      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-      ...operation,
-      queued_at: new Date().toISOString()
-    };
-    
-    this.pendingOperations.push(op);
-    this.savePendingOperations();
-    
-    // Try to sync immediately if online
-    if (this.isOnline) {
-      await this.sync();
-    }
-    
-    return op.id;
-  }
-  
-  /**
-   * Sync all pending operations
-   */
-  async sync() {
-    if (!this.isOnline || this.pendingOperations.length === 0) return;
-    
-    const operations = [...this.pendingOperations];
-    
-    for (const op of operations) {
-      try {
-        switch (op.type) {
-          case 'SUBMIT_SCORE':
-            await this.syncScore(op);
-            break;
-          case 'UPDATE_PROFILE':
-            await this.syncProfile(op);
-            break;
-          case 'SEND_MESSAGE':
-            await this.syncMessage(op);
-            break;
-        }
-        
-        // Remove synced operation
-        this.pendingOperations = this.pendingOperations.filter(o => o.id !== op.id);
-      } catch (error) {
-        console.error('Sync operation failed:', error);
-      }
-    }
-    
-    this.savePendingOperations();
-  }
-  
-  /**
-   * Sync score submission
-   */
-  async syncScore(op) {
-    await addDoc(collection(db, 'scores'), {
-      user_id: op.userId,
-      username: op.username,
-      score_value: op.scoreValue,
-      survival_time: op.survivalTime,
-      timestamp: serverTimestamp(),
-      date: op.date,
-      is_guest: false,
-      _synced_from: 'offline_queue'
-    });
-  }
-  
-  /**
-   * Sync profile update
-   */
-  async syncProfile(op) {
-    const userRef = doc(db, 'users', op.userId);
-    await updateDoc(userRef, op.data);
-  }
-  
-  /**
-   * Sync message
-   */
-  async syncMessage(op) {
-    await sendMessage(op.senderId, op.receiverId, op.text);
-  }
-  
-  /**
-   * Load pending operations from LocalStorage
-   */
-  loadPendingOperations() {
-    const stored = localStorage.getItem('smirkle_pending_sync');
-    if (stored) {
-      try {
-        this.pendingOperations = JSON.parse(stored);
-      } catch (e) {
-        this.pendingOperations = [];
-      }
-    }
-  }
-  
-  /**
-   * Save pending operations to LocalStorage
-   */
-  savePendingOperations() {
-    localStorage.setItem('smirkle_pending_sync', JSON.stringify(this.pendingOperations));
-  }
-  
-  /**
-   * Handle coming back online
-   */
-  async handleOnline() {
-    this.isOnline = true;
-    await this.sync();
-  }
-  
-  /**
-   * Handle going offline
-   */
-  handleOffline() {
-    this.isOnline = false;
-  }
-  
-  /**
-   * Get pending sync count
-   */
-  getPendingCount() {
-    return this.pendingOperations.length;
-  }
-}
-
-// Singleton instance
-export const syncManager = new SyncManager();
-
-export default syncManager;
-```
-
----
-
-## 3. State Synchronization Architecture
-
-### 3.1 App.jsx State Sync Flow Diagram
-
-```mermaid
-flowchart TB
-    subgraph "Client Layer"
-        A["App.jsx State"] --> B["React Context Providers"]
-        B --> C["useUser Hook"]
-        B --> D["useScores Hook"]
-        B --> E["useMessages Hook"]
-    end
-    
-    subgraph "Service Layer"
-        C --> F["userService.js"]
-        D --> G["scoreService.js"]
-        E --> H["messageService.js"]
-    end
-    
-    subgraph "Sync Manager"
-        F --> I["syncManager.js"]
-        G --> I
-        H --> I
-    end
-    
-    subgraph "Firestore Database"
-        I --> J["users Collection"]
-        I --> K["scores Collection"]
-        I --> L["messages Collection"]
-    end
-    
-    subgraph "LocalStorage Fallback"
-        M["pendingSync Queue"]
-        I --> M
-        M -->|When Online| I
-    end
-    
-    J -->|Real-time Listener| C
-    K -->|Real-time Listener| D
-    L -->|Real-time Listener| E
-```
-
-### 3.2 State Flow with Guardian Logic Integration
+### 2.1 Registration Flow with Network Confirmation
 
 ```mermaid
 sequenceDiagram
-    participant U as User
-    participant A as App.jsx
-    participant FT as FaceTracker
-    participant SVC as scoreService
-    participant FS as Firestore
-    participant LS as LocalStorage
+    participant User
+    participant RegistrationForm
+    participant AuthService
+    participant Firestore
+    participant LocalStorage
     
-    U->>A: Start Game
-    A->>FT: Initialize Face Tracking
+    User->>RegistrationForm: Submit registration form
+    RegistrationForm->>AuthService: registerUser(profileData)
     
-    loop Game Session
-        FT->>A: onSmirkDetected(isSmirking, probability)
-        
-        alt Happiness ≥ 0.3 (Guardian Logic)
-            FT->>A: isSmirking = true
-            A->>A: triggerGameOver()
-            A->>SVC: submitScore(userId, survivalTime)
-            
-            SVC->>FS: scores.add(scoreData)
-            FS-->>SVC: Confirmation
-            
-            alt Offline Mode
-                SVC->>LS: Store in pendingSync Queue
-            end
-            
-            A->>U: Show WASTED Overlay
-        else Happiness < 0.3
-            A->>A: Update survivalTime
-        end
+    AuthService->>AuthService: Validate inputs
+    AuthService->>Firestore: createUserProfile(userId, profileData)
+    
+    Note over AuthService: START Network Wait State
+    
+    alt Network Success
+        Firestore-->>AuthService: Profile saved confirmation
+        AuthService->>AuthService: Set registrationStatus = 'complete'
+        AuthService->>LocalStorage: Save local cache
+        AuthService-->>RegistrationForm: Registration success
+        RegistrationForm-->>User: Show success + redirect
+    else Network Failure
+        Firestore-->>AuthService: Error (timeout/offline)
+        AuthService->>AuthService: Set registrationStatus = 'failed'
+        AuthService-->>RegistrationForm: Show retry option
+        Note over User: User can retry or save offline
     end
-    
-    A->>A: Resume Game
-    A->>SVC: fetchLeaderboard()
-    SVC->>FS: scores.query(orderBy: score_value DESC)
-    FS-->>SVC: Top 50 Scores
-    SVC-->>A: Update Leaderboard State
 ```
 
-### 3.3 Component-Level State Management
+### 2.2 Registration Status State Machine
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Authenticated: User Logs In
+    [*] --> Idle: Form initialized
+    Idle --> Validating: Submit clicked
+    Validating --> NetworkWait: Inputs valid
+    NetworkWait --> Complete: Firestore confirms save
+    NetworkWait --> Failed: Network error / timeout
+    NetworkWait --> Retry: User chooses retry
+    Retry --> NetworkWait: Retry registration
+    Failed --> Retry: User chooses retry
+    Failed --> OfflineSave: User chooses offline mode
+    Complete --> [*]: Registration done
     
-    state Authenticated {
-        [*] --> LoadingUserProfile
-        LoadingUserProfile --> UserProfileReady: Firestore data loaded
-        
-        UserProfileReady --> Playing: Start Game
-        UserProfileReady --> LeaderboardView: View Rankings
-        UserProfileReady --> ProfileView: Edit Profile
-        
-        Playing --> GameOver: Smirk Detected
-        GameOver --> SubmitScore: Score saved to Firestore
-        GameOver --> Playing: Try Again
-        
-        LeaderboardView --> RealTimeUpdates: Firestore listener active
-        RealTimeUpdates --> [*]: Navigate away
-        
-        ProfileView --> SavingProfile: Update Firestore
-        SavingProfile --> UserProfileReady: Save complete
-        
-        [*] --> OfflineMode: No internet
-    }
+    note right of NetworkWait
+        Registration NOT complete
+        until Firestore confirms
+    end note
     
-    OfflineMode --> Authenticated: Connection restored
-    OfflineMode --> LocalScores: Submit to pendingSync
-    
-    state OfflineMode {
-        [*] --> QueuedScore
-        QueuedScore --> [*]: Synced
-    }
+    note right of Complete
+        Profile saved to network
+        Cross-device access enabled
+    end note
 ```
 
----
+### 2.3 Registration Form State Management
 
-## 4. Migration Strategy from LocalStorage
+```typescript
+// useRegistration hook interface
+interface UseRegistrationReturn {
+  status: 'idle' | 'validating' | 'network_wait' | 'complete' | 'failed' | 'retry';
+  progress: number;           // 0-100 progress indicator
+  error: string | null;      // Error message if failed
+  canRetry: boolean;
+  canOfflineSave: boolean;
+  retry: () => Promise<void>;
+  cancel: () => void;
+}
 
-### 4.1 Phase 1: Dual Write (Weeks 1-2)
-- Keep existing LocalStorage logic
-- Add Firestore writes in parallel
-- Run both systems simultaneously
-- Validate data consistency
+// Registration Status Details
+const REGISTRATION_STATUS = {
+  IDLE: 'idle',                    // Form ready, no submission
+  VALIDATING: 'validating',        // Checking input validity
+  NETWORK_WAIT: 'network_wait',    // Waiting for Firestore confirmation
+  COMPLETE: 'complete',            // ✅ Network confirmed
+  FAILED: 'failed',                // ❌ Network error
+  RETRY: 'retry'                   // User triggered retry
+};
+```
 
-### 4.2 Phase 2: Read Migration (Weeks 3-4)
-- Switch reads to Firestore first
-- Fallback to LocalStorage if Firestore fails
-- Implement retry logic with exponential backoff
+## 3. Firestore Integration Architecture
 
-### 4.3 Phase 3: Full Migration (Week 5)
-- Remove LocalStorage read logic
-- Keep LocalStorage only for offline queue
-- Enable full offline-first sync
+### 3.1 Service Layer Structure
 
-### 4.4 Data Migration Script
-```javascript
+```
+src/services/
+├── firebaseConfig.js          # Existing - Firebase initialization
+├── userService.js             # NEW - User profile operations
+│   ├── createUserProfile()    # Create user in Firestore
+│   ├── updateUserProfile()    # Update existing profile
+│   ├── getUserProfile()       # Fetch user data
+│   ├── deleteUserProfile()    # Account deletion
+│   └── validateUsername()     # Check username availability
+├── authService.js             # NEW - Authentication wrapper
+│   ├── registerWithEmail()    # Email/password registration
+│   ├── loginWithEmail()       # Email/password login
+│   ├── loginWithGoogle()      # OAuth provider
+│   └── logout()               # Sign out
+└── syncService.js             # NEW - Offline/Online sync
+    ├── syncLocalToCloud()     # Push local changes
+    ├── syncCloudToLocal()     # Pull remote changes
+    └── handleConflict()       # Resolve sync conflicts
+```
+
+### 3.2 User Service Implementation
+
+```typescript
+// src/services/userService.ts
+import { 
+  doc, setDoc, getDoc, updateDoc, deleteDoc,
+  serverTimestamp, collection, query, where, getDocs
+} from 'firebase/firestore';
+import { db } from './firebaseConfig';
+
+const USERS_COLLECTION = 'users';
+const PROFILE_SUB_COLLECTION = 'profile';
+const STATS_SUB_COLLECTION = 'stats';
+
 /**
- * One-time migration script to transfer LocalStorage data to Firestore
- * Run this once during app update
+ * Create user profile in Firestore
+ * @param {string} userId - Unique user identifier
+ * @param {Object} profileData - User profile data
+ * @returns {Promise<{success: boolean, error?: string}>}
  */
-async function migrateFromLocalStorage() {
-  const migrate = async () => {
-    // Migrate Users
-    const usersData = localStorage.getItem('smirkle_users_db');
-    if (usersData) {
-      const users = JSON.parse(usersData);
-      for (const user of users) {
-        await setDoc(doc(db, 'users', user.id), user);
-      }
-      console.log(`Migrated ${users.length} users`);
-    }
-    
-    // Migrate Scores
-    const scoresData = localStorage.getItem('smirkle-scores');
-    if (scoresData) {
-      const scores = JSON.parse(scoresData);
-      for (const score of scores) {
-        await addDoc(collection(db, 'scores'), {
-          ...score,
-          timestamp: new Date(score.date),
-          _migrated: true
-        });
-      }
-      console.log(`Migrated ${scores.length} scores`);
-    }
-    
-    // Clear old data
-    localStorage.removeItem('smirkle_users_db');
-    localStorage.removeItem('smirkle-scores');
-    
-    console.log('Migration complete!');
-  };
+export async function createUserProfile(userId, profileData) {
+  const userProfileRef = doc(db, USERS_COLLECTION, userId, PROFILE_SUB_COLLECTION, 'userProfile');
+  const userStatsRef = doc(db, USERS_COLLECTION, userId, STATS_SUB_COLLECTION, 'userStats');
   
-  // Run migration
-  await migrate();
+  try {
+    const now = new Date().toISOString();
+    
+    // Profile document
+    await setDoc(userProfileRef, {
+      userId,
+      username: profileData.username,
+      email: profileData.email.toLowerCase(),
+      birthdate: profileData.birthdate,
+      createdAt: now,
+      updatedAt: now,
+      bio: profileData.bio || '',
+      motto: profileData.motto || '',
+      avatarUrl: profileData.avatarUrl || '',
+      privacySettings: {
+        showOnLeaderboard: true,
+        showBirthYear: false,
+        allowFriendRequests: true,
+        showOnlineStatus: true
+      }
+    });
+    
+    // Stats document (defaults)
+    await setDoc(userStatsRef, {
+      userId,
+      totalGames: 0,
+      totalSmirksDetected: 0,
+      totalSmilesDetected: 0,
+      bestSurvivalTime: 0,
+      averageSurvivalTime: 0,
+      longestStreak: 0,
+      pokerFaceLevel: 1,
+      experience: 0,
+      achievements: [],
+      lastPlayedDate: null
+    });
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Firestore createUserProfile error:', error);
+    return { 
+      success: false, 
+      error: error.message || 'Failed to save profile to server' 
+    };
+  }
+}
+
+/**
+ * Update user profile
+ * @param {string} userId 
+ * @param {Object} updates 
+ * @returns {Promise<{success: boolean}>}
+ */
+export async function updateUserProfile(userId, updates) {
+  const userProfileRef = doc(db, USERS_COLLECTION, userId, PROFILE_SUB_COLLECTION, 'userProfile');
+  
+  try {
+    await updateDoc(userProfileRef, {
+      ...updates,
+      updatedAt: new Date().toISOString()
+    });
+    return { success: true };
+  } catch (error) {
+    console.error('Firestore updateUserProfile error:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Get user profile
+ * @param {string} userId 
+ * @returns {Promise<Object|null>}
+ */
+export async function getUserProfile(userId) {
+  const userProfileRef = doc(db, USERS_COLLECTION, userId, PROFILE_SUB_COLLECTION, 'userProfile');
+  
+  try {
+    const docSnap = await getDoc(userProfileRef);
+    if (docSnap.exists()) {
+      return { success: true, data: docSnap.data() };
+    }
+    return { success: false, error: 'Profile not found' };
+  } catch (error) {
+    console.error('Firestore getUserProfile error:', error);
+    return { success: false, error: error.message };
+  }
 }
 ```
 
+## 4. Future Expansion: Social Features (#5, #7)
+
+### 4.1 Social Data Schema (Ready for #5)
+
+```typescript
+// users/{userId}/social/socialData
+interface SocialDocument {
+  userId: string;
+  friends: {
+    friendId: string;
+    username: string;
+    addedAt: timestamp;
+    pokerFaceLevel: number;  // For sorting friend list
+  }[];
+  friendRequests: {
+    requestId: string;
+    fromUserId: string;
+    fromUsername: string;
+    message?: string;
+    timestamp: timestamp;
+    status: 'pending' | 'accepted' | 'rejected';
+  }[];
+  blockedUsers: string[];
+  
+  // Clan/Squad features (#7)
+  clanId?: string;
+  clanRole?: 'leader' | 'officer' | 'member';
+  clanJoinedAt?: timestamp;
+  
+  // Activity feed (#5)
+  recentActivities: {
+    activityId: string;
+    type: 'score' | 'achievement' | 'friend_join' | 'clan_event';
+    data: Object;
+    timestamp: timestamp;
+  }[];
+}
+```
+
+### 4.2 Firestore Security Rules (for future implementation)
+
+```javascript
+// firestore.rules
+rules_version = '2';
+firestore service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Users collection rules
+    match /users/{userId} {
+      // Profile readable by anyone, writable by owner
+      match /profile/userProfile {
+        allow read: if true;
+        allow write: if request.auth != null && request.auth.uid == userId;
+      }
+      
+      // Stats readable by anyone, writable by owner
+      match /stats/userStats {
+        allow read: if true;
+        allow write: if request.auth != null && request.auth.uid == userId;
+      }
+      
+      // Social data: readable by friends, writable by owner
+      match /social/socialData {
+        allow read: if request.auth != null && (
+          request.auth.uid == userId ||
+          exists(/databases/$(database)/documents/users/$(userId)/social/socialData/friends/$(request.auth.uid))
+        );
+        allow write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+    
+    // Scores collection: leaderboard public, user scores private
+    match /scores/{scoreId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+  }
+}
+```
+
+## 5. Implementation Checklist
+
+### Phase 1: Core Profile Storage (#4)
+- [ ] Update firebaseConfig.js to export Firestore instance
+- [ ] Create userService.js with createUserProfile, updateUserProfile, getUserProfile
+- [ ] Modify RegistrationForm.jsx to use network-first approach
+- [ ] Implement registration status state machine
+- [ ] Add loading/progress UI during network wait
+- [ ] Add retry mechanism for failed registrations
+- [ ] Update auth.js to sync with Firestore on login
+- [ ] Test cross-device profile access
+
+### Phase 2: Stats & Leaderboard (#4)
+- [ ] Create scoreService.js integration with Firestore
+- [ ] Update App.jsx submitScore to use Firestore
+- [ ] Implement Leaderboard component with real-time updates
+- [ ] Add offline fallback for leaderboard
+
+### Phase 3: Social Features Preparation (#5, #7)
+- [ ] Add social subcollection to user documents
+- [ ] Create friendService.js for friend operations
+- [ ] Implement friend request system
+- [ ] Add clan/squad schema and service
+- [ ] Implement real-time presence system
+
+## 6. Error Handling Strategy
+
+### 6.1 Network Failure Scenarios
+
+| Scenario | Behavior | User Feedback |
+|----------|----------|----------------|
+| Initial registration fails | Retry up to 3 times, then show offline option | "Network error. Retry or save locally?" |
+| Offline save selected | Save to LocalStorage, queue for sync | "Saved locally. Will sync when online." |
+| Online detected | Auto-sync queued data | "Syncing profile..." |
+| Conflict on sync | Last-write-wins for profile, manual for scores | "Sync conflict. Review changes?" |
+
+### 6.2 Timeout Configuration
+
+```javascript
+const FIRESTORE_TIMEOUTS = {
+  createProfile: 5000,      // 5 seconds to create profile
+  updateProfile: 3000,      // 3 seconds to update
+  fetchProfile: 3000,       // 3 seconds to fetch
+  syncQueue: 10000          // 10 seconds for batch sync
+};
+```
+
 ---
 
-## 5. Performance Optimization
-
-### 5.1 Query Optimization
-- Use compound indexes for frequent queries
-- Implement pagination for large datasets
-- Cache frequently accessed data in React Query
-
-### 5.2 Real-time Listener Best Practices
-- Unsubscribe when component unmounts
-- Use `snapshotListenOptions` for optimized syncing
-- Implement debounced state updates
-
-### 5.3 Security Considerations
-- Implement Firestore Security Rules
-- Add rate limiting for score submissions
-- Sanitize all user inputs
-- Use Firebase App Check for bot protection
-
----
-
-## 6. DeveloperWeek 2026 "Ship It" Requirements
-
-This architecture meets all hackathon requirements:
-
-✅ **Centralized Database**: Cloud Firestore provides scalable, real-time data storage
-
-✅ **Offline Support**: Sync Manager enables offline gameplay with automatic sync
-
-✅ **Real-time Updates**: Firestore listeners enable live leaderboard updates
-
-✅ **Social Features**: Friend list and messaging collections support social gameplay
-
-✅ **Performance**: IndexedDB persistence and optimized queries ensure fast load times
-
-✅ **Security**: Firestore Security Rules protect user data
-
-✅ **Scalability**: NoSQL structure supports future feature additions
-
-✅ **Migration Path**: Clear phased migration from LocalStorage to cloud
+**Architectural Summary:**
+This design provides a centralized Firestore storage system that:
+1. ✅ Satisfies Requirement #4 with Name, Birthdate, Email storage
+2. ✅ Implements success/failure feedback loop with registration status states
+3. ✅ Pre-expands for Requirements #5 (social features) and #7 (clans/squads)
+4. ✅ Provides offline fallback with queued sync capability
+5. ✅ Includes security rules for future multi-user features

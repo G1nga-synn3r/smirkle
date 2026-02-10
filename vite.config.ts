@@ -67,9 +67,32 @@ export default defineConfig({
                 statuses: [0, 200]
               }
             }
+          },
+          // Cache AI model files
+          {
+            urlPattern: /\/models\/.*\.(json|bin)$/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'ai-models-cache',
+              expiration: {
+                maxEntries: 20,
+                maxAgeSeconds: 60 * 60 * 24 * 30 // 30 days
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
+            }
           }
         ]
       }
     })
-  ]
+  ],
+  server: {
+    headers: {
+      // Allow cross-origin requests for AI model loading
+      'Access-Control-Allow-Origin': '*',
+      'Cross-Origin-Opener-Policy': 'same-origin',
+      'Cross-Origin-Embedder-Policy': 'require-corp'
+    }
+  }
 });

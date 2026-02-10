@@ -1,16 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Search, Users, UserPlus, Shield, ShieldOff, Award, Heart, Trophy, Clock, Check, X, Bell } from 'lucide-react';
+import { Search, Users, UserPlus, Shield, ShieldOff, Award, Heart, Trophy, Clock, Check, X, Bell, Loader } from 'lucide-react';
+import { searchUsers, isFriend, toggleFriend } from '../services/userService';
+import { getCurrentUser } from '../utils/auth';
 
 const STORAGE_KEY = 'smirkle_social_data';
-
-// Mock data for friends search
-const mockUsers = [
-  { id: 1, name: 'Alex Chen', username: '@alexchen', avatar: null, mutualFriends: 3 },
-  { id: 2, name: 'Sarah Miller', username: '@sarahm', avatar: null, mutualFriends: 5 },
-  { id: 3, name: 'Jordan Kim', username: '@jordank', avatar: null, mutualFriends: 2 },
-  { id: 4, name: 'Taylor Swiftie', username: '@taylors', avatar: null, mutualFriends: 7 },
-  { id: 5, name: 'Morgan Lee', username: '@morganl', avatar: null, mutualFriends: 1 },
-];
 
 // Mock friend requests
 const initialFriendRequests = [
@@ -41,11 +34,15 @@ const allBadges = [
 
 export default function SocialHub() {
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
   const [friendRequests, setFriendRequests] = useState(initialFriendRequests);
   const [privacyMode, setPrivacyMode] = useState('Friends Only');
   const [activities, setActivities] = useState(mockActivities);
   const [badges, setBadges] = useState(allBadges);
   const [activeTab, setActiveTab] = useState('feed');
+  const [currentUser, setCurrentUser] = useState(null);
+  const [friendsList, setFriendsList] = useState([]);
 
   // Load privacy setting from localStorage
   useEffect(() => {
@@ -53,12 +50,52 @@ export default function SocialHub() {
     if (saved) {
       setPrivacyMode(saved);
     }
+
+    // Get current user
+    const user = getCurrentUser();
+    setCurrentUser(user);
   }, []);
 
   // Save privacy setting when changed
   useEffect(() => {
     localStorage.setItem(`${STORAGE_KEY}_privacy`, privacyMode);
   }, [privacyMode]);
+
+  // Search users with debouncing
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      if (searchQuery.trim().length === 0) {
+        setSearchResults([]);
+        return;
+      }
+
+      setIsSearching(true);
+      try {
+        const results = await searchUsers(searchQuery, currentUser?.id);
+        
+        // Add friend status to each result
+        const enrichedResults = await Promise.all(
+          results.map(async (user) => {
+            const isFriendStatus = await isFriend(currentUser?.id, user.id);
+            return {
+              ...user,
+              isFriend: isFriendStatus,
+              avatar: user.profile_picture_url || null
+            };
+          })
+        );
+        
+        setSearchResults(enrichedResults);
+      } catch (error) {
+        console.error('Search error:', error);
+        setSearchResults([]);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300); // 300ms debounce
+
+    return () => clearTimeout(timer);
+  }, [searchQuery, currentUser?.id]);
 
   const handleAcceptRequest = (id) => {
     setFriendRequests(prev => prev.filter(req => req.id !== id));
@@ -68,14 +105,22 @@ export default function SocialHub() {
     setFriendRequests(prev => prev.filter(req => req.id !== id));
   };
 
-  const handleAddFriend = (userId) => {
-    alert('Friend request sent!');
+  const handleAddFriend = async (userId) => {
+    try {
+      await toggleFriend(currentUser?.id, userId);
+      
+      // Update search results to reflect friend status
+      setSearchResults(prev => 
+        prev.map(user => 
+          user.id === userId 
+            ? { ...user, isFriend: !user.isFriend }
+            : user
+        )
+      );
+    } catch (error) {
+      console.error('Error toggling friend:', error);
+    }
   };
-
-  const filteredUsers = mockUsers.filter(user =>
-    user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    user.username.toLowerCase().includes(searchQuery.toLowerCase())
-  );
 
   const earnedBadgesCount = badges.filter(b => b.earned).length;
   const totalBadgesCount = badges.length;
@@ -195,34 +240,55 @@ export default function SocialHub() {
 
               {/* Users List */}
               <div className="space-y-3">
-                {filteredUsers.map(user => (
+                {isSearching && searchQuery.trim().length > 0 && (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader size={24} className="animate-spin text-cyan-400" />
+                  </div>
+                )}
+                {!isSearching && searchResults.length > 0 && searchResults.map(user => (
                   <div
                     key={user.id}
                     className="flex items-center gap-4 p-4 bg-slate-700/30 rounded-2xl hover:bg-slate-700/50 transition-colors"
                   >
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-400 to-purple-600 flex items-center justify-center text-white font-bold">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-400 to-purple-600 flex items-center justify-center text-white font-bold overflow-hidden">
                       {user.avatar ? (
-                        <img src={user.avatar} alt={user.name} className="w-full h-full rounded-full object-cover" />
+                        <img src={user.avatar} alt={user.display_name} className="w-full h-full object-cover" />
                       ) : (
-                        user.name[0]
+                        (user.display_name || user.username)[0].toUpperCase()
                       )}
                     </div>
                     <div className="flex-1">
-                      <p className="text-white font-medium">{user.name}</p>
-                      <p className="text-sm text-gray-400">{user.username}</p>
-                      <p className="text-xs text-gray-500 mt-1">{user.mutualFriends} mutual friends</p>
+                      <p className="text-white font-medium">{user.display_name || user.username}</p>
+                      <p className="text-sm text-gray-400">@{user.username}</p>
+                      {user.bio && <p className="text-xs text-gray-500 mt-1 line-clamp-1">{user.bio}</p>}
                     </div>
                     <button
                       onClick={() => handleAddFriend(user.id)}
-                      className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-500 to-purple-500 rounded-xl text-white font-medium hover:opacity-90 transition-opacity"
+                      className={`flex items-center gap-2 px-4 py-2 rounded-xl text-white font-medium transition-opacity whitespace-nowrap ${
+                        user.isFriend 
+                          ? 'bg-green-600/50 hover:bg-green-600/70' 
+                          : 'bg-gradient-to-r from-cyan-500 to-purple-500 hover:opacity-90'
+                      }`}
                     >
-                      <UserPlus size={18} />
-                      Add
+                      {user.isFriend ? (
+                        <>
+                          <Check size={18} />
+                          Friend
+                        </>
+                      ) : (
+                        <>
+                          <UserPlus size={18} />
+                          Add
+                        </>
+                      )}
                     </button>
                   </div>
                 ))}
-                {filteredUsers.length === 0 && (
-                  <p className="text-center text-gray-400 py-8">No users found</p>
+                {!isSearching && searchQuery.trim().length > 0 && searchResults.length === 0 && (
+                  <p className="text-center text-gray-400 py-8">No users found for "{searchQuery}"</p>
+                )}
+                {searchQuery.trim().length === 0 && (
+                  <p className="text-center text-gray-400 py-8">Start typing to search for players...</p>
                 )}
               </div>
             </div>

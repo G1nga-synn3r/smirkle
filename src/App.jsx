@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import './style.css';
 import { useFaceApi } from './hooks/useFaceApi.js';
 import { useSoundEffects } from './hooks/useSoundEffects.js';
+import { useHapticFeedback } from './hooks/useHapticFeedback.js';
 import CameraView from './components/CameraView.jsx';
 import VideoPlayer from './components/VideoPlayer.jsx';
 import FaceTracker from './components/FaceTracker.jsx';
@@ -10,16 +11,30 @@ import Navbar from './components/Navbar.jsx';
 import Leaderboard from './components/Leaderboard.jsx';
 import SubmitVideoForm from './components/SubmitVideoForm.jsx';
 import ProfilePage from './components/ProfilePage.jsx';
+import ProfileSettings from './components/ProfileSettings.jsx';
+import SocialHub from './components/SocialHub.jsx';
 import AuthGate from './components/AuthGate.jsx';
 import Teams from './components/Teams.jsx';
 import TutorialOverlay from './components/TutorialOverlay.jsx';
 import CalibrationOverlay from './components/CalibrationOverlay.jsx';
+import SystemCheckOverlay from './components/SystemCheckOverlay.jsx';
 import { getCurrentUser, isGuest, setCurrentUser } from './utils/auth.js';
 import { VIDEO_DATABASE, videoQueueManager, DIFFICULTY, getVideosByDifficulty } from './data/videoLibrary.js';
-import { saveScore } from './services/scoreService.js';
+import { saveScore, updateUserLifetimeScore } from './services/scoreService.js';
 import { SMILE_THRESHOLD } from './utils/constants.js';
 
 console.log('[App] App.jsx loaded successfully');
+
+// Checkpoint system configuration
+// Time progression: 5min, 15min (5+10), 35min (15+20), 75min (35+40), 155min (75+80)
+// Bonus progression: 1000, 2000, 3000, 4000, 5000...
+const CHECKPOINTS = [
+  { time: 300, bonus: 1000 },    // 5 minutes
+  { time: 900, bonus: 2000 },    // 15 minutes
+  { time: 2100, bonus: 3000 },   // 35 minutes
+  { time: 4500, bonus: 4000 },   // 75 minutes
+  { time: 9300, bonus: 5000 }    // 155 minutes
+];
 
 function App() {
   const [isSmiling, setIsSmiling] = useState(false);
@@ -33,6 +48,13 @@ function App() {
   const shouldShowTutorial = !localStorage.getItem('smirkle_hasSeenTutorial');
   const [showTutorial, setShowTutorial] = useState(shouldShowTutorial);
   const [isCameraReady, setIsCameraReady] = useState(false);
+  const [checkpointsHit, setCheckpointsHit] = useState([]);
+  const [checkpointBonus, setCheckpointBonus] = useState(0);
+  
+  // System Check state
+  const hasCompletedSystemCheck = localStorage.getItem('smirkle_systemCheckComplete');
+  const [showSystemCheck, setShowSystemCheck] = useState(!hasCompletedSystemCheck);
+  const [systemCheckPassed, setSystemCheckPassed] = useState(false);
   
   // Calibration Phase states
   const [isCalibrating, setIsCalibrating] = useState(false);
@@ -45,6 +67,14 @@ function App() {
   const [isFaceCentered, setIsFaceCentered] = useState(true);
   const [isLowLight, setIsLowLight] = useState(false);
   
+  // Game Ready state - timer only starts when all prerequisites are met
+  const isGameReady = isCameraReady && 
+                      calibrationComplete && 
+                      isFaceDetected && 
+                      currentVideo !== null && 
+                      !gameOver && 
+                      !isSmirking;
+  
   // Video Library State - Initialize with random video from database
   // Video starts paused until camera initialization is complete
   const [currentVideo, setCurrentVideo] = useState(() => {
@@ -56,8 +86,10 @@ function App() {
   const videoRef = useRef(null);
   const startTimeRef = useRef(null);
   const timerRef = useRef(null);
+  const cameraCanvasRef = useRef(null);
   const { loadModels, handleVideoPlay } = useFaceApi(videoRef);
   const { isMuted, playBuzzer, playDing, toggleMute, resumeAudio } = useSoundEffects();
+  const { triggerVibration } = useHapticFeedback();
 
   // Callback when camera is ready from FaceTracker
   const handleCameraReady = useCallback(() => {
@@ -90,6 +122,14 @@ function App() {
     } else {
       setCalibrationStatus('failed');
     }
+  }, []);
+
+  // Handle system check completion
+  const handleSystemCheckComplete = useCallback((passed) => {
+    setSystemCheckPassed(passed);
+    setShowSystemCheck(false);
+    // Mark system check as complete so next visit skips it
+    localStorage.setItem('smirkle_systemCheckComplete', 'true');
   }, []);
 
   // Guardian Logic: Handle face centering updates from FaceTracker
@@ -136,7 +176,8 @@ function App() {
     }
   }, []);
 
-  // Start survival timer when entering game view
+  // Start survival timer only when game is fully ready
+  // Prerequisites: camera ready, calibration complete, face detected, video loaded
   useEffect(() => {
     // Cleanup any existing timer first
     if (timerRef.current) {
@@ -144,7 +185,8 @@ function App() {
       timerRef.current = null;
     }
     
-    if (currentView === 'game' && !gameOver) {
+    // Only start timer when game is fully ready and not game over
+    if (currentView === 'game' && !gameOver && isGameReady) {
       startTimeRef.current = Date.now();
       timerRef.current = setInterval(() => {
         setSurvivalTime((Date.now() - startTimeRef.current) / 1000);
@@ -157,7 +199,31 @@ function App() {
         timerRef.current = null;
       }
     };
-  }, [currentView, gameOver]);
+  }, [currentView, gameOver, isGameReady]);
+
+  // Check for checkpoint achievements
+  useEffect(() => {
+    if (gameOver || survivalTime <= 0) return;
+    
+    let newCheckpointBonus = 0;
+    const newCheckpointsHit = [...checkpointsHit];
+    
+    CHECKPOINTS.forEach((checkpoint) => {
+      if (survivalTime >= checkpoint.time && !checkpointsHit.includes(checkpoint.time)) {
+        // Checkpoint just reached!
+        newCheckpointsHit.push(checkpoint.time);
+        newCheckpointBonus += checkpoint.bonus;
+        // Play notification sound
+        playDing();
+        console.log(`🎯 Checkpoint reached! ${(checkpoint.time / 60).toFixed(1)} minutes - +${checkpoint.bonus} bonus`);
+      }
+    });
+    
+    if (newCheckpointsHit.length > checkpointsHit.length) {
+      setCheckpointsHit(newCheckpointsHit);
+      setCheckpointBonus(prev => prev + newCheckpointBonus);
+    }
+  }, [survivalTime, checkpointsHit, gameOver, playDing]);
 
   // Submit score to leaderboard (only for non-guests) - defined early to avoid initialization issues
   const submitScore = useCallback(() => {
@@ -170,18 +236,34 @@ function App() {
     
     if (!user || !survivalTime) return;
     
-    // Calculate score (survival time in seconds * 100)
-    const score = Math.floor(survivalTime * 100);
+    // Calculate score (survival time in seconds * 100 + checkpoint bonuses)
+    const baseScore = Math.floor(survivalTime * 100);
+    const scoreValue = baseScore + checkpointBonus;
     
-    // Get existing scores
+    // Save to Firestore
+    try {
+      saveScore({
+        userId: user.id,
+        username: user.username,
+        scoreValue: scoreValue,
+        survivalTime: survivalTime,
+        isGuest: false
+      });
+      
+      // Update user's lifetime score
+      updateUserLifetimeScore(user.id, scoreValue);
+    } catch (error) {
+      console.error('Error saving score to Firestore:', error);
+    }
+    
+    // Also save to localStorage as fallback
     const savedScores = localStorage.getItem('smirkle-scores');
     const scores = savedScores ? JSON.parse(savedScores) : [];
     
-    // Add new score
     const newScore = {
       id: Date.now(),
       name: user.username,
-      score: score,
+      score: scoreValue,
       time: survivalTime,
       date: new Date().toISOString().split('T')[0],
       isGuest: false
@@ -189,7 +271,7 @@ function App() {
     
     scores.push(newScore);
     localStorage.setItem('smirkle-scores', JSON.stringify(scores));
-  }, [survivalTime]);
+  }, [survivalTime, checkpointBonus]);
 
   // Trigger game over when smirking (happiness ≥ 0.3)
   useEffect(() => {
@@ -203,6 +285,14 @@ function App() {
       submitScore();
     }
   }, [isSmirking, gameOver, playBuzzer, submitScore]);
+
+  // Trigger haptic feedback and visual effects when smile is detected
+  useEffect(() => {
+    if (isSmiling && currentView === 'game') {
+      // Trigger strong haptic feedback pattern
+      triggerVibration([100, 200, 100]); // Heavy vibration pattern
+    }
+  }, [isSmiling, currentView, triggerVibration]);
 
   // Play ding sound when surviving 30 seconds
   useEffect(() => {
@@ -226,16 +316,17 @@ function App() {
     setGameOver(false);
     setSurvivalTime(0);
     setHasPlayedDing(false);
+    setCheckpointsHit([]);
+    setCheckpointBonus(0);
     resumeAudio(); // Resume audio context on interaction
     
     // Get next video from queue (anti-repeat)
     const nextVideo = videoQueueManager.getNextVideo();
     setCurrentVideo(nextVideo);
     
-    startTimeRef.current = Date.now();
-    timerRef.current = setInterval(() => {
-      setSurvivalTime((Date.now() - startTimeRef.current) / 1000);
-    }, 100);
+    // Note: Timer will start automatically via useEffect when isGameReady becomes true
+    // This happens when: isCameraReady && calibrationComplete && isFaceDetected && currentVideo !== null
+    
     if (videoRef.current) {
       videoRef.current.play();
     }
@@ -257,7 +348,7 @@ function App() {
 
   return (
     <AuthGate>
-      <div className={`min-h-screen animated-radial-gradient ${gameOver ? 'grayscale-game-over' : ''}`}>
+      <div className={`min-h-screen animated-radial-gradient ${gameOver ? 'grayscale-game-over' : ''} ${isSmiling && currentView === 'game' ? 'smile-detected' : ''}`}>
         {/* Game Over Overlay */}
         {gameOver && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
@@ -290,6 +381,11 @@ function App() {
           user={currentUser}
         />
         
+        {/* System Check Overlay - Shows on first load before anything else */}
+        {showSystemCheck && currentView === 'game' && (
+          <SystemCheckOverlay onCheckComplete={handleSystemCheckComplete} />
+        )}
+        
         {/* Calibration Overlay - Shows when camera is ready but before tutorial/game */}
         {isCalibrating && !calibrationComplete && !showTutorial && currentView === 'game' && (
           <CalibrationOverlay 
@@ -315,13 +411,42 @@ function App() {
                     Smirkle
                   </h1>
                   <p className="text-xl text-gray-400">Smile Detection Challenge</p>
+                  
+                  {/* Game Readiness Status Indicator */}
+                  <div className="mt-4 flex items-center justify-center gap-2">
+                    <div className={`w-3 h-3 rounded-full ${isGameReady ? 'bg-green-500 animate-pulse' : 'bg-yellow-500 animate-pulse'}`}></div>
+                    <span className={`text-sm font-medium ${isGameReady ? 'text-green-400' : 'text-yellow-400'}`}>
+                      {isGameReady ? '🎮 GAME READY - Timer Active' : '⏳ Setting up camera and calibration...'}
+                    </span>
+                  </div>
+                  
+                  {/* Readiness Details */}
+                  {!isGameReady && (
+                    <div className="mt-2 flex items-center justify-center gap-4 text-xs text-gray-500">
+                      <span className={isCameraReady ? 'text-green-400' : 'text-yellow-400'}>
+                        {isCameraReady ? '✅' : '⏳'} Camera
+                      </span>
+                      <span className={calibrationComplete ? 'text-green-400' : 'text-yellow-400'}>
+                        {calibrationComplete ? '✅' : '⏳'} Calibration
+                      </span>
+                      <span className={isFaceDetected ? 'text-green-400' : 'text-yellow-400'}>
+                        {isFaceDetected ? '✅' : '⏳'} Face
+                      </span>
+                    </div>
+                  )}
                 </div>
                 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
                   {/* Video Player - Glassmorphism Card */}
                   <div className="lg:col-span-1">
                     <div className="rounded-3xl overflow-hidden bg-white/10 backdrop-blur-xl border border-white/20 shadow-[0_0_30px_rgba(139,92,246,0.3)]">
-                      <VideoPlayer isSmiling={isSmiling} videoRef={videoRef} currentVideo={currentVideo} />
+                      <VideoPlayer 
+                        isSmiling={isSmiling} 
+                        videoRef={videoRef} 
+                        currentVideo={currentVideo}
+                        survivalTime={survivalTime}
+                        cameraRef={cameraCanvasRef}
+                      />
                       {isSmiling && (
                         <div className="absolute inset-0 bg-gradient-to-r from-purple-600/90 to-pink-600/90 backdrop-blur-md flex items-center justify-center">
                           <div className="text-center">
@@ -361,6 +486,7 @@ function App() {
                         onLowLightWarning={handleLowLightWarning}
                         isCalibrating={isCalibrating}
                         calibrationComplete={calibrationComplete}
+                        cameraCanvasRef={cameraCanvasRef}
                       />
                       {/* Guardian Logic Warning Boxes */}
                       <WarningBox 
@@ -396,6 +522,11 @@ function App() {
               </div>
             )}
 
+            {/* Social Hub View */}
+            {currentView === 'social' && (
+              <SocialHub />
+            )}
+
             {/* Submit View */}
             {currentView === 'submit' && (
               <div className="max-w-2xl mx-auto">
@@ -403,6 +534,11 @@ function App() {
                   <SubmitVideoForm />
                 </div>
               </div>
+            )}
+
+            {/* Settings View */}
+            {currentView === 'settings' && (
+              <ProfileSettings />
             )}
 
             {/* Teams/Squads View */}

@@ -148,7 +148,7 @@ function CameraView({ onStream }) {
           videoConstraints={videoConstraints}
           onUserMedia={handleUserMedia}
           onUserMediaError={handleUserMediaError}
-          className="w-full h-full object-cover"
+          className="w-full h-full object-cover scale-x-[-1]"
           screenshotFormat="image/jpeg"
         />
       )}

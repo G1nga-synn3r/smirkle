@@ -1,0 +1,6 @@
+{
+  "appId": "com.example.smirkle",
+  "appName": "Smirkle",
+  "webDir": "dist",
+  "bundledWebRuntime": false
+}

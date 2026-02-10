@@ -1,22 +1,124 @@
 /**
- * Authentication utilities for LocalStorage-based user management
+ * Authentication utilities with Firestore network storage
  * Part of the Smirkle User Profile System
+ * 
+ * Features:
+ * - Network-first registration with syncing state
+ * - Firestore user profile storage
+ * - LocalStorage fallback for offline mode
+ * - Unique Player ID generation
  */
 
 import { hashPassword, verifyPassword, hashPasswordSync } from './passwordHash';
+import { db, isFirebaseInitialized } from '../services/firebaseConfig';
+import { 
+  doc, setDoc, getDoc, 
+  collection, query, where, getDocs,
+  serverTimestamp 
+} from 'firebase/firestore';
 
-// Storage keys
+// Storage keys for offline fallback
 const STORAGE_KEYS = {
   CURRENT_USER: 'smirkle_currentUser',
-  USERS_DB: 'smirkle_users_db'
+  USERS_DB: 'smirkle_users_db',
+  SYNC_QUEUE: 'smirkle_sync_queue'
 };
 
+// Collection references
+const USERS_COLLECTION = 'users';
+
 /**
- * Generate a unique user ID
+ * Generate a unique user ID (Player ID)
+ * Used as the primary identifier for Firestore documents
  */
 export function generateUserId() {
-  return 'user_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
+  return 'player_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
 }
+
+/**
+ * Check if Firestore is available
+ */
+function isNetworkAvailable() {
+  return isFirebaseInitialized() && db !== null;
+}
+
+// ============================================
+// FIRESTORE NETWORK OPERATIONS
+// ============================================
+
+/**
+ * Save user profile to Firestore network
+ * @param {string} playerId - Unique player identifier
+ * @param {Object} profileData - User profile data
+ * @returns {Promise<{success: boolean, error?: string}>}
+ */
+async function saveUserToFirestore(playerId, profileData) {
+  if (!isNetworkAvailable()) {
+    return { success: false, error: 'Network not available' };
+  }
+  
+  try {
+    const userDocRef = doc(db, USERS_COLLECTION, playerId);
+    const now = new Date().toISOString();
+    
+    const profilePayload = {
+      playerId,
+      username: profileData.username,
+      email: profileData.email.toLowerCase(),
+      birthdate: profileData.birthdate,
+      createdAt: now,
+      updatedAt: now,
+      lastLogin: now,
+      bio: profileData.bio || '',
+      motto: profileData.motto || '',
+      isNetworkSynced: true,
+      syncStatus: 'synced'
+    };
+    
+    await setDoc(userDocRef, profilePayload);
+    console.log(`[Auth] User ${playerId} saved to Firestore successfully`);
+    return { success: true };
+  } catch (error) {
+    console.error('[Auth] Firestore save error:', error);
+    return { success: false, error: error.message || 'Firestore save failed' };
+  }
+}
+
+/**
+ * Check if username exists in Firestore
+ */
+async function checkUsernameExistsFirestore(username) {
+  if (!isNetworkAvailable()) return false;
+  
+  try {
+    const q = query(collection(db, USERS_COLLECTION), where('username', '==', username.toLowerCase()));
+    const snapshot = await getDocs(q);
+    return !snapshot.empty;
+  } catch (error) {
+    console.error('[Auth] Username check error:', error);
+    return false;
+  }
+}
+
+/**
+ * Check if email exists in Firestore
+ */
+async function checkEmailExistsFirestore(email) {
+  if (!isNetworkAvailable()) return false;
+  
+  try {
+    const q = query(collection(db, USERS_COLLECTION), where('email', '==', email.toLowerCase()));
+    const snapshot = await getDocs(q);
+    return !snapshot.empty;
+  } catch (error) {
+    console.error('[Auth] Email check error:', error);
+    return false;
+  }
+}
+
+// ============================================
+// LOCALSTORAGE FALLBACK OPERATIONS
+// ============================================
 
 /**
  * Get all registered users from LocalStorage
@@ -29,116 +131,153 @@ export function getUsersFromStorage() {
 /**
  * Save users array to LocalStorage
  */
-export function saveUsersToStorage(users) {
+function saveUsersToStorage(users) {
   localStorage.setItem(STORAGE_KEYS.USERS_DB, JSON.stringify(users));
 }
 
 /**
- * Find a user by email
+ * Find a user by email in LocalStorage
  */
-export function findUserByEmail(email) {
+function findUserByEmailStorage(email) {
   const users = getUsersFromStorage();
   return users.find(u => u.email === email.toLowerCase());
 }
 
 /**
- * Find a user by username
+ * Find a user by username in LocalStorage
  */
-export function findUserByUsername(username) {
+function findUserByUsernameStorage(username) {
   const users = getUsersFromStorage();
   return users.find(u => u.username.toLowerCase() === username.toLowerCase());
 }
 
 /**
- * Authenticate user with email and password
- * Returns user profile without password if successful, null otherwise
+ * Add user to LocalStorage (fallback mode)
  */
-export async function authenticateUser(email, password) {
+function addUserToStorage(userWithPassword) {
   const users = getUsersFromStorage();
-  const user = users.find(u => u.email === email.toLowerCase());
-  
-  if (user) {
-    // Check if password is hashed or plain text (for migration)
-    const isHashed = user.password && user.password.length === 64; // SHA-256 hex length
-    
-    let isValid = false;
-    if (isHashed) {
-      // Verify against hashed password
-      isValid = await verifyPassword(password, user.password);
-    } else {
-      // Fallback for legacy plain text passwords (migrate on successful login)
-      isValid = user.password === password;
-      if (isValid) {
-        // Migrate to hashed password
-        const hashedPassword = await hashPassword(password);
-        const updatedUsers = users.map(u => 
-          u.email === email.toLowerCase() ? { ...u, password: hashedPassword } : u
-        );
-        saveUsersToStorage(updatedUsers);
-      }
-    }
-    
-    if (isValid) {
-      // Update last login timestamp
-      const { password: _, ...userWithoutPassword } = user;
-      userWithoutPassword.lastLogin = new Date().toISOString();
-      
-      // Update in storage (without plain password)
-      const updatedUsers = users.map(u => 
-        u.email === email.toLowerCase() ? { ...u, ...userWithoutPassword, password: undefined } : u
-      );
-      saveUsersToStorage(updatedUsers);
-      
-      // Set as current user
-      setCurrentUser(userWithoutPassword);
-      
-      return userWithoutPassword;
-    }
-  }
-  
-  return null;
+  users.push(userWithPassword);
+  saveUsersToStorage(users);
 }
 
 /**
- * Register a new user
+ * Queue data for sync when network becomes available
+ */
+function queueForSync(item) {
+  const queue = JSON.parse(localStorage.getItem(STORAGE_KEYS.SYNC_QUEUE) || '[]');
+  queue.push({ ...item, timestamp: new Date().toISOString() });
+  localStorage.setItem(STORAGE_KEYS.SYNC_QUEUE, JSON.stringify(queue));
+}
+
+// ============================================
+// REGISTRATION WITH NETWORK SYNC
+// ============================================
+
+// Export registration status for UI feedback
+export const RegistrationStatus = {
+  IDLE: 'idle',
+  VALIDATING: 'validating',
+  CHECKING_AVAILABILITY: 'checking_availability',
+  SYNCING: 'syncing',
+  COMPLETE: 'complete',
+  FAILED: 'failed',
+  OFFLINE_FALLBACK: 'offline_fallback'
+};
+
+// Registration state subscriber
+let registrationStateCallback = null;
+export function onRegistrationStateChange(callback) {
+  registrationStateCallback = callback;
+}
+
+function setRegistrationState(state, progress = 0, error = null) {
+  if (registrationStateCallback) {
+    registrationStateCallback({ state, progress, error });
+  }
+}
+
+/**
+ * Register a new user with network-first approach
+ * 
+ * Flow:
+ * 1. Validate inputs locally
+ * 2. Check username/email availability (network if available)
+ * 3. Generate unique Player ID
+ * 4. Save to Firestore network (with syncing state)
+ * 5. Fall back to LocalStorage if network fails
+ * 6. Return user profile only after network confirms (or fallback)
+ * 
+ * @param {Object} userData - Registration data
+ * @param {string} userData.username - Display name
+ * @param {string} userData.email - Email address
+ * @param {string} userData.password - Password
+ * @param {string} userData.birthdate - Birthdate (YYYY-MM-DD)
+ * @param {string} [userData.bio] - Biography (optional)
+ * @param {string} [userData.motto] - Personal motto (optional)
+ * @returns {Promise<{success: boolean, user?: Object, error?: string, offline?: boolean}>}
  */
 export async function registerUser(userData) {
-  const { username, email, password, bio = '', motto = '', birthdate = '' } = userData;
+  const { username, email, password, birthdate, bio = '', motto = '' } = userData;
   
   // Validate required fields
   if (!username || !email || !password) {
-    throw new Error('Username, email, and password are required');
+    return { success: false, error: 'Username, email, and password are required' };
   }
   
   // Validate email format
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(email)) {
-    throw new Error('Invalid email format');
+    return { success: false, error: 'Invalid email format' };
   }
   
-  // Check if username already exists
-  if (findUserByUsername(username)) {
-    throw new Error('Username already taken');
+  // Update UI state
+  setRegistrationState(RegistrationStatus.VALIDATING, 10);
+  
+  // Check availability (prefer network, fallback to storage)
+  const networkAvailable = isNetworkAvailable();
+  
+  setRegistrationState(RegistrationStatus.CHECKING_AVAILABILITY, 25);
+  
+  let usernameExists = false;
+  let emailExists = false;
+  
+  if (networkAvailable) {
+    // Check Firestore
+    usernameExists = await checkUsernameExistsFirestore(username);
+    emailExists = await checkEmailExistsFirestore(email);
+  } else {
+    // Check LocalStorage
+    usernameExists = !!findUserByUsernameStorage(username);
+    emailExists = !!findUserByEmailStorage(email);
   }
   
-  // Check if email already exists
-  if (findUserByEmail(email)) {
-    throw new Error('Email already registered');
+  if (usernameExists) {
+    return { success: false, error: 'Username already taken' };
   }
+  
+  if (emailExists) {
+    return { success: false, error: 'Email already registered' };
+  }
+  
+  // Generate unique Player ID
+  const playerId = generateUserId();
   
   // Hash the password for secure storage
   const hashedPassword = await hashPassword(password);
   
-  // Create new user profile
-  const newUser = {
-    id: generateUserId(),
+  // Create user profile object
+  const newUserProfile = {
+    playerId,
     username,
     email: email.toLowerCase(),
+    birthdate,
     bio,
     motto,
-    birthdate,
     createdAt: new Date().toISOString(),
     lastLogin: new Date().toISOString(),
+    isGuest: false,
+    isNetworkSynced: false,
+    syncStatus: 'pending',
     stats: {
       totalGames: 0,
       totalSmirksDetected: 0,
@@ -149,23 +288,138 @@ export async function registerUser(userData) {
     }
   };
   
-  // Store with hashed password
-  const users = getUsersFromStorage();
-  users.push({ ...newUser, password: hashedPassword });
-  saveUsersToStorage(users);
+  // Attempt network save first
+  if (networkAvailable) {
+    setRegistrationState(RegistrationStatus.SYNCING, 50, 'Saving profile to network...');
+    
+    const firestoreResult = await saveUserToFirestore(playerId, {
+      username,
+      email,
+      birthdate,
+      bio,
+      motto
+    });
+    
+    if (firestoreResult.success) {
+      // Network save successful
+      newUserProfile.isNetworkSynced = true;
+      newUserProfile.syncStatus = 'synced';
+      
+      // Also save to LocalStorage for offline access
+      addUserToStorage({ ...newUserProfile, password: hashedPassword });
+      
+      setRegistrationState(RegistrationStatus.COMPLETE, 100, 'Profile saved successfully!');
+      
+      // Set as current user
+      setCurrentUser(newUserProfile);
+      
+      console.log(`[Auth] Registration complete for ${playerId} (network)`);
+      return { 
+        success: true, 
+        user: newUserProfile,
+        offline: false
+      };
+    } else {
+      // Network failed, fall back to LocalStorage
+      console.warn('[Auth] Firestore save failed, falling back to LocalStorage:', firestoreResult.error);
+      setRegistrationState(RegistrationStatus.OFFLINE_FALLBACK, 75, 'Network unavailable, saving locally...');
+      
+      // Save to LocalStorage
+      addUserToStorage({ ...newUserProfile, password: hashedPassword });
+      
+      // Queue for later sync
+      queueForSync({ type: 'register', playerId, data: newUserProfile });
+      
+      newUserProfile.isNetworkSynced = false;
+      newUserProfile.syncStatus = 'offline_queued';
+      
+      setRegistrationState(RegistrationStatus.COMPLETE, 100, 'Saved offline - will sync when online');
+      
+      setCurrentUser(newUserProfile);
+      
+      return { 
+        success: true, 
+        user: newUserProfile,
+        offline: true,
+        syncQueued: true
+      };
+    }
+  } else {
+    // Network not available, save to LocalStorage
+    setRegistrationState(RegistrationStatus.OFFLINE_FALLBACK, 50, 'Offline mode - saving locally...');
+    
+    addUserToStorage({ ...newUserProfile, password: hashedPassword });
+    
+    newUserProfile.isNetworkSynced = false;
+    newUserProfile.syncStatus = 'offline';
+    
+    setRegistrationState(RegistrationStatus.COMPLETE, 100, 'Saved offline');
+    
+    setCurrentUser(newUserProfile);
+    
+    return { 
+      success: true, 
+      user: newUserProfile,
+      offline: true
+    };
+  }
+}
+
+// ============================================
+// AUTHENTICATION & SESSION MANAGEMENT
+// ============================================
+
+/**
+ * Authenticate user with email and password
+ */
+export async function authenticateUser(email, password) {
+  // Try LocalStorage first (works offline)
+  const user = findUserByEmailStorage(email);
   
-  // Auto-login
-  const { password: _, ...userWithoutPassword } = newUser;
-  setCurrentUser(userWithoutPassword);
+  if (user) {
+    // Check password
+    const isHashed = user.password && user.password.length === 64;
+    let isValid = false;
+    
+    if (isHashed) {
+      isValid = await verifyPassword(password, user.password);
+    } else {
+      isValid = user.password === password;
+      if (isValid) {
+        const hashedPassword = await hashPassword(password);
+        const users = getUsersFromStorage();
+        const updatedUsers = users.map(u => 
+          u.email === email.toLowerCase() ? { ...u, password: hashedPassword } : u
+        );
+        saveUsersToStorage(updatedUsers);
+      }
+    }
+    
+    if (isValid) {
+      // Update last login
+      const { password: _, ...userWithoutPassword } = user;
+      userWithoutPassword.lastLogin = new Date().toISOString();
+      
+      // Update in storage
+      const users = getUsersFromStorage();
+      const updatedUsers = users.map(u => 
+        u.email === email.toLowerCase() ? { ...u, ...userWithoutPassword, password: undefined } : u
+      );
+      saveUsersToStorage(updatedUsers);
+      
+      setCurrentUser(userWithoutPassword);
+      
+      return userWithoutPassword;
+    }
+  }
   
-  return userWithoutPassword;
+  return null;
 }
 
 /**
- * Set current logged-in user
+ * Set current logged-in user (local session)
  */
 export function setCurrentUser(user) {
-  // Remove sensitive data before storing
   const safeUser = { ...user };
   delete safeUser.password;
   localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(safeUser));
@@ -195,6 +449,25 @@ export function isGuest() {
 }
 
 /**
+ * Check if user profile is synced to network
+ */
+export function isNetworkSynced() {
+  const user = getCurrentUser();
+  return user?.isNetworkSynced === true;
+}
+
+/**
+ * Get current sync status
+ */
+export function getSyncStatus() {
+  const user = getCurrentUser();
+  return {
+    isSynced: user?.isNetworkSynced || false,
+    status: user?.syncStatus || 'unknown'
+  };
+}
+
+/**
  * Logout current user
  */
 export function logoutUser() {
@@ -204,49 +477,69 @@ export function logoutUser() {
 /**
  * Update current user profile
  */
-export function updateUserProfile(updates) {
+export async function updateUserProfile(updates) {
   const currentUser = getCurrentUser();
   if (!currentUser) {
-    throw new Error('No user logged in');
+    return { success: false, error: 'No user logged in' };
   }
   
   const users = getUsersFromStorage();
-  const userIndex = users.findIndex(u => u.id === currentUser.id);
+  const userIndex = users.findIndex(u => u.playerId === currentUser.playerId);
   
   if (userIndex === -1) {
-    throw new Error('User not found');
+    return { success: false, error: 'User not found' };
   }
   
-  // Update user data
+  // Update local storage
   const updatedUser = {
     ...users[userIndex],
     ...updates,
-    id: currentUser.id, // Prevent ID changes
-    email: currentUser.email // Prevent email changes
+    playerId: currentUser.playerId,
+    email: currentUser.email,
+    updatedAt: new Date().toISOString()
   };
   
-  // Remove password if present in updates
   delete updatedUser.password;
   
-  users[userIndex] = { ...users[userIndex], ...updatedUser };
+  users[userIndex] = updatedUser;
   saveUsersToStorage(users);
   
-  // Update current user session
+  // Try network update
+  if (isNetworkAvailable() && currentUser.isNetworkSynced) {
+    try {
+      const userDocRef = doc(db, USERS_COLLECTION, currentUser.playerId);
+      await setDoc(userDocRef, {
+        ...updatedUser,
+        syncStatus: 'updated',
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+    } catch (error) {
+      console.error('[Auth] Profile update to Firestore failed:', error);
+      queueForSync({ type: 'update', playerId: currentUser.playerId, data: updatedUser });
+    }
+  }
+  
   setCurrentUser(updatedUser);
   
-  return updatedUser;
+  return { success: true, user: updatedUser };
 }
 
 /**
- * Check username availability
+ * Check username availability (checks both network and storage)
  */
-export function isUsernameAvailable(username) {
-  return !findUserByUsername(username);
+export async function isUsernameAvailable(username) {
+  if (isNetworkAvailable()) {
+    return !(await checkUsernameExistsFirestore(username));
+  }
+  return !findUserByUsernameStorage(username);
 }
 
 /**
- * Check email availability
+ * Check email availability (checks both network and storage)
  */
-export function isEmailAvailable(email) {
-  return !findUserByEmail(email);
+export async function isEmailAvailable(email) {
+  if (isNetworkAvailable()) {
+    return !(await checkEmailExistsFirestore(email));
+  }
+  return !findUserByEmailStorage(email);
 }

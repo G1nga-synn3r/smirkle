@@ -1,4 +1,4 @@
-import { Home, Trophy, User, Upload } from 'lucide-react';
+import { Home, Trophy, User, Upload, Users, Settings } from 'lucide-react';
 
 /**
  * Bottom Navigation Bar Component
@@ -25,7 +25,9 @@ export default function Navbar({ activeTab, setActiveTab, user }) {
   const navItems = [
     { id: 'game', label: 'Home', icon: Home },
     { id: 'leaderboard', label: 'Trophy', icon: Trophy },
+    { id: 'social', label: 'Friends', icon: Users },
     { id: 'submit', label: 'Upload', icon: Upload },
+    { id: 'settings', label: 'Settings', icon: Settings },
     { id: 'profile', label: 'User', icon: User }
   ];
 

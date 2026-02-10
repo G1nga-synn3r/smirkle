@@ -19,7 +19,21 @@
  */
 
 import { initializeApp } from 'firebase/app';
-import { getFirestore, enableMultiTabIndexedDbPersistence, writeBatch } from 'firebase/firestore';
+import { 
+  getFirestore, 
+  enableMultiTabIndexedDbPersistence, 
+  writeBatch,
+  doc,
+  setDoc,
+  getDoc,
+  collection,
+  query,
+  where,
+  getDocs,
+  serverTimestamp,
+  updateDoc,
+  deleteDoc
+} from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import { getStorage } from 'firebase/storage';
 
@@ -94,7 +108,24 @@ if (isFirebaseConfigValid) {
 }
 
 // Export services (will be null if initialization failed)
-export { db, auth, storage, writeBatch, app };
+export { 
+  db, 
+  auth, 
+  storage, 
+  writeBatch, 
+  app,
+  // Firestore functions
+  doc,
+  setDoc,
+  getDoc,
+  collection,
+  query,
+  where,
+  getDocs,
+  serverTimestamp,
+  updateDoc,
+  deleteDoc
+};
 
 // Export individual services for convenience
 // (Already exported via named exports above)

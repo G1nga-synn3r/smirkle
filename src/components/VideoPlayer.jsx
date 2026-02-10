@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { Maximize, Minimize } from 'lucide-react';
 import { VIDEO_DATABASE } from '../data/videoLibrary.js';
 
 // Module-level tracking for recently played videos (last 3 rounds)
@@ -62,18 +63,24 @@ function getNextVideo(excludeIds = []) {
  * @param {Object} props.currentVideo - Currently selected video object
  * @param {Function} props.onVideoChange - Callback when video changes
  * @param {Function} props.onResetHappiness - Callback to reset Face-API happiness score
+ * @param {number} props.survivalTime - Current survival time for score display
+ * @param {React.Ref} props.cameraRef - Ref to camera canvas for fullscreen display
  */
 function VideoPlayer({ 
   isSmiling, 
   videoRef: propVideoRef, 
   currentVideo, 
   onVideoChange,
-  onResetHappiness 
+  onResetHappiness,
+  survivalTime = 0,
+  cameraRef
 }) {
   const localVideoRef = useRef(null);
   const videoElement = propVideoRef || localVideoRef;
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
   const [fadeState, setFadeState] = useState('idle');
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const fullscreenContainerRef = useRef(null);
   
   // Store handleCanPlayThrough in a ref to avoid scope issues
   const handleCanPlayThroughRef = useRef(null);
@@ -151,6 +158,70 @@ function VideoPlayer({
     }
   }, [isSmiling]);
 
+  // Handle fullscreen button click
+  const handleFullscreenClick = useCallback(async () => {
+    const container = fullscreenContainerRef.current;
+    if (!container) return;
+
+    try {
+      if (!isFullscreen) {
+        // Enter fullscreen
+        if (container.requestFullscreen) {
+          await container.requestFullscreen();
+        } else if (container.webkitRequestFullscreen) {
+          await container.webkitRequestFullscreen();
+        } else if (container.mozRequestFullScreen) {
+          await container.mozRequestFullScreen();
+        } else if (container.msRequestFullscreen) {
+          await container.msRequestFullscreen();
+        }
+        setIsFullscreen(true);
+      } else {
+        // Exit fullscreen
+        if (document.fullscreenElement || document.webkitFullscreenElement || 
+            document.mozFullScreenElement || document.msFullscreenElement) {
+          if (document.exitFullscreen) {
+            await document.exitFullscreen();
+          } else if (document.webkitExitFullscreen) {
+            await document.webkitExitFullscreen();
+          } else if (document.mozCancelFullScreen) {
+            await document.mozCancelFullScreen();
+          } else if (document.msExitFullscreen) {
+            await document.msExitFullscreen();
+          }
+        }
+        setIsFullscreen(false);
+      }
+    } catch (error) {
+      console.error('Fullscreen error:', error);
+    }
+  }, [isFullscreen]);
+
+  // Listen for fullscreen changes (in case exited by ESC key)
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      const currentFullscreen = !!(
+        document.fullscreenElement || 
+        document.webkitFullscreenElement || 
+        document.mozFullScreenElement || 
+        document.msFullscreenElement
+      );
+      setIsFullscreen(currentFullscreen);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+    document.addEventListener('msfullscreenchange', handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('msfullscreenchange', handleFullscreenChange);
+    };
+  }, []);
+
   // Determine fade classes based on fade state
   const getFadeClass = () => {
     switch (fadeState) {
@@ -166,8 +237,63 @@ function VideoPlayer({
   // Determine if video should display (for fade-in after loaded)
   const shouldShowVideo = isVideoLoaded || fadeState === 'idle';
 
+  // Fullscreen layout
+  if (isFullscreen && cameraRef?.current) {
+    return (
+      <div 
+        ref={fullscreenContainerRef}
+        className="fixed inset-0 bg-black z-40 flex items-center justify-center"
+      >
+        {/* Main video fullscreen */}
+        <div className="relative w-full h-full">
+          <video
+            ref={videoElement}
+            className={`w-full h-full object-cover ${getFadeClass()}`}
+            autoPlay
+            playsInline
+            muted={false}
+            loop={false}
+          />
+
+          {/* Score overlay - bottom center */}
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-black/70 backdrop-blur-sm px-8 py-4 rounded-2xl border border-white/20 shadow-2xl z-30">
+            <p className="text-gray-300 text-sm font-medium">Score</p>
+            <p className="text-4xl font-bold text-transparent bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text">
+              {Math.floor(survivalTime * 100)}
+            </p>
+          </div>
+
+          {/* Camera preview - bottom right corner */}
+          <div className="absolute bottom-6 right-6 w-40 h-40 rounded-2xl overflow-hidden bg-black/80 border-2 border-cyan-400 shadow-2xl z-20">
+            <canvas
+              ref={cameraRef}
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 pointer-events-none border-2 border-cyan-400/50 rounded-2xl" />
+          </div>
+
+          {/* Exit fullscreen button - top right */}
+          <button
+            onClick={handleFullscreenClick}
+            className="absolute top-6 right-6 p-3 bg-gradient-to-r from-cyan-500 to-purple-500 rounded-full text-white shadow-lg hover:scale-110 transition-transform z-30"
+            title="Exit Fullscreen"
+          >
+            <Minimize size={24} />
+          </button>
+
+          {/* Loading placeholder when no video */}
+          {!currentVideo && (
+            <div className="absolute inset-0 flex items-center justify-center bg-gray-900/80">
+              <p className="text-gray-400">Loading video...</p>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="relative w-full h-full overflow-hidden">
+    <div ref={fullscreenContainerRef} className="relative w-full h-full overflow-hidden">
       {/* Video element with fade effect */}
       <video
         ref={videoElement}
@@ -177,6 +303,20 @@ function VideoPlayer({
         muted={false}
         loop={false}
       />
+      
+      {/* Fullscreen button - top right */}
+      <button
+        onClick={handleFullscreenClick}
+        className="absolute top-4 right-4 p-3 bg-gradient-to-r from-cyan-500 to-purple-500 rounded-full text-white shadow-lg hover:scale-110 transition-transform z-20"
+        title="Toggle Fullscreen"
+      >
+        <Maximize size={20} />
+      </button>
+
+      {/* Score display in normal mode */}
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-sm px-4 py-2 rounded-lg border border-white/20 z-10">
+        <p className="text-gray-300 text-xs font-medium">Score: {Math.floor(survivalTime * 100)}</p>
+      </div>
       
       {/* Loading placeholder when no video */}
       {!currentVideo && (

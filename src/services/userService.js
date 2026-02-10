@@ -12,7 +12,11 @@ import {
   arrayUnion,
   arrayRemove,
   serverTimestamp,
-  getDoc
+  getDoc,
+  collection,
+  query,
+  where,
+  getDocs
 } from 'firebase/firestore';
 import { db } from './firebaseConfig.js';
 
@@ -21,6 +25,7 @@ const USERS_COLLECTION = 'users';
 
 // Default stats for new users
 const DEFAULT_USER_STATS = {
+  lifetime_score: 0,
   total_games: 0,
   total_smirks_detected: 0,
   total_smiles_detected: 0,
@@ -200,11 +205,68 @@ export async function getFriendsWithProfiles(userId) {
   return Array.from(profiles.values());
 }
 
+/**
+ * Search for users by username or name (partial match)
+ * Case-insensitive search that queries the Firestore 'users' collection
+ * 
+ * @param {string} searchQuery - The search term (username, name, or part of either)
+ * @param {string} [currentUserId] - Optional: exclude current user from results
+ * @returns {Promise<Object[]>} Array of user profiles matching the search
+ */
+export async function searchUsers(searchQuery, currentUserId = null) {
+  if (!searchQuery || searchQuery.trim().length === 0) {
+    return [];
+  }
+
+  try {
+    const usersRef = collection(db, USERS_COLLECTION);
+    const usersSnapshot = await getDocs(usersRef);
+    
+    const searchLower = searchQuery.toLowerCase();
+    const results = [];
+
+    usersSnapshot.forEach(doc => {
+      // Skip the current user if provided
+      if (currentUserId && doc.id === currentUserId) {
+        return;
+      }
+
+      const userData = doc.data();
+      const username = (userData.username || '').toLowerCase();
+      const displayName = (userData.display_name || '').toLowerCase();
+      const bio = (userData.bio || '').toLowerCase();
+
+      // Match against username, display name, or bio
+      if (
+        username.includes(searchLower) ||
+        displayName.includes(searchLower) ||
+        bio.includes(searchLower)
+      ) {
+        results.push({
+          id: doc.id,
+          username: userData.username,
+          display_name: userData.display_name || userData.username,
+          profile_picture_url: userData.profile_picture_url || '',
+          bio: userData.bio || '',
+          stats: userData.stats || {},
+          created_at: userData.created_at
+        });
+      }
+    });
+
+    return results;
+  } catch (error) {
+    console.error('Error searching users:', error);
+    return [];
+  }
+}
+
 export default {
   createOrUpdateUser,
   toggleFriend,
   getUserProfile,
   getUserProfiles,
   isFriend,
-  getFriendsWithProfiles
+  getFriendsWithProfiles,
+  searchUsers
 };
