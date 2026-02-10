@@ -465,6 +465,8 @@ function App() {
                         currentVideo={currentVideo}
                         survivalTime={survivalTime}
                         cameraRef={cameraCanvasRef}
+                        isFullscreenActive={isVideoFullscreen}
+                        onToggleFullscreen={() => setIsVideoFullscreen(!isVideoFullscreen)}
                       />
                       {isSmiling && (
                         <div className="absolute inset-0 bg-gradient-to-r from-purple-600/90 to-pink-600/90 backdrop-blur-md flex items-center justify-center">

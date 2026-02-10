@@ -73,13 +73,15 @@ function VideoPlayer({
   onVideoChange,
   onResetHappiness,
   survivalTime = 0,
-  cameraRef
+  cameraRef,
+  isFullscreenActive = false,
+  onToggleFullscreen
 }) {
   const localVideoRef = useRef(null);
   const videoElement = propVideoRef || localVideoRef;
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
   const [fadeState, setFadeState] = useState('idle');
-  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(isFullscreenActive);
   const fullscreenContainerRef = useRef(null);
   
   // Store handleCanPlayThrough in a ref to avoid scope issues
@@ -148,15 +150,32 @@ function VideoPlayer({
   // Handle smile detection pause with haptic feedback
   useEffect(() => {
     const video = videoElement.current;
-    if (video && isSmiling) {
-      video.pause();
-      // Trigger haptic feedback on player failure (smiling)
-      if (window.navigator && window.navigator.vibrate) {
-        window.navigator.vibrate(200);
-        console.log('[Haptic] Vibration triggered: player failed (smiling)');
+    if (video) {
+      if (isSmiling) {
+        video.pause();
+        console.log('[Video] Paused: player is smiling');
+        // Trigger haptic feedback on player failure (smiling)
+        if (window.navigator && window.navigator.vibrate) {
+          window.navigator.vibrate([100, 50, 100]); // Strong vibration pattern on fail
+          console.log('[Haptic] Vibration triggered: player failed (smiling)');
+        }
+      } else {
+        // Resume video if not smiling and video is loaded
+        if (video.paused && isVideoLoaded) {
+          video.play().catch(err => console.warn('[Video] Auto-play failed (browser policy):', err.message));
+          console.log('[Video] Playing: conditions met (not smiling)');
+        }
       }
     }
-  }, [isSmiling]);
+  }, [isSmiling, isVideoLoaded]);
+
+  // Sync external fullscreen state with internal state
+  useEffect(() => {
+    if (isFullscreenActive && !isFullscreen) {
+      console.log('[Video] Auto-entering fullscreen mode');
+      handleFullscreenClick();
+    }
+  }, [isFullscreenActive, isFullscreen, handleFullscreenClick]);
 
   // Handle fullscreen button click
   const handleFullscreenClick = useCallback(async () => {

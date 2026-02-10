@@ -1,4 +1,4 @@
-aimport React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import * as faceapi from 'face-api.js';
 import { useHapticFeedback } from '../hooks/useHapticFeedback';
 import { SMILE_THRESHOLD, MODEL_URL } from '../utils/constants';
@@ -187,6 +187,18 @@ function FaceTracker({
           await faceapi.nets.tinyFaceDetector.loadFromUri(CDN_MODEL_URL);
           console.log('[FaceTracker] TinyFaceDetector loaded from CDN successfully');
           currentModelUrl = CDN_MODEL_URL; // Use CDN for remaining models
+        }
+        
+        // Try loading FaceLandmark68Net (required for .withFaceLandmarks())
+        try {
+          console.log('[FaceTracker] Loading FaceLandmark68Net from:', `${currentModelUrl}/face_landmark_68_model-weights_manifest.json`);
+          await faceapi.nets.faceLandmark68Net.loadFromUri(currentModelUrl);
+          console.log('[FaceTracker] FaceLandmark68Net loaded successfully');
+        } catch (landmarkError) {
+          console.warn('[FaceTracker] FaceLandmark68Net failed, trying CDN...', landmarkError.message);
+          console.log('[FaceTracker] Loading FaceLandmark68Net from CDN:', `${CDN_MODEL_URL}/face_landmark_68_model-weights_manifest.json`);
+          await faceapi.nets.faceLandmark68Net.loadFromUri(CDN_MODEL_URL);
+          console.log('[FaceTracker] FaceLandmark68Net loaded from CDN successfully');
         }
         
         // Try loading FaceExpressionNet
