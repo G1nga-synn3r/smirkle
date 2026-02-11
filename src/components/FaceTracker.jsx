@@ -49,6 +49,7 @@ function FaceTracker({
   onCalibrationComplete,
   onFaceCenteredUpdate,
   onLowLightWarning,
+  onEyesOpenChange,
   isCalibrating = false,
   calibrationComplete = false,
   currentVideo = null,
@@ -63,6 +64,7 @@ function FaceTracker({
   const [isFaceDetected, setIsFaceDetected] = useState(false);
   const [isFaceCentered, setIsFaceCentered] = useState(true);
   const [isLowLight, setIsLowLight] = useState(false);
+  const [isEyesOpen, setIsEyesOpen] = useState(true);
   const streamRef = useRef(null);
   const animationRef = useRef(null);
   
@@ -593,6 +595,36 @@ function FaceTracker({
           
           // Update the ref for next iteration
           isSmirkingRef.current = isSmirking;
+
+          // ===== EYE OPENNESS DETECTION (Eye Aspect Ratio) =====
+          try {
+            const landmarks = detection.landmarks;
+            const leftEye = landmarks.getLeftEye();
+            const rightEye = landmarks.getRightEye();
+
+            const ear = (eye) => {
+              if (!eye || eye.length < 6) return 0;
+              const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+              // eye points: p1..p6
+              const p1 = eye[0], p2 = eye[1], p3 = eye[2], p4 = eye[3], p5 = eye[4], p6 = eye[5];
+              const vertical = (dist(p2, p6) + dist(p3, p5)) / 2.0;
+              const horizontal = dist(p1, p4) || 1.0;
+              return vertical / horizontal;
+            };
+
+            const leftEAR = ear(leftEye);
+            const rightEAR = ear(rightEye);
+            const EYE_ASPECT_THRESHOLD = 0.22; // conservative default
+            const eyesOpenNow = (leftEAR > EYE_ASPECT_THRESHOLD) || (rightEAR > EYE_ASPECT_THRESHOLD);
+
+            if (eyesOpenNow !== isEyesOpen) {
+              setIsEyesOpen(eyesOpenNow);
+              if (onEyesOpenChange) onEyesOpenChange(eyesOpenNow);
+            }
+          } catch (e) {
+            // Non-fatal: eye landmarks may not be available on some detections
+            // Do not interrupt main detection flow
+          }
           
           // Only update state and trigger callbacks when state changes
           const smirkStateChanged = isSmirking !== lastSmirkStateRef.current;
@@ -712,6 +744,12 @@ function FaceTracker({
           // Update isFaceDetected state when no face is detected
           setIsFaceDetected(false);
           setIsFaceCentered(true);
+
+          // When no face is detected, mark eyes as closed/not present
+          if (isEyesOpen) {
+            setIsEyesOpen(false);
+            if (onEyesOpenChange) onEyesOpenChange(false);
+          }
           
           // Callback to parent
           if (onFaceCenteredUpdate) {

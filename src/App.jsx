@@ -66,6 +66,7 @@ function App() {
   const [isFaceDetected, setIsFaceDetected] = useState(true);
   const [isFaceCentered, setIsFaceCentered] = useState(true);
   const [isLowLight, setIsLowLight] = useState(false);
+  const [isEyesOpen, setIsEyesOpen] = useState(false);
   
   // Game Ready state - timer only starts when all prerequisites are met
   const isGameReady = isCameraReady && 
@@ -292,7 +293,7 @@ function App() {
   // Auto-trigger fullscreen when game is ready and conditions met
   // This ensures video plays in full screen with camera corner immediately
   useEffect(() => {
-    if (isGameReady && !isSmiling && currentView === 'game' && !isVideoFullscreen) {
+    if (isGameReady && isEyesOpen && !isSmiling && currentView === 'game' && !isVideoFullscreen) {
       console.log('[Game] Auto-triggering fullscreen video...');
       setIsVideoFullscreen(true);
     } else if ((gameOver || isSmiling) && isVideoFullscreen) {
@@ -461,6 +462,7 @@ function App() {
                     <div className="rounded-3xl overflow-hidden bg-white/10 backdrop-blur-xl border border-white/20 shadow-[0_0_30px_rgba(139,92,246,0.3)]">
                       <VideoPlayer 
                         isSmiling={isSmiling} 
+                        isEyesOpen={isEyesOpen}
                         videoRef={videoRef} 
                         currentVideo={currentVideo}
                         survivalTime={survivalTime}
@@ -505,6 +507,7 @@ function App() {
                         onCalibrationComplete={handleCalibrationComplete}
                         onFaceCenteredUpdate={handleFaceCenteredUpdate}
                         onLowLightWarning={handleLowLightWarning}
+                        onEyesOpenChange={setIsEyesOpen}
                         isCalibrating={isCalibrating}
                         calibrationComplete={calibrationComplete}
                         cameraCanvasRef={cameraCanvasRef}

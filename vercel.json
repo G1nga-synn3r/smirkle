@@ -20,7 +20,7 @@
       ]
     },
     {
-      "source": "/models/:file(.json)",
+      "source": "/models/:file.json",
       "headers": [
         {
           "key": "Cache-Control",

@@ -68,6 +68,7 @@ function getNextVideo(excludeIds = []) {
  */
 function VideoPlayer({ 
   isSmiling, 
+  isEyesOpen = false,
   videoRef: propVideoRef, 
   currentVideo, 
   onVideoChange,
@@ -151,23 +152,26 @@ function VideoPlayer({
   useEffect(() => {
     const video = videoElement.current;
     if (video) {
-      if (isSmiling) {
-        video.pause();
-        console.log('[Video] Paused: player is smiling');
+      if (isSmiling || !isEyesOpen) {
+        // Pause whenever the user is smiling OR eyes are closed/not detected
+        if (!video.paused) {
+          video.pause();
+          console.log('[Video] Paused: smiling or eyes closed');
+        }
         // Trigger haptic feedback on player failure (smiling)
-        if (window.navigator && window.navigator.vibrate) {
+        if (isSmiling && window.navigator && window.navigator.vibrate) {
           window.navigator.vibrate([100, 50, 100]); // Strong vibration pattern on fail
           console.log('[Haptic] Vibration triggered: player failed (smiling)');
         }
       } else {
-        // Resume video if not smiling and video is loaded
+        // Resume video only if eyes open, not smiling, and video is loaded
         if (video.paused && isVideoLoaded) {
           video.play().catch(err => console.warn('[Video] Auto-play failed (browser policy):', err.message));
-          console.log('[Video] Playing: conditions met (not smiling)');
+          console.log('[Video] Playing: conditions met (eyes open & not smiling)');
         }
       }
     }
-  }, [isSmiling, isVideoLoaded]);
+  }, [isSmiling, isEyesOpen, isVideoLoaded]);
 
   // Sync external fullscreen state with internal state
   useEffect(() => {
