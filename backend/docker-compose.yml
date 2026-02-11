@@ -1,0 +1,45 @@
+# Smirkle Backend Docker Compose
+# Development and production configuration
+
+services:
+  smirkle-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: smirkle-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DEBUG=false
+      - SMIRK_THRESHOLD=0.3
+      - DEEPFACE_MODEL=VGG-Face
+      - DEEPFACE_DETECTOR=opencv
+      - CORS_ORIGINS=http://localhost:5173,http://localhost:3000
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health')"]
+      interval: 30s
+      timeout: 10s
+      start_period: 10s
+      retries: 3
+    volumes:
+      # Mount models directory for model caching
+      - ./models:/app/models:ro
+      # Optional: mount for development
+      # - ./app:/app:ro
+
+  # Optional: Redis for session storage (production)
+  # redis:
+  #   image: redis:7-alpine
+  #   ports:
+  #     - "6379:6379"
+  #   volumes:
+  #     - redis_data:/data
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "ping"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+
+# volumes:
+#   redis_data:

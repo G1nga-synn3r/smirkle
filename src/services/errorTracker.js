@@ -3,6 +3,7 @@
  * 
  * Provides structured error logging for debugging face detection issues.
  * Captures failure reasons, metadata, and detection context for real-time debugging.
+ * Updated to support both local face-api.js and backend API modes.
  */
 
 // Error categories for face detection
@@ -14,7 +15,9 @@ export const ErrorCategory = {
   LOW_CONFIDENCE: 'LOW_CONFIDENCE',
   CALIBRATION: 'CALIBRATION',
   BRIGHTNESS: 'BRIGHTNESS',
-  PERMISSION: 'PERMISSION'
+  PERMISSION: 'PERMISSION',
+  BACKEND_CONNECTION: 'BACKEND_CONNECTION',  // New category for backend API
+  NETWORK: 'NETWORK'
 };
 
 // Failure reasons for each category
@@ -51,17 +54,32 @@ export const FailureReason = {
   CALIBRATION_INTERRUPTED: 'CALIBRATION_INTERRUPTED',
   
   // Brightness
-  LOW_LIGHT: 'LOW_LIGHT'
+  LOW_LIGHT: 'LOW_LIGHT',
+  
+  // Backend connection
+  SESSION_CREATION_FAILED: 'SESSION_CREATION_FAILED',
+  WEBSOCKET_ERROR: 'WEBSOCKET_ERROR',
+  REST_API_ERROR: 'REST_API_ERROR',
+  MAX_RECONNECT_ATTEMPTS: 'MAX_RECONNECT_ATTEMPTS',
+  BACKEND_UNAVAILABLE: 'BACKEND_UNAVAILABLE',
+  TIMEOUT: 'TIMEOUT',
+  
+  // Network
+  OFFLINE: 'OFFLINE',
+  SLOW_CONNECTION: 'SLOW_CONNECTION'
 };
 
 // Session context for error tracking
 let sessionContext = {
   sessionId: null,
+  backendSessionId: null,
   startTime: null,
   userAgent: null,
   isMobile: false,
   videoWidth: 0,
-  videoHeight: 0
+  videoHeight: 0,
+  backendUrl: null,
+  mode: 'backend'  // 'local' or 'backend'
 };
 
 /**
@@ -71,19 +89,24 @@ let sessionContext = {
 export function initErrorTracker(context = {}) {
   sessionContext = {
     sessionId: generateSessionId(),
+    backendSessionId: null,
     startTime: new Date().toISOString(),
     userAgent: navigator.userAgent,
     isMobile: /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || 
               (window.innerWidth <= 428 && window.innerHeight <= 926),
     videoWidth: context.videoWidth || 0,
     videoHeight: context.videoHeight || 0,
+    backendUrl: context.backendUrl || null,
+    mode: 'backend',  // Using backend API
     ...context
   };
   
   console.log('[ErrorTracker] Session initialized:', {
     sessionId: sessionContext.sessionId,
+    backendSessionId: sessionContext.backendSessionId,
     startTime: sessionContext.startTime,
-    isMobile: sessionContext.isMobile
+    isMobile: sessionContext.isMobile,
+    mode: sessionContext.mode
   });
   
   return sessionContext;
@@ -113,31 +136,29 @@ export function trackError(category, reason, metadata = {}) {
   const errorEntry = {
     timestamp: new Date().toISOString(),
     sessionId: sessionContext.sessionId,
+    backendSessionId: sessionContext.backendSessionId,
     category,
     reason,
     metadata: {
       ...sessionContext,
       ...metadata,
-      // Include detection-specific metadata
       detectionAttempts: (metadata.detectionAttempts || 0) + 1,
       lastDetectionTime: Date.now()
     },
-    // Include any error message if provided
     errorMessage: metadata.error?.message || null,
     errorStack: metadata.error?.stack || null
   };
   
-  // Log to console in a structured format
   console.group(`[FaceDetection Error] ${category}/${reason}`);
   console.log('Timestamp:', errorEntry.timestamp);
   console.log('Session:', errorEntry.sessionId);
+  console.log('Backend Session:', errorEntry.backendSessionId);
   console.log('Metadata:', errorEntry.metadata);
   if (errorEntry.errorMessage) {
     console.log('Error:', errorEntry.errorMessage);
   }
   console.groupEnd();
   
-  // Store error in session storage for persistence across reloads
   storeError(errorEntry);
   
   return errorEntry;
@@ -151,6 +172,7 @@ export function trackDetectionSuccess(data) {
   const entry = {
     timestamp: new Date().toISOString(),
     sessionId: sessionContext.sessionId,
+    backendSessionId: sessionContext.backendSessionId,
     type: 'DETECTION_SUCCESS',
     data: {
       ...sessionContext,
@@ -161,9 +183,10 @@ export function trackDetectionSuccess(data) {
   
   console.log('[FaceDetection Success]', {
     timestamp: entry.timestamp,
+    processingTime: data.processingTime,
     probability: data.probability,
-    faceCentered: data.isFaceCentered,
-    consecutiveDetections: data.consecutiveCount
+    consecutiveDetections: data.consecutiveCount,
+    mode: 'backend'
   });
   
   return entry;
@@ -178,6 +201,7 @@ export function trackCalibrationEvent(event, data) {
   const entry = {
     timestamp: new Date().toISOString(),
     sessionId: sessionContext.sessionId,
+    backendSessionId: sessionContext.backendSessionId,
     type: 'CALIBRATION_EVENT',
     event,
     data: {
@@ -192,6 +216,36 @@ export function trackCalibrationEvent(event, data) {
 }
 
 /**
+ * Track backend connection events (NEW)
+ * @param {Object} data - Connection data
+ */
+export function trackBackendConnection(data) {
+  const entry = {
+    timestamp: new Date().toISOString(),
+    sessionId: sessionContext.sessionId,
+    backendSessionId: sessionContext.backendSessionId,
+    type: 'BACKEND_CONNECTION',
+    data: {
+      ...sessionContext,
+      ...data,
+      connectionTime: Date.now()
+    }
+  };
+  
+  // Update backend session ID if available
+  if (data.sessionId) {
+    sessionContext.backendSessionId = data.sessionId;
+  }
+  
+  console.log(`[Backend ${data.state}]`, {
+    sessionId: data.sessionId,
+    error: data.error
+  });
+  
+  return entry;
+}
+
+/**
  * Store error in session storage for persistence
  */
 function storeError(errorEntry) {
@@ -199,7 +253,6 @@ function storeError(errorEntry) {
     const stored = sessionStorage.getItem('faceDetectionErrors');
     const errors = stored ? JSON.parse(stored) : [];
     
-    // Keep only the last 50 errors
     errors.push(errorEntry);
     if (errors.length > 50) {
       errors.shift();
@@ -253,6 +306,7 @@ export function exportErrors() {
 
 /**
  * Convenience function to track model loading errors
+ * @deprecated - Using backend API now
  */
 export function trackModelError(error, context = {}) {
   let reason = FailureReason.UNKNOWN_ERROR;
@@ -343,5 +397,30 @@ export function trackBrightnessWarning(brightness, threshold) {
   return trackError(ErrorCategory.BRIGHTNESS, FailureReason.LOW_LIGHT, {
     brightness,
     threshold
+  });
+}
+
+/**
+ * Convenience function to track detection errors from backend
+ * @param {Error} error - Error object
+ * @param {Object} context - Additional context
+ */
+export function trackDetectionError(error, context = {}) {
+  let reason = FailureReason.DETECTION_FAILED;
+  let category = ErrorCategory.FACE_DETECTION;
+  
+  if (context.phase === 'initialization') {
+    reason = FailureReason.NETWORK_ERROR;
+    category = ErrorCategory.BACKEND_CONNECTION;
+  } else if (context.noFaceDetected) {
+    reason = FailureReason.NO_FACE_IN_FRAME;
+    category = ErrorCategory.NO_FACE_DETECTED;
+  }
+  
+  return trackError(category, reason, {
+    ...context,
+    error,
+    mode: 'backend',
+    backendUrl: sessionContext.backendUrl
   });
 }

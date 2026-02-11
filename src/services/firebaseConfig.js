@@ -9,6 +9,7 @@
  *   VITE_FIREBASE_STORAGE_BUCKET
  *   VITE_FIREBASE_MESSAGING_SENDER_ID
  *   VITE_FIREBASE_APP_ID
+ *   VITE_FIREBASE_MEASUREMENT_ID (optional, for analytics)
  * 
  * To get these values:
  * 1. Go to Firebase Console: https://console.firebase.google.com/
@@ -18,7 +19,8 @@
  * 5. Copy the firebaseConfig object values
  */
 
-import { initializeApp } from 'firebase/app';
+import { initializeApp, getApps } from 'firebase/app';
+import { getAnalytics, isSupported } from 'firebase/analytics';
 import { 
   getFirestore, 
   enableMultiTabIndexedDbPersistence, 
@@ -44,7 +46,8 @@ const firebaseConfig = {
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
   storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
 // Validate that all required config values are present
@@ -68,6 +71,7 @@ if (missingEnvVars.length > 0) {
 
 // Initialize Firebase only if all required environment variables are present
 let app = null;
+let analytics = null;
 let db = null;
 let auth = null;
 let storage = null;
@@ -76,7 +80,26 @@ const isFirebaseConfigValid = missingEnvVars.length === 0;
 
 if (isFirebaseConfigValid) {
   try {
-    app = initializeApp(firebaseConfig);
+    // Avoid double initialization
+    if (getApps().length === 0) {
+      app = initializeApp(firebaseConfig);
+    } else {
+      app = getApps()[0];
+    }
+    
+    // Initialize Analytics if measurementId is present
+    if (import.meta.env.VITE_FIREBASE_MEASUREMENT_ID) {
+      isSupported().then((supported) => {
+        if (supported) {
+          analytics = getAnalytics(app);
+        }
+      }).catch((err) => {
+        if (import.meta.env.DEV) {
+          console.warn('Firebase Analytics initialization failed:', err);
+        }
+      });
+    }
+    
     db = getFirestore(app);
     auth = getAuth(app);
     storage = getStorage(app);
@@ -109,11 +132,12 @@ if (isFirebaseConfigValid) {
 
 // Export services (will be null if initialization failed)
 export { 
+  app,
+  analytics,
   db, 
   auth, 
   storage, 
   writeBatch, 
-  app,
   // Firestore functions
   doc,
   setDoc,

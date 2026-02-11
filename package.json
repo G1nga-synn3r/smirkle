@@ -1,8 +1,9 @@
 {
   "name": "smirkle",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
+  "description": "Try Not to Laugh game with backend emotion recognition",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -39,18 +40,31 @@
     "jest-environment-jsdom": "^29.7.0",
     "postcss": "^8.5.6",
     "prettier": "^3.1.1",
-    "tailwindcss": "^4.1.18",
+    "tailwindcss": "^3.4.0",
     "typescript": "~5.9.3",
     "vite": "^6.0.0",
     "vite-plugin-pwa": "^0.21.1"
   },
   "dependencies": {
     "@capacitor/core": "^5.0.0",
-    "@tailwindcss/postcss": "^4.1.18",
-    "@tensorflow/tfjs": "~4.17.0",
-    "@vladmandic/face-api": "^1.7.12",
     "firebase": "^12.9.0",
     "lucide-react": "^0.563.0",
     "react-webcam": "^7.2.0"
-  }
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "emotion-detection",
+    "facial-recognition",
+    "game",
+    "react",
+    "fastapi",
+    "deepface"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/smirkle/smirkle.git"
+  },
+  "license": "MIT"
 }
