@@ -1,6 +1,7 @@
+# Root requirements.txt - Minimal Flask dependencies for legacy backend
+# Note: TensorFlow and ML dependencies removed - using client-side ML with TensorFlow.js
+# For full Flask backend with ML, use backend/ directory instead
+
 Flask==2.3.3
 Flask-SocketIO==5.3.4
-tensorflow-cpu==2.13.0
-opencv-python-headless==4.8.0.76
-numpy==1.24.3
 eventlet==0.33.3
