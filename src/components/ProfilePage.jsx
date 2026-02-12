@@ -106,8 +106,9 @@ export default function ProfilePage() {
       }
     };
 
-    loadUserScores();
-  }, []);
+    useEffect(() => {
+      loadUserScores();
+    }, []);
 
   // Save to localStorage whenever profile changes
   useEffect(() => {
