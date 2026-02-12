@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import * as faceapi from 'face-api.js';
+import * as faceapi from '@vladmandic/face-api';
 import { SMILE_THRESHOLD, MODEL_URL } from '../utils/constants';
 
 export function useFaceApi(webcamRef) {
