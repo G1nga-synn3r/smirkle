@@ -199,7 +199,7 @@ class DetectionResponse(BaseModel):
 class HealthResponse(BaseModel):
     """Health check response."""
     status: str = Field(..., description="Overall service health")
-    model_loaded: bool = Field(..., description="Whether DeepFace model is loaded")
+    model_loaded: bool = Field(..., description="Whether emotion model is loaded")
     model_name: str = Field(..., description="Name of loaded model")
     model_version: Optional[str] = Field(None, description="Model version")
     uptime_seconds: float = Field(..., description="Server uptime in seconds")
@@ -241,7 +241,7 @@ class ErrorResponse(BaseModel):
 
 
 class ModelInfoResponse(BaseModel):
-    """Information about available DeepFace models."""
+    """Information about available emotion recognition models."""
     available_models: List[Dict[str, str]] = Field(..., description="Available recognition models")
     available_detectors: List[str] = Field(..., description="Available face detectors")
     current_model: str = Field(..., description="Currently loaded model")
@@ -253,8 +253,7 @@ class ModelInfoResponse(BaseModel):
                 "available_models": [
                     {"name": "VGG-Face", "accuracy": "high"},
                     {"name": "Facenet", "accuracy": "high"},
-                    {"name": "ArcFace", "accuracy": "high"},
-                    {"name": "DeepFace", "accuracy": "medium"}
+                    {"name": "ArcFace", "accuracy": "high"}
                 ],
                 "available_detectors": ["opencv", "ssd", "dlib", "mtcnn", "retinaface"],
                 "current_model": "VGG-Face",

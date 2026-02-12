@@ -37,7 +37,7 @@ def analyze_frame_simple(frame_data, session_id):
             # Remove data URI prefix
             frame_data = frame_data.split(",")[1]
         decoded = base64.b64decode(frame_data)
-    except Exception:
+    except (ValueError, base64.binascii.Error) as e:
         return {
             "status": "error",
             "error": "INVALID_FRAME",
@@ -90,7 +90,7 @@ def main(request):
     """
     try:
         body = request.get_json() or {}
-    except Exception:
+    except (ValueError, TypeError) as e:
         body = {}
     
     frame = body.get("frame", "")

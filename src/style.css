@@ -259,3 +259,83 @@
 .smile-detected {
   animation: screen-flash 0.6s ease-out, screen-shake 0.6s ease-out;
 }
+
+/* CPU Fallback Notification Styles */
+.cpu-fallback-notification {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 18px;
+  background: rgba(255, 193, 7, 0.95);
+  color: #1f2937;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  z-index: 9999;
+  animation: cpu-slide-in 0.4s ease-out;
+  cursor: pointer;
+}
+
+.cpu-fallback-icon {
+  display: flex;
+  align-items: center;
+  color: #d97706;
+}
+
+.cpu-fallback-message {
+  flex: 1;
+}
+
+.cpu-fallback-dismiss {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  background: transparent;
+  border: none;
+  color: #6b7280;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.cpu-fallback-dismiss:hover {
+  background: rgba(0, 0, 0, 0.1);
+  color: #374151;
+}
+
+.cpu-fallback-badge {
+  position: fixed;
+  bottom: 16px;
+  right: 16px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: rgba(255, 193, 7, 0.9);
+  color: #1f2937;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+  z-index: 9999;
+}
+
+.cpu-badge-icon {
+  font-size: 14px;
+}
+
+@keyframes cpu-slide-in {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}

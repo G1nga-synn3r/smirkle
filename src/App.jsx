@@ -1,11 +1,8 @@
  import React, { useState, useEffect, useRef, useCallback } from 'react';
 import './style.css';
-import { useFaceApi } from './hooks/useFaceApi.js';
 import { useSoundEffects } from './hooks/useSoundEffects.js';
 import { useHapticFeedback } from './hooks/useHapticFeedback.js';
 import CameraView from './components/CameraView.jsx';
-import VideoPlayer from './components/VideoPlayer.jsx';
-import FaceTracker from './components/FaceTracker.jsx';
 import WarningBox from './components/WarningBox.jsx';
 import Navbar from './components/Navbar.jsx';
 import Leaderboard from './components/Leaderboard.jsx';
@@ -17,8 +14,9 @@ import AuthGate from './components/AuthGate.jsx';
 import Teams from './components/Teams.jsx';
 import TutorialOverlay from './components/TutorialOverlay.jsx';
 import CalibrationOverlay from './components/CalibrationOverlay.jsx';
-import SystemCheckOverlay from './components/SystemCheckOverlay.jsx';
+import SystemCheckOverlay from './components/SystemCheckOverlay.tsx';
 import CameraPiP from './components/CameraPiP.jsx';
+import FaceTrackerMediaPipe from './components/FaceTrackerMediaPipe.jsx';
 import { getCurrentUser, isGuest, setCurrentUser } from './utils/auth.js';
 import { VIDEO_DATABASE, videoQueueManager, DIFFICULTY, getVideosByDifficulty } from './data/videoLibrary.js';
 import { saveScore, updateUserLifetimeScore } from './services/scoreService.js';
@@ -108,30 +106,23 @@ function App() {
   const cameraCanvasRef = useRef(null);
   const calibrationManagerRef = useRef(null); // Calibration manager instance
   const warningTimerRef = useRef(null); // Two-stage warning timer ref
-  const { loadModels, handleVideoPlay } = useFaceApi(videoRef);
   const { isMuted, playBuzzer, playDing, toggleMute, resumeAudio } = useSoundEffects();
   const { triggerVibration } = useHapticFeedback();
+  
+  // Model loading state for SystemCheckOverlay
+  const [modelsLoading, setModelsLoading] = useState(true);
+  const [modelsLoaded, setModelsLoaded] = useState(false);
+  const [loadingStage, setLoadingStage] = useState('initializing');
+  const [loadingProgress, setLoadingProgress] = useState(0);
+  const [cpuFallback, setCpuFallback] = useState(false);
+  const [modelError, setModelError] = useState(null);
 
   // Callback when camera is ready from FaceTracker
+  // Note: Calibration starts in handleSystemCheckComplete after BOTH camera AND models are ready
   const handleCameraReady = useCallback(() => {
     setIsCameraReady(true);
-    // Start calibration phase
-    setIsCalibrating(true);
-    setCalibrationStatus('checking');
-    setCalibrationProgress(0);
-    
-    // Initialize calibration manager
-    calibrationManagerRef.current = createCalibrationManager({
-      onComplete: handleCalibrationComplete,
-      onUpdate: (state) => {
-        setCalibrationStatus(state.status);
-        setCalibrationProgress(state.progress || 0);
-      }
-    });
-    
-    // Start calibration
-    calibrationManagerRef.current.start();
-  }, [handleCalibrationComplete]);
+    console.log('[App] Camera ready');
+  }, []);
 
   // Handle calibration updates from FaceTracker
   const handleCalibrationUpdate = useCallback((data) => {
@@ -175,12 +166,45 @@ function App() {
     }
   }, []);
 
-  // Handle system check completion
-  const handleSystemCheckComplete = useCallback((passed) => {
-    setSystemCheckPassed(passed);
+  // Handle system check completion - waits for BOTH camera and models
+  const handleSystemCheckComplete = useCallback((data) => {
+    console.log('[App] System check complete:', data);
+    setSystemCheckPassed(data.cameraReady && data.modelsLoaded);
     setShowSystemCheck(false);
     // Mark system check as complete so next visit skips it
     localStorage.setItem('smirkle_systemCheckComplete', 'true');
+    
+    // Start calibration phase if models are loaded
+    if (data.cameraReady && data.modelsLoaded) {
+      setIsCameraReady(true);
+      setIsCalibrating(true);
+      setCalibrationStatus('checking');
+      setCalibrationProgress(0);
+      
+      // Initialize calibration manager
+      calibrationManagerRef.current = createCalibrationManager({
+        onComplete: handleCalibrationComplete,
+        onUpdate: (state) => {
+          // Use functional updates to avoid stale state
+          setCalibrationStatus(prev => state.status || prev);
+          setCalibrationProgress(prev => state.progress ?? prev);
+        }
+      });
+      
+      // Start calibration
+      calibrationManagerRef.current.start();
+    }
+  }, [handleCalibrationComplete]);
+  
+  // Handle model status changes from FaceTrackerMediaPipe
+  const handleModelStatusChange = useCallback((status) => {
+    console.log('[App] Model status update:', status);
+    setModelsLoading(status.isLoading);
+    setModelsLoaded(status.modelsLoaded);
+    if (status.loadingStage) setLoadingStage(status.loadingStage);
+    if (status.loadingProgress !== undefined) setLoadingProgress(status.loadingProgress);
+    if (status.cpuFallback !== undefined) setCpuFallback(status.cpuFallback);
+    if (status.error) setModelError(status.error);
   }, []);
 
   // Guardian Logic: Handle face centering updates from FaceTracker
@@ -606,8 +630,31 @@ function App() {
         />
         
         {/* System Check Overlay - Shows on first load before anything else */}
+        {/* Waits for BOTH camera ready AND models loaded before completing */}
         {showSystemCheck && currentView === 'game' && (
-          <SystemCheckOverlay onCheckComplete={handleSystemCheckComplete} />
+          <SystemCheckOverlay 
+            onCheckComplete={handleSystemCheckComplete}
+            modelsLoading={modelsLoading}
+            modelsLoaded={modelsLoaded}
+            loadingStage={loadingStage}
+            loadingProgress={loadingProgress}
+            cpuFallback={cpuFallback}
+            modelError={modelError}
+          />
+        )}
+        
+        {/* FaceTrackerMediaPipe - Mounted alongside SystemCheckOverlay to load models */}
+        {showSystemCheck && currentView === 'game' && (
+          <div style={{ display: 'none' }}>
+            <FaceTrackerMediaPipe
+              onCameraReady={handleCameraReady}
+              onModelStatusChange={handleModelStatusChange}
+              onCalibrationUpdate={handleCalibrationUpdate}
+              onCalibrationComplete={handleCalibrationComplete}
+              isCalibrating={false}
+              calibrationComplete={false}
+            />
+          </div>
         )}
         
         {/* Calibration Overlay - Shows when camera is ready but before tutorial/game */}
@@ -701,20 +748,10 @@ function App() {
                     </div>
                   </div>
                   
-                  {/* Webcam - Glassmorphism Card */}
-                  <div className="lg:col-span-1">
-                    <div className="rounded-3xl overflow-hidden bg-white/10 backdrop-blur-xl border border-white/20 shadow-[0_0_30px_rgba(139,92,246,0.3)]">
-                      <CameraView onStream={handleVideoPlay} />
-                      <div className="absolute top-4 right-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-2 rounded-full font-semibold text-sm shadow-lg">
-                        Webcam
-                      </div>
-                    </div>
-                  </div>
-                  
                   {/* Face Tracker - Glassmorphism Card */}
                   <div className="lg:col-span-1">
                     <div className="rounded-3xl overflow-hidden bg-white/10 backdrop-blur-xl border border-white/20 shadow-[0_0_30px_rgba(139,92,246,0.3)] relative">
-                      <FaceTracker 
+                      <FaceTrackerMediaPipe 
                         onSmirkDetected={handleSmirkDetected} 
                         onCameraReady={handleCameraReady}
                         onCalibrationUpdate={handleCalibrationUpdate}
@@ -722,6 +759,7 @@ function App() {
                         onFaceCenteredUpdate={handleFaceCenteredUpdate}
                         onLowLightWarning={handleLowLightWarning}
                         onEyesOpenChange={setIsEyesOpen}
+                        onModelStatusChange={handleModelStatusChange}
                         isCalibrating={isCalibrating}
                         calibrationComplete={calibrationComplete}
                         cameraCanvasRef={cameraCanvasRef}

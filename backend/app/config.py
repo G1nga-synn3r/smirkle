@@ -4,6 +4,7 @@ Environment-based settings for the emotion recognition service.
 """
 
 from pydantic_settings import BaseSettings
+from pydantic import Field
 from typing import Optional
 from functools import lru_cache
 
@@ -33,7 +34,7 @@ class Settings(BaseSettings):
     max_image_size: int = 1024  # Maximum image dimension
     
     # CORS
-    cors_origins: list = ["http://localhost:5173", "http://localhost:3000"]
+    cors_origins: list = Field(default=["http://localhost:5173", "http://localhost:3000"], description="Allowed CORS origins")
     
     # Model Paths
     models_dir: str = "./models"
