@@ -1,4 +1,6 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 /* Animated Radial Gradient Background - Navy to Deep Purple */
 .animated-radial-gradient {
