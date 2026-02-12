@@ -2,9 +2,6 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "framework": "vite",
-  "env": {
-    "VITE_YOUTUBE_API_KEY": "@vite_youtube_api_key"
-  },
   "rewrites": [
     {
       "source": "/(.*)",
