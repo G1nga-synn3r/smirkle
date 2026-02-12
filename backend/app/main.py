@@ -1,8 +1,8 @@
 """
-Smirkle Emotion Recognition API
+Smirkle Backend API
 
-FastAPI-based backend service for facial emotion detection using DeepFace.
-Provides REST and WebSocket endpoints for real-time smirk detection.
+Minimal FastAPI backend service compatible with Vercel Python 3.14 runtime.
+All ML tasks (face/emotion/smile detection) are handled client-side.
 """
 
 import logging
@@ -14,7 +14,6 @@ from fastapi.responses import JSONResponse
 
 from .config import settings
 from .api.routes import router as api_router
-from .services.deepface_service import get_deepface_service, init_deepface_service
 
 # Configure logging
 logging.basicConfig(
@@ -31,22 +30,13 @@ async def lifespan(app: FastAPI):
     Handles startup and shutdown events.
     """
     # Startup
-    logger.info("Starting Smirkle Emotion Recognition API...")
-    logger.info(f"Model: {settings.deepface_model}")
-    logger.info(f"Detector: {settings.deepface_detector}")
-    logger.info(f"Smirk Threshold: {settings.smirk_threshold}")
-    
-    # Initialize DeepFace model
-    service = get_deepface_service()
-    if init_deepface_service():
-        logger.info("DeepFace model loaded successfully")
-    else:
-        logger.warning("Failed to load DeepFace model on startup. Will load on first request.")
+    logger.info("Starting Smirkle Backend API...")
+    logger.info("ML detection is handled client-side")
     
     yield
     
     # Shutdown
-    logger.info("Shutting down Smirkle Emotion Recognition API...")
+    logger.info("Shutting down Smirkle Backend API...")
 
 
 # Create FastAPI application
@@ -54,36 +44,28 @@ app = FastAPI(
     title=settings.app_name,
     version=settings.app_version,
     description="""
-    Smirkle Emotion Recognition API - Backend for Smirkle "Try Not to Laugh" Game
+    Smirkle Backend API - Minimal Backend for Smirkle "Try Not to Laugh" Game
     
     ## Overview
     
-    This API provides facial emotion detection for the Smirkle game, 
-    analyzing webcam frames to detect smiles/smirks and trigger game events.
+    This is a minimal backend API that supports the Smirkle game.
+    All ML tasks (face/emotion/smile detection) are now handled client-side
+    using TensorFlow.js in the browser for Vercel Python 3.14 compatibility.
     
     ## Features
     
-    - **Real-time Emotion Analysis**: Detect happiness, sadness, anger, surprise, 
-      fear, disgust, and neutral expressions
-    - **Smirk Detection**: Identify when users smile/smirk (happiness >= 0.3)
-    - **Consecutive Frame Validation**: Require multiple consecutive detections 
-      to prevent false positives
-    - **WebSocket Support**: Real-time streaming for lower latency
-    - **Session Management**: Track game sessions and detection history
+    - **Health Checks**: Verify API status
+    - **Session Management**: Create and manage game sessions
+    - **CORS Support**: Enable cross-origin requests for frontend
     
-    ## Smirk Detection Logic
+    ## Architecture
     
-    1. Frontend captures webcam frames (JPEG, ~70% quality)
-    2. Frames are sent to `/analyze-emotion` endpoint
-    3. Backend uses DeepFace to analyze emotions
-    4. Happiness score is extracted (0.0 - 1.0)
-    5. If happiness >= 0.3, smirk is flagged
-    6. Game ends after 3 consecutive smirk detections
+    - Frontend: React + TensorFlow.js (client-side ML)
+    - Backend: FastAPI on Vercel (non-ML operations)
     
     ## Integration
     
-    See the [frontend integration guide](https://github.com/smirkle/smirkle-docs) 
-    for React component examples.
+    See the frontend repository for React component examples.
     """,
     lifespan=lifespan,
     docs_url="/docs",
@@ -133,36 +115,9 @@ async def root():
         "version": settings.app_version,
         "status": "running",
         "docs": "/docs",
-        "health": "/api/v1/health"
+        "health": "/api/v1/health",
+        "note": "ML detection is handled client-side"
     }
-
-
-# Development endpoint: Reload model
-@app.post(
-    "/api/v1/admin/reload-model",
-    tags=["Admin"],
-    summary="Reload Model",
-    description="Reload the DeepFace model (admin endpoint)."
-)
-async def reload_model():
-    """Reload the DeepFace model."""
-    service = get_deepface_service()
-    success = init_deepface_service()
-    
-    if success:
-        return {
-            "status": "success",
-            "message": "Model reloaded successfully",
-            "model_name": service.model_name
-        }
-    else:
-        return JSONResponse(
-            status_code=500,
-            content={
-                "status": "error",
-                "message": "Failed to reload model"
-            }
-        )
 
 
 if __name__ == "__main__":

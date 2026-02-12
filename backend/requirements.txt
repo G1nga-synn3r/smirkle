@@ -1,15 +1,12 @@
-# Smirkle FastAPI Backend - Requirements
-# Emotion recognition service using DeepFace
+# Smirkle Backend - Minimal API Requirements
+# Compatible with Vercel Python 3.14 runtime
+# All ML tasks (face/emotion/smile detection) are handled client-side
 
 fastapi==0.104.1
 uvicorn[standard]==0.24.0
 python-multipart==0.0.6
 pydantic==2.5.2
 pydantic-settings==2.1.0
-deepface==0.0.79
-numpy==1.26.2
-opencv-python-headless==4.8.0.76
-pillow==10.1.0
 python-dotenv==1.0.0
 aiofiles==23.2.1
 websockets==12.0

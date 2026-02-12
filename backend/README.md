@@ -1,6 +1,15 @@
-# Smirkle Backend - Emotion Recognition API
+# Smirkle Backend - Minimal API
 
-FastAPI-based backend service for facial emotion detection using DeepFace.
+Minimal FastAPI backend service compatible with Vercel Python 3.14 runtime.
+
+## Architecture
+
+**All ML tasks are now handled client-side:**
+
+- **Frontend**: React + TensorFlow.js (face/emotion/smile detection in browser)
+- **Backend**: FastAPI on Vercel (non-ML operations: health checks, sessions, etc.)
+
+This architecture ensures compatibility with Vercel's Python 3.14 runtime, which doesn't support TensorFlow.
 
 ## Quick Start
 
@@ -8,7 +17,6 @@ FastAPI-based backend service for facial emotion detection using DeepFace.
 
 - Python 3.11+
 - pip
-- (Optional) Docker
 
 ### Installation
 
@@ -49,33 +57,30 @@ docker-compose up --build
 GET http://localhost:8000/api/v1/health
 ```
 
-### Analyze Emotion (Base64)
+### Version Information
 ```
-POST http://localhost:8000/api/v1/analyze-emotion
+GET http://localhost:8000/api/v1/info
+```
+
+### Create Session
+```
+POST http://localhost:8000/api/v1/session/create
 Content-Type: application/json
 
 {
-  "frame": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQ...",
-  "session_id": "550e8400-e29b-41d4-a716-446655440000",
-  "timestamp": 1699999999123.45,
-  "frame_number": 42,
-  "quality_check": true
+  "user_id": "user123",
+  "game_type": "standard"
 }
 ```
 
-### Analyze Emotion (File Upload)
+### Session Status
 ```
-POST http://localhost:8000/api/v1/analyze-emotion/upload
-Content-Type: multipart/form-data
-
-session_id: "550e8400-e29b-41d4-a716-446655440000"
-timestamp: 1699999999123.45
-file: @frame.jpg
+GET http://localhost:8000/api/v1/session/{session_id}/status
 ```
 
-### Model Information
+### End Session
 ```
-GET http://localhost:8000/api/v1/models
+DELETE http://localhost:8000/api/v1/session/{session_id}/end
 ```
 
 ### Documentation
@@ -87,68 +92,6 @@ http://localhost:8000/docs
 http://localhost:8000/redoc
 ```
 
-## Response Examples
-
-### Successful Detection
-```json
-{
-  "status": "success",
-  "session_id": "550e8400-e29b-41d4-a716-446655440000",
-  "detection_id": "550e8400-e29b-41d4-a716-446655440001",
-  "timestamp": 1699999999123.45,
-  "server_timestamp": "2026-02-11T09:23:35.411Z",
-  "processing_time_ms": 15.2,
-  "face_detected": true,
-  "face_data": {
-    "bounding_box": {"x": 150, "y": 80, "w": 200, "h": 240},
-    "confidence": 0.95
-  },
-  "emotions": {
-    "happy": 0.12,
-    "sad": 0.05,
-    "angry": 0.02,
-    "surprise": 0.03,
-    "fear": 0.01,
-    "disgust": 0.01,
-    "neutral": 0.76
-  },
-  "happiness": 0.12,
-  "is_smirk": false,
-  "smirk_reason": null,
-  "consecutive_smirk_count": 0,
-  "game_over": false,
-  "game_over_reason": null
-}
-```
-
-### Smirk Detected (Game Over)
-```json
-{
-  "status": "success",
-  "session_id": "550e8400-e29b-41d4-a716-446655440000",
-  "detection_id": "550e8400-e29b-41d4-a716-446655440005",
-  "timestamp": 1699999999456.78,
-  "server_timestamp": "2026-02-11T09:23:39.456Z",
-  "processing_time_ms": 12.8,
-  "face_detected": true,
-  "emotions": {
-    "happy": 0.42,
-    "sad": 0.03,
-    "angry": 0.01,
-    "surprise": 0.05,
-    "fear": 0.01,
-    "disgust": 0.01,
-    "neutral": 0.47
-  },
-  "happiness": 0.42,
-  "is_smirk": true,
-  "smirk_reason": "consecutive_frames",
-  "consecutive_smirk_count": 3,
-  "game_over": true,
-  "game_over_reason": "smirk_detected"
-}
-```
-
 ## Configuration
 
 ### Environment Variables
@@ -158,58 +101,15 @@ http://localhost:8000/redoc
 | `DEBUG` | `false` | Enable debug mode |
 | `HOST` | `0.0.0.0` | Server host |
 | `PORT` | `8000` | Server port |
-| `DEEPFACE_MODEL` | `VGG-Face` | DeepFace model to use |
-| `DEEPFACE_DETECTOR` | `opencv` | Face detector backend |
-| `SMIRK_THRESHOLD` | `0.3` | Happiness threshold for smirk |
-| `CONSECUTIVE_FRAMES_REQUIRED` | `3` | Frames before game over |
 | `CORS_ORIGINS` | `*` | Allowed CORS origins |
-
-### Supported Models
-
-| Model | Accuracy | Speed |
-|-------|----------|-------|
-| VGG-Face | High | Medium |
-| Facenet | High | Fast |
-| ArcFace | High | Medium |
-| DeepFace | Medium | Fast |
-| OpenFace | Medium | Fast |
-| Dlib | Medium | Medium |
 
 ## Frontend Integration
 
-### JavaScript Example
+The frontend handles all ML detection client-side using TensorFlow.js. See the frontend repository for:
 
-```javascript
-const API_URL = 'http://localhost:8000/api/v1';
-
-async function analyzeFrame(frameData, sessionId) {
-  const response = await fetch(`${API_URL}/analyze-emotion`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      frame: frameData,
-      session_id: sessionId,
-      timestamp: Date.now(),
-      frame_number: frameCount++,
-      quality_check: true
-    })
-  });
-  
-  return await response.json();
-}
-
-// Handle game over
-if (result.game_over && result.game_over_reason === 'smirk_detected') {
-  console.log('Game Over! Smirk detected!');
-  // Trigger game over UI
-}
-```
-
-### React Hook Example
-
-See `src/hooks/useDetectionAPI.js` in the frontend repository for a complete implementation.
+- `src/hooks/useFaceApi.js` - Face detection hook
+- `src/hooks/useDetectionAPI.js` - Emotion/smile detection hook
+- `src/components/FaceTracker.jsx` - Face tracking component
 
 ## Development
 
@@ -228,6 +128,16 @@ black app/
 # Lint code
 flake8 app/
 ```
+
+## Migration Notes
+
+This backend was previously powered by DeepFace (TensorFlow) for emotion detection. Due to Vercel Python 3.14 runtime limitations, all ML capabilities have been moved to the client-side using TensorFlow.js.
+
+Benefits:
+- Faster detection (no network latency)
+- Better privacy (images stay on device)
+- Reduced server costs (no ML inference on backend)
+- Full Vercel compatibility
 
 ## License
 
