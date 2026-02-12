@@ -18,10 +18,20 @@ import Teams from './components/Teams.jsx';
 import TutorialOverlay from './components/TutorialOverlay.jsx';
 import CalibrationOverlay from './components/CalibrationOverlay.jsx';
 import SystemCheckOverlay from './components/SystemCheckOverlay.jsx';
+import CameraPiP from './components/CameraPiP.jsx';
 import { getCurrentUser, isGuest, setCurrentUser } from './utils/auth.js';
 import { VIDEO_DATABASE, videoQueueManager, DIFFICULTY, getVideosByDifficulty } from './data/videoLibrary.js';
 import { saveScore, updateUserLifetimeScore } from './services/scoreService.js';
-import { SMILE_THRESHOLD } from './utils/constants.js';
+import { 
+  SMILE_THRESHOLD, 
+  SMILE_FAIL_THRESHOLD,
+  NEUTRAL_EXPRESSION_THRESHOLD,
+  SMILE_WARNING_DURATION,
+  CALIBRATION_COMPLETE_TRANSITION,
+  PIP_CONFIG,
+  CALIBRATION_STATUS 
+} from './utils/constants.js';
+import { createCalibrationManager } from './utils/calibrationLogic.js';
 
 console.log('[App] App.jsx loaded successfully');
 
@@ -68,6 +78,12 @@ function App() {
   const [isLowLight, setIsLowLight] = useState(false);
   const [isEyesOpen, setIsEyesOpen] = useState(false);
   
+  // Two-Stage Smile Detection State
+  const [warningActive, setWarningActive] = useState(false);
+  const [warningTimer, setWarningTimer] = useState(null);
+  const [isFailPhase, setIsFailPhase] = useState(false);
+  const [smileFailTimer, setSmileFailTimer] = useState(null);
+  
   // Game Ready state - timer only starts when all prerequisites are met
   const isGameReady = isCameraReady && 
                       calibrationComplete && 
@@ -85,10 +101,13 @@ function App() {
   const [selectedDifficulty, setSelectedDifficulty] = useState(null); // 'Easy', 'Medium', 'Hard', or null for all
   const [currentMultiplier, setCurrentMultiplier] = useState(1);
   const [isVideoFullscreen, setIsVideoFullscreen] = useState(false); // Track fullscreen state
+  const [showCameraPiP, setShowCameraPiP] = useState(false); // PiP camera visibility
   const videoRef = useRef(null);
   const startTimeRef = useRef(null);
   const timerRef = useRef(null);
   const cameraCanvasRef = useRef(null);
+  const calibrationManagerRef = useRef(null); // Calibration manager instance
+  const warningTimerRef = useRef(null); // Two-stage warning timer ref
   const { loadModels, handleVideoPlay } = useFaceApi(videoRef);
   const { isMuted, playBuzzer, playDing, toggleMute, resumeAudio } = useSoundEffects();
   const { triggerVibration } = useHapticFeedback();
@@ -98,31 +117,61 @@ function App() {
     setIsCameraReady(true);
     // Start calibration phase
     setIsCalibrating(true);
-    setCalibrationStatus('waiting');
+    setCalibrationStatus('checking');
     setCalibrationProgress(0);
-  }, []);
+    
+    // Initialize calibration manager
+    calibrationManagerRef.current = createCalibrationManager({
+      onComplete: handleCalibrationComplete,
+      onUpdate: (state) => {
+        setCalibrationStatus(state.status);
+        setCalibrationProgress(state.progress || 0);
+      }
+    });
+    
+    // Start calibration
+    calibrationManagerRef.current.start();
+  }, [handleCalibrationComplete]);
 
   // Handle calibration updates from FaceTracker
   const handleCalibrationUpdate = useCallback((data) => {
-    if (!isCalibrating || calibrationComplete) return;
-    
-    if (data.faceDetected) {
-      setCalibrationStatus(data.isStable ? 'stable' : 'detecting');
-      setCalibrationProgress(data.progress);
-    } else {
-      setCalibrationStatus('waiting');
-      setCalibrationProgress(0);
+    if (!isCalibrating || calibrationComplete || !calibrationManagerRef.current) {
+      return;
     }
+    
+    // Process detection data through calibration manager
+    const calibrationState = calibrationManagerRef.current.processDetection({
+      faceDetected: data.faceDetected,
+      eyesOpen: data.eyesOpen,
+      happinessScore: data.happinessScore || 0
+    });
+    
+    // Update UI state
+    setCalibrationStatus(calibrationState.status);
+    setCalibrationProgress(calibrationState.progress);
   }, [isCalibrating, calibrationComplete]);
 
   // Handle calibration completion
-  const handleCalibrationComplete = useCallback((success) => {
+  const handleCalibrationComplete = useCallback((success, reason) => {
     if (success) {
+      console.log('[App] Calibration complete! Triggering transition...');
       setCalibrationComplete(true);
       setIsCalibrating(false);
       setCalibrationStatus('complete');
+      setCalibrationProgress(100);
+      
+      // Stop calibration manager
+      if (calibrationManagerRef.current) {
+        calibrationManagerRef.current.stop();
+      }
     } else {
+      console.log('[App] Calibration failed:', reason);
       setCalibrationStatus('failed');
+      // Reset for retry
+      setTimeout(() => {
+        setIsCalibrating(false);
+        setCalibrationStatus('idle');
+      }, 2000);
     }
   }, []);
 
@@ -290,6 +339,41 @@ function App() {
     }
   }, [isSmirking, gameOver, playBuzzer, submitScore]);
 
+  // CALIBRATION COMPLETE TRANSITION
+  // When calibration becomes true, trigger fullscreen, PiP, and timer
+  useEffect(() => {
+    if (calibrationComplete && !gameOver && currentView === 'game') {
+      console.log('[App] Calibration complete! Starting transition sequence...');
+      
+      // Step 1: Hide calibration UI (with fade delay)
+      const uiHideTimer = setTimeout(() => {
+        setIsCalibrating(false);
+      }, CALIBRATION_COMPLETE_TRANSITION.UI_HIDE_DELAY);
+      
+      // Step 2: Trigger fullscreen
+      const fullscreenTimer = setTimeout(() => {
+        console.log('[App] Entering fullscreen mode...');
+        setIsVideoFullscreen(true);
+      }, CALIBRATION_COMPLETE_TRANSITION.FULLSCREEN_DELAY);
+      
+      // Step 3: Show PiP camera
+      const pipTimer = setTimeout(() => {
+        console.log('[App] Showing PiP camera...');
+        setShowCameraPiP(true);
+      }, CALIBRATION_COMPLETE_TRANSITION.PIP_SHOW_DELAY);
+      
+      // Step 4: Start score counter immediately
+      startTimeRef.current = Date.now();
+      console.log('[App] Score timer started at:', startTimeRef.current);
+      
+      return () => {
+        clearTimeout(uiHideTimer);
+        clearTimeout(fullscreenTimer);
+        clearTimeout(pipTimer);
+      };
+    }
+  }, [calibrationComplete, gameOver, currentView]);
+
   // Auto-trigger fullscreen when game is ready and conditions met
   // This ensures video plays in full screen with camera corner immediately
   useEffect(() => {
@@ -335,6 +419,18 @@ function App() {
     setCheckpointsHit([]);
     setCheckpointBonus(0);
     setIsVideoFullscreen(false); // Exit fullscreen on reset
+    setShowCameraPiP(false); // Hide PiP on game over/reset
+    
+    // Reset two-stage detection state
+    setWarningActive(false);
+    setWarningTimer(null);
+    setIsFailPhase(false);
+    setSmileFailTimer(null);
+    if (warningTimerRef.current) {
+      clearTimeout(warningTimerRef.current);
+      warningTimerRef.current = null;
+    }
+    
     resumeAudio(); // Resume audio context on interaction
     
     // Get next video from queue (anti-repeat)
@@ -356,10 +452,106 @@ function App() {
     setCurrentView(view);
   };
 
-  // Accept smirk and probability from FaceTracker
-  const handleSmirkDetected = useCallback((isSmirking, probability) => {
-    setIsSmirking(isSmirking);
+  // Two-Stage Smile Detection: Trigger fail phase
+  const triggerFailPhase = useCallback(() => {
+    if (isFailPhase) return; // Already in fail phase
+    
+    console.log('[App] FAIL PHASE triggered - smile detected after warning');
+    setIsFailPhase(true);
+    
+    // Pause video immediately
+    setIsSmiling(true);
+    setIsSmirking(true);
+    
+    // Play buzzer sound
+    playBuzzer();
+    
+    // Clear any existing timers
+    if (warningTimerRef.current) {
+      clearTimeout(warningTimerRef.current);
+      warningTimerRef.current = null;
+    }
+    
+    // Haptic feedback for 2 seconds (if supported)
+    triggerVibration([2000]);
+    
+    // Stop survival timer
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    
+    // After vibration completes (2 seconds), exit and reset
+    setTimeout(() => {
+      console.log('[App] Fail phase complete - exiting game');
+      
+      // Exit fullscreen
+      setIsVideoFullscreen(false);
+      
+      // Submit score
+      submitScore();
+      
+      // Set game over
+      setGameOver(true);
+    }, 2000);
+  }, [isFailPhase, playBuzzer, triggerVibration, submitScore]);
+
+  // Two-Stage Smile Detection: Reset warning state
+  const resetWarningState = useCallback(() => {
+    if (warningTimerRef.current) {
+      clearTimeout(warningTimerRef.current);
+      warningTimerRef.current = null;
+    }
+    setWarningActive(false);
+    setWarningTimer(null);
   }, []);
+
+  // Two-Stage Smile Detection: Handle smirk detection with warning phase
+  const handleSmirkDetected = useCallback((isSmirking, probability, metadata = {}) => {
+    // Handle two-stage detection
+    const inWarningZone = metadata.inWarningZone || (probability >= NEUTRAL_EXPRESSION_THRESHOLD && probability < SMILE_FAIL_THRESHOLD);
+    
+    // Stage 1: Warning Phase (0.15 ≤ probability < 0.30)
+    if (inWarningZone && !warningActive && !isFailPhase) {
+      console.log('[App] Warning phase started - happiness:', probability.toFixed(2));
+      setWarningActive(true);
+      
+      // Start warning timer
+      warningTimerRef.current = setTimeout(() => {
+        // Timer completed - check if still smiling
+        setWarningActive(false);
+        warningTimerRef.current = null;
+        
+        // If still smirking after warning, trigger fail
+        if (isSmirking || probability >= SMILE_FAIL_THRESHOLD) {
+          triggerFailPhase();
+        }
+      }, SMILE_WARNING_DURATION);
+      
+      setWarningTimer(warningTimerRef.current);
+      return;
+    }
+    
+    // Player recovered to neutral during warning
+    if (!inWarningZone && warningActive && !isFailPhase) {
+      console.log('[App] Warning cleared - player recovered');
+      resetWarningState();
+      return;
+    }
+    
+    // Stage 2: Fail Phase - Smirk detected after warning OR immediate fail
+    if (isSmirking && !isFailPhase) {
+      if (warningActive) {
+        // Was in warning phase - clear timer and trigger fail
+        resetWarningState();
+      }
+      triggerFailPhase();
+      return;
+    }
+    
+    // Normal state updates
+    setIsSmirking(isSmirking);
+  }, [warningActive, isFailPhase, triggerFailPhase, resetWarningState]);
 
   // Handle tutorial completion
   const handleTutorialComplete = useCallback(() => {
@@ -369,8 +561,20 @@ function App() {
   return (
     <AuthGate>
       <div className={`min-h-screen animated-radial-gradient ${gameOver ? 'grayscale-game-over' : ''} ${isSmiling && currentView === 'game' ? 'smile-detected' : ''}`}>
+        {/* FAIL Overlay - Two-Stage Detection Fail Phase */}
+        {isFailPhase && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-red-600/90 animate-pulse">
+            <div className="text-center">
+              <h2 className="text-6xl md:text-8xl font-bold text-white mb-8 tracking-wider animate-bounce">
+                FAIL
+              </h2>
+              <p className="text-xl text-red-100 mb-4">You smiled!</p>
+            </div>
+          </div>
+        )}
+        
         {/* Game Over Overlay */}
-        {gameOver && (
+        {gameOver && !isFailPhase && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
             <div className="wasted-modal">
               <div className="text-center">
@@ -411,6 +615,14 @@ function App() {
           <CalibrationOverlay 
             status={calibrationStatus}
             progress={calibrationProgress}
+          />
+        )}
+        
+        {/* Camera PiP - Shows in top-right corner after calibrationComplete */}
+        {showCameraPiP && (
+          <CameraPiP 
+            videoRef={cameraCanvasRef}
+            config={PIP_CONFIG}
           />
         )}
         
@@ -469,6 +681,8 @@ function App() {
                         cameraRef={cameraCanvasRef}
                         isFullscreenActive={isVideoFullscreen}
                         onToggleFullscreen={() => setIsVideoFullscreen(!isVideoFullscreen)}
+                        warningActive={warningActive}
+                        failPhase={isFailPhase}
                       />
                       {isSmiling && (
                         <div className="absolute inset-0 bg-gradient-to-r from-purple-600/90 to-pink-600/90 backdrop-blur-md flex items-center justify-center">
@@ -520,6 +734,11 @@ function App() {
                       <WarningBox 
                         type="lowLight"
                         visible={isLowLight}
+                      />
+                      {/* Two-Stage Smile Detection Warning */}
+                      <WarningBox
+                        type="smiling"
+                        visible={warningActive && !isFailPhase}
                       />
                     </div>
                   </div>

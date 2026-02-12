@@ -17,10 +17,11 @@ import { useDetectionAPI, CONNECTION_STATE } from '../hooks/useDetectionAPI';
 import { useHapticFeedback } from '../hooks/useHapticFeedback';
 import { 
   SMILE_THRESHOLD,
+  SMILE_FAIL_THRESHOLD,
   CONSECUTIVE_FRAMES_REQUIRED,
   FRAME_CAPTURE_INTERVAL,
   CALIBRATION_STABILITY_DURATION,
-  CALIBRATION_DETECTION_INTERVAL,
+  CALIBRATION_CHECK_INTERVAL,
   NEUTRAL_EXPRESSION_THRESHOLD,
   PUNCHLINE_THRESHOLD_REDUCTION,
   PUNCHLINE_WINDOW_DURATION,
@@ -52,6 +53,7 @@ function FaceTracker({
   onLowLightWarning,
   onBackendStatusChange,
   onConnectionError,
+  onEyesOpenChange,
   
   // Props
   isCalibrating = false,
@@ -350,10 +352,14 @@ function FaceTracker({
       
       // Notify parent of smirk detection
       if (onSmirkDetected && lastDetection.is_smirk !== undefined) {
-        onSmirkDetected(lastDetection.is_smirk, lastDetection.happiness || 0, {
+        const happiness = lastDetection.happiness || 0;
+        const inWarningZone = happiness >= NEUTRAL_EXPRESSION_THRESHOLD && happiness < SMILE_FAIL_THRESHOLD;
+        
+        onSmirkDetected(lastDetection.is_smirk, happiness, {
           consecutiveFrames: consecutiveSmirkCount,
           requiredFrames: CONSECUTIVE_FRAMES_REQUIRED,
-          gameOver: isGameOver
+          gameOver: isGameOver,
+          inWarningZone: inWarningZone
         });
       }
       
@@ -368,80 +374,30 @@ function FaceTracker({
   // Calibration
   // ===========================
   
-  // Calibration logic
+  // Pass detection data to calibration manager in App.jsx
   useEffect(() => {
     if (!isCalibrating || !lastDetection) return;
     
-    const checkCalibration = () => {
-      if (!lastDetection.face_detected) {
-        consecutiveNeutralRef.current = 0;
-        if (onCalibrationUpdate) {
-          onCalibrationUpdate({ 
-            status: 'no_face', 
-            progress: 0,
-            message: 'Face not detected'
-          });
-        }
-        return;
-      }
-      
-      const happiness = lastDetection.happiness || 0;
-      
-      // Check if expression is neutral (happiness < 0.15)
-      if (happiness < NEUTRAL_EXPRESSION_THRESHOLD) {
-        consecutiveNeutralRef.current += 1;
-      } else {
-        consecutiveNeutralRef.current = 0;
-      }
-      
-      // Calculate progress (need 3 seconds of stable detection)
-      const requiredFrames = CALIBRATION_STABILITY_DURATION / CALIBRATION_DETECTION_INTERVAL;
-      const progress = Math.min(consecutiveNeutralRef.current / requiredFrames, 1);
-      
-      if (onCalibrationUpdate) {
-        onCalibrationUpdate({
-          status: progress >= 1 ? 'complete' : 'calibrating',
-          progress,
-          happiness,
-          message: progress >= 1 ? 'Calibration complete!' : `Hold steady... ${Math.round(progress * 100)}%`
-        });
-      }
-      
-      // Complete calibration
-      if (progress >= 1 && !calibrationStartTimeRef.current) {
-        calibrationStartTimeRef.current = Date.now();
-      }
-      
-      if (progress >= 1) {
-        trackCalibrationEvent({ 
-          duration: Date.now() - calibrationStartTimeRef.current,
-          success: true 
-        });
-        
-        if (onCalibrationComplete) {
-          onCalibrationComplete({
-            success: true,
-            baselineHappiness: happiness,
-            personalizedThreshold: SMILE_THRESHOLD
-          });
-        }
-        
-        // Stop calibration timer
-        if (calibrationTimerRef.current) {
-          clearInterval(calibrationTimerRef.current);
-        }
-      }
-    };
+    // Extract detection data
+    const faceDetected = lastDetection.face_detected || false;
+    const happiness = lastDetection.happiness || 0;
+    const eyesOpen = lastDetection.eyes_open !== false; // Default to true if not provided
     
-    // Start calibration check
-    calibrationTimerRef.current = setInterval(checkCalibration, CALIBRATION_DETECTION_INTERVAL);
+    // Pass to calibration manager via App.jsx callback
+    if (onCalibrationUpdate) {
+      onCalibrationUpdate({
+        faceDetected,
+        eyesOpen,
+        happinessScore: happiness
+      });
+    }
     
-    return () => {
-      if (calibrationTimerRef.current) {
-        clearInterval(calibrationTimerRef.current);
-      }
-    };
-  }, [isCalibrating, lastDetection, onCalibrationUpdate, onCalibrationComplete]);
+    // Also notify parent of eyes open state for game logic
+    if (onEyesOpenChange) {
+      onEyesOpenChange(eyesOpen);
+    }
+    
+  }, [isCalibrating, lastDetection, onCalibrationUpdate, onEyesOpenChange]);
 
   // ===========================
   // Punchline Detection

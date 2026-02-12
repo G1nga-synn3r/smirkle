@@ -1,0 +1,9 @@
+# Vercel API Dependencies
+# These packages are available in the Vercel Python runtime
+#
+# Note: DeepFace and its ML dependencies are NOT included here
+# because they require model files and significant compute resources.
+# For full emotion recognition, deploy the backend separately.
+#
+# Core dependencies for basic API functionality are minimal
+# as Vercel's Python runtime includes standard library packages.

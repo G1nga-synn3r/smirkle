@@ -54,8 +54,10 @@ export default function ProfilePage() {
         setProfile({ ...defaultProfile, ...parsed });
         setEditForm({ ...defaultProfile, ...parsed });
       } catch (e) {
+        console.error('Failed to load profile:', e);
+      }
 
-    // Load user's best score from Firestore
+      // Load user's best score from Firestore
     const loadUserScores = async () => {
       try {
         const currentUser = getCurrentUser();
@@ -105,9 +107,6 @@ export default function ProfilePage() {
     };
 
     loadUserScores();
-        console.error('Failed to load profile:', e);
-      }
-    }
   }, []);
 
   // Save to localStorage whenever profile changes

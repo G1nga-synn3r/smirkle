@@ -26,6 +26,24 @@ export const SMILE_THRESHOLD = 0.3;
 export const CONSECUTIVE_FRAMES_REQUIRED = 3;
 
 /**
+ * Happiness threshold for smile fail detection
+ * Values >= 0.30 trigger the fail phase after warning duration
+ */
+export const SMILE_FAIL_THRESHOLD = 0.30;
+
+/**
+ * Duration of warning phase before fail triggers
+ * 400ms provides balance between responsiveness and fairness
+ */
+export const SMILE_WARNING_DURATION = 400; // milliseconds
+
+/**
+ * Minimum consecutive frames required in warning zone before timer starts
+ * Prevents flickering from momentary expressions
+ */
+export const WARNING_ENTRY_FRAMES = 2;
+
+/**
  * Frame capture interval in milliseconds
  * Lower = more responsive but higher bandwidth
  */
@@ -42,9 +60,58 @@ export const FACE_DETECTION_OPTIONS = {
 // ===========================
 // Calibration Settings
 // ===========================
-export const CALIBRATION_STABILITY_DURATION = 3000; // 3 seconds stable detection
-export const CALIBRATION_DETECTION_INTERVAL = 100; // Check every 100ms
-export const NEUTRAL_EXPRESSION_THRESHOLD = 0.15; // Happiness below 15% considered neutral
+/**
+ * Time required for stable calibration (face + eyes + neutral expression)
+ * 1 second = 1000ms for quick calibration experience
+ */
+export const CALIBRATION_STABILITY_DURATION = 1000; 
+
+/**
+ * Check interval for calibration conditions
+ * 50ms provides smooth progress updates without performance impact
+ */
+export const CALIBRATION_CHECK_INTERVAL = 50; 
+
+/**
+ * Happiness threshold for neutral expression
+ * Values below this are considered "not smiling" for calibration
+ */
+export const NEUTRAL_EXPRESSION_THRESHOLD = 0.15; 
+
+// ===========================
+// Calibration Complete Transition
+// ===========================
+export const CALIBRATION_COMPLETE_TRANSITION = {
+  FULLSCREEN_DELAY: 100,      // ms delay before requesting fullscreen
+  PIP_SHOW_DELAY: 200,       // ms delay before showing PiP camera
+  UI_HIDE_DELAY: 300,        // ms delay before hiding calibration UI
+  TIMER_START_DELAY: 0       // Immediate timer start
+};
+
+// ===========================
+// Model Preload Settings
+// ===========================
+export const MODEL_PRELOAD = {
+  TIMEOUT: 10000,            // 10 seconds max for model load
+  RETRY_COUNT: 0,            // No retries - fail fast
+  PROGRESS_UPDATE_INTERVAL: 100,
+  REQUIRED_MODELS: [
+    'face_expression_model',
+    'face_landmark_68_model',
+    'tiny_face_detector_model'
+  ]
+};
+
+// ===========================
+// Webcam Settings
+// ===========================
+export const WEBCAM_CONFIG = {
+  FAIL_FAST: true,           // Fail on first permission denial
+  SHOW_PERMISSION_DENIED_UI: true,
+  IDEAL_WIDTH: 640,
+  IDEAL_HEIGHT: 480,
+  FACING_MODE: 'user'
+};
 
 // ===========================
 // Punchline Detection
@@ -90,4 +157,18 @@ export const GAME_SETTINGS = {
   maxSessionDuration: 300000, // 5 minutes max per session
   minBreakTime: 5000, // 5 seconds break between games
   maxRetries: 3 // Max connection retries
+};
+
+// ===========================
+// Picture-in-Picture (PiP) Configuration
+// ===========================
+export const PIP_CONFIG = {
+  POSITION: 'top-right',
+  WIDTH: '160px',
+  HEIGHT: '120px',
+  Z_INDEX: 9999,
+  MARGIN: '16px',
+  BORDER: '2px solid rgba(139, 92, 246, 0.5)',
+  BORDER_RADIUS: '8px',
+  SHADOW: '0 0 20px rgba(139, 92, 246, 0.4)'
 };

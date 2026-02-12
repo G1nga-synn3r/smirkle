@@ -1,37 +1,107 @@
 import React from 'react';
-import { Eye, CheckCircle, AlertCircle } from 'lucide-react';
+import { Eye, CheckCircle, AlertCircle, EyeOff, Frown, Loader, User } from 'lucide-react';
+import { CALIBRATION_STATUS } from '../utils/constants';
 
 /**
  * CalibrationOverlay - A centered overlay that guides the user to
- * 'Look at the Camera' for 3 seconds to stabilize face detection
+ * 'Look at the Camera' for 1 second to stabilize face detection
  * before the TutorialOverlay or game starts.
  * 
  * Displays a progress ring and status messages during calibration.
+ * 
+ * Calibration conditions:
+ * - Face must be detected
+ * - Eyes must be open
+ * - Neutral expression (not smiling)
  */
 export const CalibrationOverlay = ({ 
-  status = 'waiting', 
+  status = 'idle', 
   progress = 0 
 }) => {
   // Status messages for different calibration states
   const statusMessages = {
-    waiting: 'Detecting face...',
-    detecting: 'Looking at you...',
+    idle: 'Initializing calibration...',
+    checking: 'Looking at you...',
+    no_face: 'Face not detected',
+    eyes_closed: 'Please open your eyes',
+    smiling: 'Keep a neutral expression',
     stable: 'Hold still...',
-    complete: 'Ready!',
-    failed: 'Face not detected'
+    complete: 'Calibration Complete!',
+    failed: 'Calibration failed'
   };
-
+  
   // Calculate progress ring stroke
   const strokeDashoffset = 283 - (283 * progress) / 100; // 283 is circumference of r=45
   
-  // Determine if calibration is successful
+  // Determine if calibration is in progress (showing progress ring)
+  const showProgress = ['checking', 'stable'].includes(status);
   const isComplete = status === 'complete';
   const isFailed = status === 'failed';
   const isStable = status === 'stable';
   
-  // Status icon
-  const StatusIcon = isComplete ? CheckCircle : isFailed ? AlertCircle : Eye;
-
+  // Status icon based on state
+  const getStatusIcon = () => {
+    if (isComplete) return CheckCircle;
+    if (isFailed) return AlertCircle;
+    if (status === 'no_face') return User;
+    if (status === 'eyes_closed') return EyeOff;
+    if (status === 'smiling') return Frown;
+    if (status === 'checking' || status === 'stable') return Eye;
+    return Loader;
+  };
+  
+  const StatusIcon = getStatusIcon();
+  
+  // Get icon color based on status
+  const getIconColor = () => {
+    if (isComplete) return 'text-green-400';
+    if (isFailed) return 'text-red-400';
+    if (status === 'no_face') return 'text-yellow-400';
+    if (status === 'eyes_closed') return 'text-orange-400';
+    if (status === 'smiling') return 'text-pink-400';
+    return 'text-purple-400';
+  };
+  
+  // Get card border color
+  const getBorderColor = () => {
+    if (isComplete) return 'border-green-500/50 shadow-green-500/20';
+    if (isFailed) return 'border-red-500/50 shadow-red-500/20';
+    if (status === 'stable') return 'border-purple-500/50 shadow-purple-500/20';
+    return 'border-purple-500/30';
+  };
+  
+  // Get header background gradient
+  const getHeaderGradient = () => {
+    if (isComplete) return 'bg-gradient-to-br from-green-500 to-emerald-600';
+    if (isFailed) return 'bg-gradient-to-br from-red-500 to-orange-600';
+    if (status === 'stable') return 'bg-gradient-to-br from-purple-500 to-pink-600';
+    return 'bg-gradient-to-br from-purple-600 to-pink-600';
+  };
+  
+  // Calculate remaining time in seconds
+  const getRemainingTime = () => {
+    if (progress >= 100) return 0;
+    return Math.ceil((100 - progress) / 100); // Convert to seconds
+  };
+  
+  // Get current condition being checked
+  const getCurrentCondition = () => {
+    switch (status) {
+      case 'no_face':
+        return 'Ensure your face is visible';
+      case 'eyes_closed':
+        return 'Keep your eyes open';
+      case 'smiling':
+        return 'Relax your face';
+      case 'checking':
+        return 'Checking conditions...';
+      case 'stable':
+        return `Hold still for ${getRemainingTime()}s`;
+      default:
+        return null;
+    }
+  };
+  
   return (
     <div 
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
@@ -43,21 +113,18 @@ export const CalibrationOverlay = ({
       <div 
         className={`
           relative bg-gray-900/95 backdrop-blur-xl rounded-2xl shadow-[0_0_60px_rgba(139,92,246,0.4)] 
-          border border-purple-500/30 p-8 text-center
+          border p-8 text-center
           transform transition-all animate-fade-in
-          ${isComplete ? 'border-green-500/50 shadow-green-500/20' : ''}
-          ${isFailed ? 'border-red-500/50 shadow-red-500/20' : ''}
+          ${getBorderColor()}
         `}
       >
         {/* Header with icon */}
         <div className="mb-6">
           <div className={`
             inline-flex items-center justify-center w-16 h-16 rounded-full mb-4 shadow-lg
-            ${isComplete ? 'bg-gradient-to-br from-green-500 to-emerald-600' : ''}
-            ${isFailed ? 'bg-gradient-to-br from-red-500 to-orange-600' : ''}
-            ${!isComplete && !isFailed ? 'bg-gradient-to-br from-purple-600 to-pink-600' : ''}
+            ${getHeaderGradient()}
           `}>
-            <StatusIcon className="w-8 h-8 text-white" />
+            <StatusIcon className={`w-8 h-8 text-white ${status === 'checking' ? 'animate-pulse' : ''}`} />
           </div>
           
           <h2 
@@ -66,13 +133,13 @@ export const CalibrationOverlay = ({
           >
             {isComplete ? 'Calibration Complete!' : 'Look at the Camera'}
           </h2>
-          <p className="text-gray-400 text-sm md:text-base">
+          <p className={`text-sm md:text-base ${getIconColor()}`}>
             {statusMessages[status]}
           </p>
         </div>
 
-        {/* Progress ring - only show when not complete/failed */}
-        {!isComplete && !isFailed && (
+        {/* Progress ring - only show when in progress */}
+        {showProgress && (
           <div className="relative w-32 h-32 mx-auto mb-6">
             {/* Background circle */}
             <svg className="w-full h-full transform -rotate-90">
@@ -125,23 +192,36 @@ export const CalibrationOverlay = ({
           </div>
         )}
 
+        {/* Status indicator for failed/progress states */}
+        {!isComplete && !isFailed && !showProgress && (
+          <div className="mb-4">
+            <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full ${getIconColor().replace('text-', 'bg-').replace('400', '500/20')}`}>
+              <StatusIcon className={`w-5 h-5 ${getIconColor()}`} />
+              <span className="font-medium">{getCurrentCondition()}</span>
+            </div>
+          </div>
+        )}
+
         {/* Instructions */}
         <div className="space-y-2 text-sm text-gray-400 mb-4">
           {!isComplete && !isFailed && (
             <>
-              <p>• Position your face within the camera frame</p>
-              <p>• Keep a neutral expression</p>
-              <p>• Stay still for {Math.ceil((100 - progress) * 0.03)} seconds</p>
+              <p>• Face must be visible in camera</p>
+              <p>• Keep your eyes open</p>
+              <p>• Maintain a neutral expression</p>
+              <p className="text-purple-300 mt-2">
+                Hold for {getRemainingTime()} more second{getRemainingTime() !== 1 ? 's' : ''}
+              </p>
             </>
           )}
           {isComplete && (
             <p className="text-green-400">
-              Face detection is now stable. Starting game...
+              Face detection is stable. Starting game...
             </p>
           )}
           {isFailed && (
             <p className="text-red-400">
-              Please try again. Make sure your face is visible and well-lit.
+              {statusMessages[status]}. Please reload and try again.
             </p>
           )}
         </div>
@@ -157,10 +237,10 @@ export const CalibrationOverlay = ({
         )}
 
         {/* Pulse animation hint */}
-        {!isComplete && !isFailed && (
+        {!isComplete && !isFailed && showProgress && (
           <div className="flex items-center justify-center gap-2 text-purple-400 text-sm">
             <Eye className="w-4 h-4 animate-pulse" />
-            <span>Calibrating detection...</span>
+            <span>Calibrating...</span>
           </div>
         )}
       </div>

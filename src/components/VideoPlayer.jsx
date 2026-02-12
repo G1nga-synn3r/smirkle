@@ -76,7 +76,9 @@ function VideoPlayer({
   survivalTime = 0,
   cameraRef,
   isFullscreenActive = false,
-  onToggleFullscreen
+  onToggleFullscreen,
+  warningActive = false,
+  failPhase = false
 }) {
   const localVideoRef = useRef(null);
   const videoElement = propVideoRef || localVideoRef;
@@ -278,6 +280,18 @@ function VideoPlayer({
             loop={false}
           />
 
+          {/* Warning Overlay - Yellow tint */}
+          {warningActive && (
+            <div className="absolute inset-0 bg-yellow-500/20 pointer-events-none z-20 animate-pulse" />
+          )}
+          
+          {/* Fail Overlay - Red flash */}
+          {failPhase && (
+            <div className="absolute inset-0 bg-red-600/80 pointer-events-none z-30 flex items-center justify-center animate-pulse">
+              <h1 className="text-6xl md:text-8xl font-bold text-white animate-bounce">FAIL</h1>
+            </div>
+          )}
+
           {/* Score overlay - bottom center */}
           <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-black/70 backdrop-blur-sm px-8 py-4 rounded-2xl border border-white/20 shadow-2xl z-30">
             <p className="text-gray-300 text-sm font-medium">Score</p>
@@ -326,6 +340,18 @@ function VideoPlayer({
         muted={false}
         loop={false}
       />
+      
+      {/* Warning Overlay - Yellow tint */}
+      {warningActive && (
+        <div className="absolute inset-0 bg-yellow-500/20 pointer-events-none z-20 animate-pulse" />
+      )}
+      
+      {/* Fail Overlay - Red flash */}
+      {failPhase && (
+        <div className="absolute inset-0 bg-red-600/80 pointer-events-none z-30 flex items-center justify-center animate-pulse">
+          <h1 className="text-6xl md:text-8xl font-bold text-white animate-bounce">FAIL</h1>
+        </div>
+      )}
       
       {/* Fullscreen button - top right */}
       <button
