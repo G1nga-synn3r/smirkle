@@ -100,10 +100,6 @@ async function handleInit(data) {
   let currentQuality = QUALITY_HIGH;
 
   try {
-    console.log(
-      `[MediaPipeWorker] Starting initialization (GPU: ${enableGPU}, retry: ${retryCount})`
-    );
-
     // Stage 1: Initializing (0%)
     sendLoadingProgress('initializing', 0);
 
@@ -118,11 +114,8 @@ async function handleInit(data) {
 
       sendLoadingProgress('wasm_loaded', 30);
     } catch (wasmError) {
-      console.error('[MediaPipeWorker] WASM load failed:', wasmError);
-
       // Retry once if this is the first failure
       if (retryCount < MAX_RETRIES) {
-        console.warn('[MediaPipeWorker] Retrying WASM load...');
         return handleInit({ ...data, retryCount: retryCount + 1 });
       }
 
@@ -131,7 +124,6 @@ async function handleInit(data) {
         throw wasmError;
       }
 
-      console.warn('[MediaPipeWorker] GPU WASM failed, falling back to CPU mode');
       cpuFallback = true;
       currentQuality = QUALITY_MEDIUM;
     }
@@ -143,13 +135,10 @@ async function handleInit(data) {
 
         // Check if GPU is actually available
         if (!navigator.gpu) {
-          console.warn('[MediaPipeWorker] GPU not available in this browser');
           cpuFallback = true;
           currentQuality = QUALITY_MEDIUM;
-        } else {
         }
       } catch (gpuError) {
-        console.warn('[MediaPipeWorker] GPU initialization failed, falling back to CPU:', gpuError);
         cpuFallback = true;
         currentQuality = QUALITY_MEDIUM;
       }
@@ -195,13 +184,7 @@ async function handleInit(data) {
         timestamp: Date.now(),
       },
     });
-
-    console.log(
-      `[MediaPipeWorker] Initialization complete. CPU fallback: ${cpuFallback}, Quality: ${currentQuality}`
-    );
   } catch (error) {
-    console.error('[MediaPipeWorker] Fatal initialization error:', error);
-
     const stage = 'error';
     const userFriendlyMessage = getUserFriendlyError(error, stage);
 
@@ -218,13 +201,11 @@ async function handleInit(data) {
 
     // If not using GPU and we have retries, retry with GPU
     if (!useGPU && retryCount < MAX_RETRIES) {
-      console.warn('[MediaPipeWorker] Retrying with GPU mode...');
       return handleInit({ ...data, enableGPU: true, retryCount: retryCount + 1 });
     }
 
     // If using GPU and we have retries, fallback to CPU
     if (useGPU && retryCount < MAX_RETRIES) {
-      console.warn('[MediaPipeWorker] Retrying with CPU mode...');
       return handleInit({ ...data, enableGPU: false, retryCount: retryCount + 1 });
     }
   }
@@ -274,7 +255,6 @@ async function handleDetect(data) {
       },
     });
   } catch (error) {
-    console.error('[MediaPipeWorker] Detection error:', error);
     self.postMessage({
       type: 'DETECT_ERROR',
       payload: { error: error.message },
@@ -431,7 +411,6 @@ self.onmessage = function (event) {
   if (messageHandlers[type]) {
     messageHandlers[type](data, id);
   } else {
-    console.warn(`[MediaPipeWorker] Unknown message type: ${type}`);
     self.postMessage({
       type: 'ERROR',
       payload: { error: `Unknown message type: ${type}` },

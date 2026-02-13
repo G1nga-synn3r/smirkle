@@ -1,24 +1,29 @@
 """
 Emotion analysis endpoint for Vercel serverless deployment.
+
+IMPORTANT: This endpoint is deprecated for actual emotion detection.
+Emotion detection is now performed client-side using MediaPipe FaceLandmarker.
+This endpoint is kept for session management and validation purposes.
 """
 
 import base64
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 def analyze_frame_simple(frame_data, session_id):
     """
-    Simple emotion analysis for serverless environment.
+    Session validation and echo endpoint.
     
-    Note: Full DeepFace analysis requires model files that need to be
-    deployed separately or hosted on a dedicated backend service.
+    Note: This endpoint no longer performs emotion detection.
+    Client-side MediaPipe handles all detection in real-time.
+    This endpoint exists for backward compatibility and session validation.
     
     Args:
-        frame_data: Base64 encoded image
+        frame_data: Base64 encoded image (ignored - not used)
         session_id: Session identifier
         
     Returns:
-        Detection response with mock/simulated results
+        Session validation response with acknowledgment
     """
     # Validate session ID
     try:
@@ -28,13 +33,12 @@ def analyze_frame_simple(frame_data, session_id):
             "status": "error",
             "error": "INVALID_SESSION_ID",
             "message": "Invalid session ID format",
-            "timestamp": datetime.utcnow().isoformat() + "Z"
+            "timestamp": datetime.now(timezone.utc).isoformat() + "Z"
         }
     
-    # Check if frame data is valid base64
+    # Check if frame data is valid base64 (validation only)
     try:
         if frame_data.startswith("data:image"):
-            # Remove data URI prefix
             frame_data = frame_data.split(",")[1]
         decoded = base64.b64decode(frame_data)
     except (ValueError, base64.binascii.Error) as e:
@@ -42,51 +46,28 @@ def analyze_frame_simple(frame_data, session_id):
             "status": "error",
             "error": "INVALID_FRAME",
             "message": "Invalid frame data",
-            "timestamp": datetime.utcnow().isoformat() + "Z"
+            "timestamp": datetime.now(timezone.utc).isoformat() + "Z"
         }
     
-    # Return simulated response for serverless demo
-    # In production, this should call the actual backend service
+    # Return acknowledgment - actual detection happens client-side
     return {
         "status": "success",
-        "emotion": "neutral",
-        "emotion_scores": {
-            "happy": 0.1,
-            "sad": 0.05,
-            "angry": 0.02,
-            "surprise": 0.05,
-            "fear": 0.02,
-            "disgust": 0.01,
-            "neutral": 0.75
-        },
-        "is_smirk": False,
-        "smirk_reason": None,
-        "confidence": 0.85,
-        "face_detected": True,
-        "face_count": 1,
-        "bounding_box": {
-            "x": 100,
-            "y": 50,
-            "width": 200,
-            "height": 200
-        },
-        "processing_time_ms": 50,
+        "message": "Session validated",
+        "note": "Emotion detection is performed client-side",
+        "detection_mode": "client-side-mediapipe",
         "session_id": session_id,
-        "consecutive_smirk_count": 0,
-        "game_over": False,
-        "game_over_reason": None,
-        "timestamp": datetime.utcnow().isoformat() + "Z"
+        "timestamp": datetime.now(timezone.utc).isoformat() + "Z"
     }
 
 def main(request):
     """
-    Main emotion analysis endpoint.
+    Main endpoint for session validation.
     
     Args:
         request: Vercel request object with JSON body
         
     Returns:
-        JSON response with detection results
+        JSON response with session validation results
     """
     try:
         body = request.get_json() or {}
@@ -95,15 +76,13 @@ def main(request):
     
     frame = body.get("frame", "")
     session_id = body.get("session_id", "")
-    timestamp = body.get("timestamp", 0)
-    frame_number = body.get("frame_number", 0)
     
     if not frame:
         return {
             "status": "error",
             "error": "MISSING_FRAME",
             "message": "Frame data is required",
-            "timestamp": datetime.utcnow().isoformat() + "Z"
+            "timestamp": datetime.now(timezone.utc).isoformat() + "Z"
         }, 400
     
     if not session_id:
@@ -111,7 +90,7 @@ def main(request):
             "status": "error",
             "error": "MISSING_SESSION_ID",
             "message": "Session ID is required",
-            "timestamp": datetime.utcnow().isoformat() + "Z"
+            "timestamp": datetime.now(timezone.utc).isoformat() + "Z"
         }, 400
     
     result = analyze_frame_simple(frame, session_id)

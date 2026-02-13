@@ -8,6 +8,9 @@ def main(request):
     """
     Health check endpoint.
     
+    Note: This backend provides session management and API routing.
+    Actual emotion detection runs client-side using MediaPipe.
+    
     Args:
         request: Vercel request object
         
@@ -16,11 +19,12 @@ def main(request):
     """
     return {
         "status": "healthy",
-        "model_loaded": True,
-        "model_name": "emotion",
+        "model_loaded": False,
+        "model_name": "client-side-mediapipe",
         "model_version": "1.0",
         "uptime_seconds": 0,
         "detection_threshold": 0.5,
         "supported_emotions": ["happy", "sad", "angry", "surprise", "fear", "disgust", "neutral"],
-        "timestamp": datetime.utcnow().isoformat() + "Z"
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "note": "Emotion detection is performed client-side using MediaPipe FaceLandmarker"
     }
