@@ -211,7 +211,7 @@ export interface DetectionResult {
   happinessScore: number;
   isSmirking: boolean;
   neutralExpression: boolean;
-  eyesOpen: boolean;
+  eyesOpen: boolean | { left: number; right: number }; // Support both formats for flexibility
   leftEyeOpenness: number;
   rightEyeOpenness: number;
   headPose: {

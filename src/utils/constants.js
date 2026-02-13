@@ -267,3 +267,38 @@ export const DYNAMIC_RESOLUTION = {
   MEDIUM_QUALITY_TARGET_FPS: 25,
   LOW_QUALITY_TARGET_FPS: 15,
 };
+
+// ===========================
+// Face Detection Debounce Settings
+// ===========================
+
+/**
+ * Number of consecutive frames required to confirm face detection
+ * Prevents flicker from momentary detection drops
+ */
+export const FACE_DETECTED_DEBOUNCE_FRAMES = 3;
+
+/**
+ * Number of consecutive frames required to confirm face loss
+ * Higher threshold prevents false "face not detected" from brief occlusions
+ */
+export const FACE_LOST_DEBOUNCE_FRAMES = 10;
+
+/**
+ * Number of consecutive frames required to confirm eyes closed
+ * Prevents false positives from blinking
+ */
+export const EYES_CLOSED_DEBOUNCE_FRAMES = 5;
+
+/**
+ * Grace frames allowed during calibration before resetting progress
+ * Prevents calibration reset from single-frame detection failures
+ */
+export const CALIBRATION_GRACE_FRAMES = 3;
+
+/**
+ * Smoothing factor for happiness score (0-1)
+ * Higher = more responsive, Lower = more smooth
+ * 0.3 provides good balance between responsiveness and stability
+ */
+export const HAPPINESS_SMOOTHING_FACTOR = 0.3;

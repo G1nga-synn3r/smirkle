@@ -283,14 +283,15 @@ function handleGetPerformance() {
 
 /**
  * Process MediaPipe results into game-ready format
+ * Includes null-safe access and default fallbacks for stability
  */
 function processDetectionResult(result) {
-  // No face detected
+  // No face detected - return safe defaults
   if (!result.faceLandmarks || result.faceLandmarks.length === 0) {
     return {
       faceDetected: false,
       happinessScore: 0,
-      eyesOpen: true,
+      eyesOpen: { left: 1, right: 1 }, // Default to open to prevent false "eyes closed"
       faceConfidence: 0,
       isSmirking: false,
       neutralExpression: true,
@@ -308,14 +309,18 @@ function processDetectionResult(result) {
   // Calculate happiness score from blendshapes
   const happinessScore = calculateHappinessScore(blendshapes);
 
-  // Calculate eye openness
+  // Calculate eye openness with fallback
   const eyesOpen = calculateEyeOpenness(result);
 
   // Calculate head pose (simplified)
   const headPose = calculateHeadPose(face);
 
-  // Get face confidence
+  // Get face confidence - use a reasonable default if not available
   const faceConfidence = result.faceLandmarks?.[0]?.length > 0 ? 0.95 : 0;
+
+  // Determine if eyes are open based on threshold
+  const eyesOpenThreshold = 0.5;
+  const bothEyesOpen = eyesOpen.left >= eyesOpenThreshold && eyesOpen.right >= eyesOpenThreshold;
 
   return {
     faceDetected: true,
@@ -323,7 +328,7 @@ function processDetectionResult(result) {
     happinessScore,
     isSmirking: happinessScore >= 0.3,
     neutralExpression: happinessScore < 0.15,
-    eyesOpen,
+    eyesOpen: bothEyesOpen, // Boolean for backward compatibility
     leftEyeOpenness: eyesOpen.left,
     rightEyeOpenness: eyesOpen.right,
     headPose,

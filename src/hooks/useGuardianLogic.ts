@@ -3,6 +3,12 @@
  * 
  * Guardian Logic state machine for smile detection game.
  * Manages calibration, consecutive frame counting, and game over conditions.
+ * 
+ * Updated with debounce and hysteresis for stable face visibility detection:
+ * - Face detection requires consecutive frames to confirm presence/absence
+ * - Happiness score is smoothed using exponential moving average
+ * - Eye openness uses debounce to prevent flicker
+ * - Calibration allows grace frames before resetting progress
  */
 
 import { useState, useCallback, useRef } from 'react';
@@ -16,6 +22,41 @@ export const FACE_CONFIDENCE_THRESHOLD = 0.7;
 export const CONSECUTIVE_FRAMES_REQUIRED = 3;
 export const WARNING_ZONE_FRAMES = 10;
 export const CALIBRATION_STABILITY_DURATION = 1000;
+
+// ===========================
+// Debounce and Stability Constants
+// ===========================
+
+/**
+ * Number of consecutive frames required to confirm face detection
+ * Prevents flicker from momentary detection drops
+ */
+export const FACE_DETECTED_DEBOUNCE_FRAMES = 3;
+
+/**
+ * Number of consecutive frames required to confirm face loss
+ * Higher threshold prevents false "face not detected" from brief occlusions
+ */
+export const FACE_LOST_DEBOUNCE_FRAMES = 10;
+
+/**
+ * Number of consecutive frames required to confirm eyes closed
+ * Prevents false positives from blinking
+ */
+export const EYES_CLOSED_DEBOUNCE_FRAMES = 5;
+
+/**
+ * Grace frames allowed during calibration before resetting progress
+ * Prevents calibration reset from single-frame detection failures
+ */
+export const CALIBRATION_GRACE_FRAMES = 3;
+
+/**
+ * Smoothing factor for happiness score (0-1)
+ * Higher = more responsive, Lower = more smooth
+ * 0.3 provides good balance between responsiveness and stability
+ */
+export const HAPPINESS_SMOOTHING_FACTOR = 0.3;
 
 export type GameState = 'IDLE' | 'CALIBRATING' | 'PLAYING' | 'GAME_OVER';
 
@@ -65,6 +106,56 @@ export function useGuardianLogic(callbacks: GuardianCallbacks = {}) {
   const faceLostFramesRef = useRef(0);
   const smirkFramesRef = useRef(0); // Track smirk frames in ref to avoid stale closure
   
+  // ===========================
+  // Debounce and Smoothing Refs
+  // ===========================
+  
+  /**
+   * Consecutive frames where face was detected in raw input
+   * Used to confirm face presence with hysteresis
+   */
+  const faceDetectedCountRef = useRef(0);
+  
+  /**
+   * Consecutive frames where face was NOT detected in raw input
+   * Used to confirm face loss with hysteresis
+   */
+  const faceNotDetectedCountRef = useRef(0);
+  
+  /**
+   * Current debounced face detection state
+   * Only changes after debounce thresholds are met
+   */
+  const debouncedFaceDetectedRef = useRef(false);
+  
+  /**
+   * Consecutive frames where eyes were closed
+   * Used to debounce eye closure detection
+   */
+  const eyesClosedCountRef = useRef(0);
+  
+  /**
+   * Consecutive frames where eyes were open
+   * Used to debounce eye open detection
+   */
+  const eyesOpenCountRef = useRef(0);
+  
+  /**
+   * Current debounced eyes open state
+   */
+  const debouncedEyesOpenRef = useRef(true);
+  
+  /**
+   * Smoothed happiness score using exponential moving average
+   */
+  const smoothedHappinessRef = useRef(0);
+  
+  /**
+   * Grace frame counter for calibration
+   * Allows brief detection failures without resetting progress
+   */
+  const calibrationGraceFramesRef = useRef(0);
+  
   /**
    * Start calibration phase
    */
@@ -79,7 +170,89 @@ export function useGuardianLogic(callbacks: GuardianCallbacks = {}) {
     }));
     calibrationStartRef.current = performance.now();
     stableFramesRef.current = 0;
+    
+    // Reset debounce counters
+    faceDetectedCountRef.current = 0;
+    faceNotDetectedCountRef.current = 0;
+    debouncedFaceDetectedRef.current = false;
+    eyesClosedCountRef.current = 0;
+    eyesOpenCountRef.current = 0;
+    debouncedEyesOpenRef.current = true;
+    smoothedHappinessRef.current = 0;
+    calibrationGraceFramesRef.current = 0;
   }, []);
+  
+  /**
+   * Apply debounce logic to face detection signal
+   * Returns the debounced face detected state
+   */
+  function debounceFaceDetected(rawFaceDetected: boolean): boolean {
+    if (rawFaceDetected) {
+      // Increment detected counter, reset not-detected counter
+      faceDetectedCountRef.current++;
+      faceNotDetectedCountRef.current = 0;
+      
+      // Confirm face detected after threshold frames
+      if (!debouncedFaceDetectedRef.current && 
+          faceDetectedCountRef.current >= FACE_DETECTED_DEBOUNCE_FRAMES) {
+        debouncedFaceDetectedRef.current = true;
+      }
+    } else {
+      // Increment not-detected counter, reset detected counter
+      faceNotDetectedCountRef.current++;
+      faceDetectedCountRef.current = 0;
+      
+      // Confirm face lost after threshold frames
+      if (debouncedFaceDetectedRef.current && 
+          faceNotDetectedCountRef.current >= FACE_LOST_DEBOUNCE_FRAMES) {
+        debouncedFaceDetectedRef.current = false;
+      }
+    }
+    
+    return debouncedFaceDetectedRef.current;
+  }
+  
+  /**
+   * Apply debounce logic to eyes open signal
+   * Returns the debounced eyes open state
+   */
+  function debounceEyesOpen(rawEyesOpen: boolean | { left: number; right: number }): boolean {
+    // Handle both boolean and object format
+    const eyesOpenValue = typeof rawEyesOpen === 'boolean' 
+      ? rawEyesOpen 
+      : (rawEyesOpen.left > EYE_OPENNESS_THRESHOLD && rawEyesOpen.right > EYE_OPENNESS_THRESHOLD);
+    
+    if (eyesOpenValue) {
+      eyesOpenCountRef.current++;
+      eyesClosedCountRef.current = 0;
+      
+      if (!debouncedEyesOpenRef.current && 
+          eyesOpenCountRef.current >= EYES_CLOSED_DEBOUNCE_FRAMES) {
+        debouncedEyesOpenRef.current = true;
+      }
+    } else {
+      eyesClosedCountRef.current++;
+      eyesOpenCountRef.current = 0;
+      
+      if (debouncedEyesOpenRef.current && 
+          eyesClosedCountRef.current >= EYES_CLOSED_DEBOUNCE_FRAMES) {
+        debouncedEyesOpenRef.current = false;
+      }
+    }
+    
+    return debouncedEyesOpenRef.current;
+  }
+  
+  /**
+   * Apply exponential moving average smoothing to happiness score
+   * Reduces jitter and prevents false smirk detection from momentary spikes
+   */
+  function smoothHappinessScore(rawScore: number): number {
+    smoothedHappinessRef.current = 
+      HAPPINESS_SMOOTHING_FACTOR * rawScore + 
+      (1 - HAPPINESS_SMOOTHING_FACTOR) * smoothedHappinessRef.current;
+    return smoothedHappinessRef.current;
+  }
   
   /**
    * Process detection result and update state
@@ -87,37 +260,41 @@ export function useGuardianLogic(callbacks: GuardianCallbacks = {}) {
   const processDetection = useCallback((result: DetectionResult) => {
     const now = performance.now();
     
-    // Update face detection state
-    const faceDetected = result.faceDetected;
-    const eyesOpen = result.eyesOpen;
-    const happinessScore = result.happinessScore;
-    const isSmirking = result.isSmirking;
-    const neutralExpression = result.neutralExpression;
-    const faceCentered = result.faceCentered;
+    // Apply debounce and smoothing to raw detection values
+    const debouncedFaceDetected = debounceFaceDetected(result.faceDetected);
+    const debouncedEyesOpen = debounceEyesOpen(result.eyesOpen);
+    const smoothedHappiness = smoothHappinessScore(result.happinessScore);
     
-    // Handle game state transitions
+    // Recalculate isSmirking and neutralExpression based on smoothed score
+    const isSmirking = smoothedHappiness >= SMIRK_THRESHOLD;
+    const neutralExpression = smoothedHappiness < NEUTRAL_EXPRESSION_THRESHOLD;
+    
+    // Use debounced face detection for face centered
+    const faceCentered = debouncedFaceDetected && result.faceCentered;
+    
+    // Handle game state transitions with debounced values
     if (state.gameState === 'CALIBRATING') {
       handleCalibration(
-        faceDetected,
-        eyesOpen,
+        debouncedFaceDetected,
+        debouncedEyesOpen,
         neutralExpression,
-        happinessScore,
+        smoothedHappiness,
         now
       );
     } else if (state.gameState === 'PLAYING') {
       handlePlaying(
-        faceDetected,
-        eyesOpen,
+        debouncedFaceDetected,
+        debouncedEyesOpen,
         isSmirking
       );
     }
     
-    // Update state
+    // Update state with debounced/smoothed values
     setState(prev => ({
       ...prev,
-      faceDetected,
-      eyesOpen,
-      happinessScore,
+      faceDetected: debouncedFaceDetected,
+      eyesOpen: debouncedEyesOpen,
+      happinessScore: smoothedHappiness,
       isSmirking,
       neutralExpression,
       faceCentered
@@ -127,6 +304,7 @@ export function useGuardianLogic(callbacks: GuardianCallbacks = {}) {
   
   /**
    * Handle calibration phase
+   * Uses grace frames to prevent progress reset from brief detection failures
    */
   function handleCalibration(
     faceDetected: boolean,
@@ -143,6 +321,8 @@ export function useGuardianLogic(callbacks: GuardianCallbacks = {}) {
       happinessScore < NEUTRAL_EXPRESSION_THRESHOLD;
     
     if (conditionsMet) {
+      // Reset grace frame counter when conditions are good
+      calibrationGraceFramesRef.current = 0;
       stableFramesRef.current++;
       
       // Calculate calibration progress
@@ -165,12 +345,17 @@ export function useGuardianLogic(callbacks: GuardianCallbacks = {}) {
         callbacks.onCalibrationComplete?.();
       }
     } else {
-      // Reset stability counter if conditions not met
-      stableFramesRef.current = 0;
-      setState(prev => ({
-        ...prev,
-        calibrationProgress: 0
-      }));
+      // Use grace frames before resetting calibration progress
+      calibrationGraceFramesRef.current++;
+      
+      // Only reset if grace period is exceeded
+      if (calibrationGraceFramesRef.current > CALIBRATION_GRACE_FRAMES) {
+        stableFramesRef.current = 0;
+        setState(prev => ({
+          ...prev,
+          calibrationProgress: 0
+        }));
+      }
     }
   }
   
@@ -267,6 +452,16 @@ export function useGuardianLogic(callbacks: GuardianCallbacks = {}) {
     stableFramesRef.current = 0;
     faceLostFramesRef.current = 0;
     smirkFramesRef.current = 0;
+    
+    // Reset debounce refs
+    faceDetectedCountRef.current = 0;
+    faceNotDetectedCountRef.current = 0;
+    debouncedFaceDetectedRef.current = false;
+    eyesClosedCountRef.current = 0;
+    eyesOpenCountRef.current = 0;
+    debouncedEyesOpenRef.current = true;
+    smoothedHappinessRef.current = 0;
+    calibrationGraceFramesRef.current = 0;
   }, []);
   
   /**
@@ -285,6 +480,16 @@ export function useGuardianLogic(callbacks: GuardianCallbacks = {}) {
     stableFramesRef.current = 0;
     faceLostFramesRef.current = 0;
     smirkFramesRef.current = 0;
+    
+    // Reset debounce refs for new game
+    faceDetectedCountRef.current = 0;
+    faceNotDetectedCountRef.current = 0;
+    debouncedFaceDetectedRef.current = false;
+    eyesClosedCountRef.current = 0;
+    eyesOpenCountRef.current = 0;
+    debouncedEyesOpenRef.current = true;
+    smoothedHappinessRef.current = 0;
+    calibrationGraceFramesRef.current = 0;
   }, []);
   
   /**
