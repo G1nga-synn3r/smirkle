@@ -876,8 +876,8 @@ function App() {
                   {/* Readiness Details */}
                   {!isGameReady && (
                     <div className="mt-2 flex items-center justify-center gap-4 text-xs text-gray-500">
-                      <span className={isCameraReady ? 'text-green-400' : 'text-yellow-400'}>
-                        {isCameraReady ? '✅' : '⏳'} Camera
+                      <span className={cameraReady ? 'text-green-400' : 'text-yellow-400'}>
+                        {cameraReady ? '✅' : '⏳'} Camera
                       </span>
                       <span className={calibrationComplete ? 'text-green-400' : 'text-yellow-400'}>
                         {calibrationComplete ? '✅' : '⏳'} Calibration
