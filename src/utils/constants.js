@@ -174,8 +174,29 @@ export const PIP_CONFIG = {
  * Happiness/smile detection threshold for smirk detection
  * Value between 0 and 1
  * Derived from mouthHappy + mouthSmile blendshapes
+ * @deprecated Use SMIRK_ENTER_THRESHOLD and SMIRK_EXIT_THRESHOLD for hysteresis
  */
 export const SMIRK_THRESHOLD_MEDIAPIPE = 0.3;
+
+/**
+ * Threshold to enter smirking state
+ * When happiness score >= this value, user is considered smirking
+ */
+export const SMIRK_ENTER_THRESHOLD = 0.30;
+
+/**
+ * Threshold to exit smirking state (lower = more stable)
+ * When currently smirking and happiness score < this value, user exits smirking state
+ * Lower than ENTER threshold to prevent flickering on borderline expressions
+ */
+export const SMIRK_EXIT_THRESHOLD = 0.20;
+
+/**
+ * Grace frames before resetting smirk counter
+ * Number of consecutive frames below exit threshold before resetting smirk frame count
+ * Prevents "gaming" the system by brief expression changes
+ */
+export const SMIRK_RESET_GRACE_FRAMES = 2;
 
 /**
  * Neutral expression threshold for MediaPipe

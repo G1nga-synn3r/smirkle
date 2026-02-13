@@ -24,6 +24,30 @@ export const WARNING_ZONE_FRAMES = 10;
 export const CALIBRATION_STABILITY_DURATION = 1000;
 
 // ===========================
+// Hysteresis Thresholds for Smile Detection
+// ===========================
+
+/**
+ * Threshold to enter smirking state
+ * When happiness score >= this value, user is considered smirking
+ */
+export const SMIRK_ENTER_THRESHOLD = 0.30;
+
+/**
+ * Threshold to exit smirking state (lower = more stable)
+ * When currently smirking and happiness score < this value, user exits smirking state
+ * Lower than ENTER threshold to prevent flickering on borderline expressions
+ */
+export const SMIRK_EXIT_THRESHOLD = 0.20;
+
+/**
+ * Grace frames before resetting smirk counter
+ * Number of consecutive frames below exit threshold before resetting smirk frame count
+ * Prevents "gaming" the system by brief expression changes
+ */
+export const SMIRK_RESET_GRACE_FRAMES = 2;
+
+// ===========================
 // Debounce and Stability Constants
 // ===========================
 
@@ -105,6 +129,19 @@ export function useGuardianLogic(callbacks: GuardianCallbacks = {}) {
   const stableFramesRef = useRef(0);
   const faceLostFramesRef = useRef(0);
   const smirkFramesRef = useRef(0); // Track smirk frames in ref to avoid stale closure
+  
+  /**
+   * Counter for grace period before resetting smirk frames
+   * Increments when not smirking, resets to 0 when smirking
+   * Smirk frames only reset after this exceeds SMIRK_RESET_GRACE_FRAMES
+   */
+  const smirkResetCounterRef = useRef(0);
+  
+  /**
+   * Current smirking state for hysteresis
+   * Tracks whether we're currently in a smirking state to apply correct threshold
+   */
+  const isCurrentlySmirkingRef = useRef(false);
   
   // ===========================
   // Debounce and Smoothing Refs
@@ -265,8 +302,16 @@ export function useGuardianLogic(callbacks: GuardianCallbacks = {}) {
     const debouncedEyesOpen = debounceEyesOpen(result.eyesOpen);
     const smoothedHappiness = smoothHappinessScore(result.happinessScore);
     
-    // Recalculate isSmirking and neutralExpression based on smoothed score
-    const isSmirking = smoothedHappiness >= SMIRK_THRESHOLD;
+    // Apply hysteresis for smirk detection to prevent flickering
+    // When currently smirking: use EXIT threshold (lower, more stable)
+    // When not smirking: use ENTER threshold (higher, more sensitive to enter)
+    const isSmirking = isCurrentlySmirkingRef.current
+      ? smoothedHappiness >= SMIRK_EXIT_THRESHOLD  // Already smirking: stay smirking until below exit threshold
+      : smoothedHappiness >= SMIRK_ENTER_THRESHOLD; // Not smirking: need to reach enter threshold
+    
+    // Update the current smirking state for next frame's hysteresis
+    isCurrentlySmirkingRef.current = isSmirking;
+    
     const neutralExpression = smoothedHappiness < NEUTRAL_EXPRESSION_THRESHOLD;
     
     // Use debounced face detection for face centered
@@ -389,6 +434,9 @@ export function useGuardianLogic(callbacks: GuardianCallbacks = {}) {
     
     // Handle smirk detection
     if (isSmirking) {
+      // Reset the grace period counter when smirking
+      smirkResetCounterRef.current = 0;
+      
       smirkFramesRef.current += 1;
       const currentSmirkFrames = smirkFramesRef.current;
       
@@ -398,8 +446,9 @@ export function useGuardianLogic(callbacks: GuardianCallbacks = {}) {
         warningZoneFrames: 0
       }));
       
-      // Check for warning zone
-      if (currentSmirkFrames >= WARNING_ZONE_FRAMES && currentSmirkFrames < CONSECUTIVE_FRAMES_REQUIRED) {
+      // Check for warning zone (frames 1 and 2, before game over on frame 3)
+      // Fixed: Previous condition with WARNING_ZONE_FRAMES=10 was never true
+      if (currentSmirkFrames >= 1 && currentSmirkFrames < CONSECUTIVE_FRAMES_REQUIRED) {
         callbacks.onSmirkWarning?.();
         setState(prev => ({
           ...prev,
@@ -407,7 +456,7 @@ export function useGuardianLogic(callbacks: GuardianCallbacks = {}) {
         }));
       }
       
-      // Check for game over (3 consecutive frames)
+      // Check for game over (3 consecutive frames) - triggers immediately
       if (currentSmirkFrames >= CONSECUTIVE_FRAMES_REQUIRED) {
         setState(prev => ({
           ...prev,
@@ -419,13 +468,18 @@ export function useGuardianLogic(callbacks: GuardianCallbacks = {}) {
         callbacks.onGameOver?.('smirk_detected');
       }
     } else {
-      // Reset smirk counter if not smirking
-      smirkFramesRef.current = 0;
-      setState(prev => ({
-        ...prev,
-        consecutiveSmirkFrames: 0,
-        warningZoneFrames: 0
-      }));
+      // Increment grace period counter when not smirking
+      smirkResetCounterRef.current += 1;
+      
+      // Only reset smirk counter after grace period expires
+      if (smirkResetCounterRef.current > SMIRK_RESET_GRACE_FRAMES) {
+        smirkFramesRef.current = 0;
+        setState(prev => ({
+          ...prev,
+          consecutiveSmirkFrames: 0,
+          warningZoneFrames: 0
+        }));
+      }
     }
   }
   
