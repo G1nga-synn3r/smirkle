@@ -5,7 +5,7 @@
  * Manages calibration, consecutive frame counting, and game over conditions.
  */
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { DetectionResult } from '../types/WorkerMessageProtocol';
 
 // Threshold constants (should match constants.ts)
@@ -69,7 +69,6 @@ export function useGuardianLogic(callbacks: GuardianCallbacks = {}) {
    * Start calibration phase
    */
   const startCalibration = useCallback(() => {
-    console.log('[GuardianLogic] Starting calibration');
     setState(prev => ({
       ...prev,
       gameState: 'CALIBRATING',
@@ -109,9 +108,7 @@ export function useGuardianLogic(callbacks: GuardianCallbacks = {}) {
       handlePlaying(
         faceDetected,
         eyesOpen,
-        isSmirking,
-        faceDetected,
-        now
+        isSmirking
       );
     }
     
@@ -159,7 +156,6 @@ export function useGuardianLogic(callbacks: GuardianCallbacks = {}) {
       
       // Check if calibration is complete (1 second of stable conditions)
       if (stableFramesRef.current >= 30 && elapsed >= CALIBRATION_STABILITY_DURATION) {
-        console.log('[GuardianLogic] Calibration complete');
         setState(prev => ({
           ...prev,
           gameState: 'PLAYING',
@@ -184,9 +180,7 @@ export function useGuardianLogic(callbacks: GuardianCallbacks = {}) {
   function handlePlaying(
     faceDetected: boolean,
     eyesOpen: boolean,
-    isSmirking: boolean,
-    wasFaceDetected: boolean,
-    now: number
+    isSmirking: boolean
   ) {
     // Check for face loss
     if (!faceDetected) {
@@ -230,7 +224,6 @@ export function useGuardianLogic(callbacks: GuardianCallbacks = {}) {
       
       // Check for game over (3 consecutive frames)
       if (currentSmirkFrames >= CONSECUTIVE_FRAMES_REQUIRED) {
-        console.log('[GuardianLogic] Game over - smirk detected');
         setState(prev => ({
           ...prev,
           gameState: 'GAME_OVER',
@@ -255,7 +248,6 @@ export function useGuardianLogic(callbacks: GuardianCallbacks = {}) {
    * Reset to idle state
    */
   const reset = useCallback(() => {
-    console.log('[GuardianLogic] Reset');
     setState({
       gameState: 'IDLE',
       faceDetected: false,
@@ -281,7 +273,6 @@ export function useGuardianLogic(callbacks: GuardianCallbacks = {}) {
    * Restart game after game over
    */
   const restart = useCallback(() => {
-    console.log('[GuardianLogic] Restart');
     setState(prev => ({
       ...prev,
       gameState: 'CALIBRATING',

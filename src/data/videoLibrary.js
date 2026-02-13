@@ -1,7 +1,7 @@
 /**
  * Smirkle Video Library
  * Centralized video data management for the 'Try Not to Laugh' challenge
- * 
+ *
  * Schema: { id, title, url, difficulty, tags, previewImage, punchlineTimestamp }
  * Difficulty levels: Easy, Medium, Hard
  * punchlineTimestamp: Time in seconds where the "punchline" occurs
@@ -11,7 +11,7 @@
 export const DIFFICULTY = {
   EASY: 'Easy',
   MEDIUM: 'Medium',
-  HARD: 'Hard'
+  HARD: 'Hard',
 };
 
 // Video database with high-quality Pexels content
@@ -22,8 +22,9 @@ export const VIDEO_DATABASE = [
     url: 'https://videos.pexels.com/video-files/4025164/4025164-uhd_2560_1440_25fps.mp4',
     difficulty: DIFFICULTY.EASY,
     tags: ['animals', 'cats', 'comedy', 'pets', 'funny'],
-    previewImage: 'https://images.pexels.com/videos/4025164/free-video-4025164.jpg?auto=compress&cs=tinysrgb&dpr=1&w=500',
-    punchlineTimestamp: 8.5
+    previewImage:
+      'https://images.pexels.com/videos/4025164/free-video-4025164.jpg?auto=compress&cs=tinysrgb&dpr=1&w=500',
+    punchlineTimestamp: 8.5,
   },
   {
     id: 'video_002',
@@ -31,8 +32,9 @@ export const VIDEO_DATABASE = [
     url: 'https://videos.pexels.com/video-files/856973/856973-uhd_2560_1440_25fps.mp4',
     difficulty: DIFFICULTY.MEDIUM,
     tags: ['stand-up', 'comedy', 'adult', 'live', 'humor'],
-    previewImage: 'https://images.pexels.com/videos/856973/free-video-856973.jpg?auto=compress&cs=tinysrgb&dpr=1&w=500',
-    punchlineTimestamp: 15.2
+    previewImage:
+      'https://images.pexels.com/videos/856973/free-video-856973.jpg?auto=compress&cs=tinysrgb&dpr=1&w=500',
+    punchlineTimestamp: 15.2,
   },
   {
     id: 'video_003',
@@ -40,8 +42,9 @@ export const VIDEO_DATABASE = [
     url: 'https://videos.pexels.com/video-files/855070/855070-uhd_2560_1440_25fps.mp4',
     difficulty: DIFFICULTY.HARD,
     tags: ['stand-up', 'comedy', 'special', 'professional', 'jokes'],
-    previewImage: 'https://images.pexels.com/videos/855070/free-video-855070.jpg?auto=compress&cs=tinysrgb&dpr=1&w=500',
-    punchlineTimestamp: 22.8
+    previewImage:
+      'https://images.pexels.com/videos/855070/free-video-855070.jpg?auto=compress&cs=tinysrgb&dpr=1&w=500',
+    punchlineTimestamp: 22.8,
   },
   {
     id: 'video_004',
@@ -49,8 +52,9 @@ export const VIDEO_DATABASE = [
     url: 'https://videos.pexels.com/video-files/3196344/3196344-uhd_2560_1440_25fps.mp4',
     difficulty: DIFFICULTY.EASY,
     tags: ['babies', 'laughter', 'cute', 'funny', 'kids'],
-    previewImage: 'https://images.pexels.com/videos/3196344/free-video-3196344.jpg?auto=compress&cs=tinysrgb&dpr=1&w=500',
-    punchlineTimestamp: 6.3
+    previewImage:
+      'https://images.pexels.com/videos/3196344/free-video-3196344.jpg?auto=compress&cs=tinysrgb&dpr=1&w=500',
+    punchlineTimestamp: 6.3,
   },
   {
     id: 'video_005',
@@ -58,8 +62,9 @@ export const VIDEO_DATABASE = [
     url: 'https://videos.pexels.com/video-files/4033003/4033003-uhd_2560_1440_30fps.mp4',
     difficulty: DIFFICULTY.MEDIUM,
     tags: ['dogs', 'fail', 'funny', 'animals', 'compilation'],
-    previewImage: 'https://images.pexels.com/videos/4033003/free-video-4033003.jpg?auto=compress&cs=tinysrgb&dpr=1&w=500',
-    punchlineTimestamp: 12.7
+    previewImage:
+      'https://images.pexels.com/videos/4033003/free-video-4033003.jpg?auto=compress&cs=tinysrgb&dpr=1&w=500',
+    punchlineTimestamp: 12.7,
   },
   {
     id: 'video_006',
@@ -67,8 +72,9 @@ export const VIDEO_DATABASE = [
     url: 'https://videos.pexels.com/video-files/854671/854671-uhd_2560_1440_24fps.mp4',
     difficulty: DIFFICULTY.HARD,
     tags: ['improv', 'comedy', 'skit', 'funny', 'actors'],
-    previewImage: 'https://images.pexels.com/videos/854671/free-video-854671.jpg?auto=compress&cs=tinysrgb&dpr=1&w=500',
-    punchlineTimestamp: 18.4
+    previewImage:
+      'https://images.pexels.com/videos/854671/free-video-854671.jpg?auto=compress&cs=tinysrgb&dpr=1&w=500',
+    punchlineTimestamp: 18.4,
   },
   {
     id: 'video_007',
@@ -76,8 +82,9 @@ export const VIDEO_DATABASE = [
     url: 'https://videos.pexels.com/video-files/3205917/3205917-uhd_2560_1440_25fps.mp4',
     difficulty: DIFFICULTY.EASY,
     tags: ['office', 'work', 'funny', 'professional', 'everyday'],
-    previewImage: 'https://images.pexels.com/videos/3205917/free-video-3205917.jpg?auto=compress&cs=tinysrgb&dpr=1&w=500',
-    punchlineTimestamp: 9.1
+    previewImage:
+      'https://images.pexels.com/videos/3205917/free-video-3205917.jpg?auto=compress&cs=tinysrgb&dpr=1&w=500',
+    punchlineTimestamp: 9.1,
   },
   {
     id: 'video_008',
@@ -85,9 +92,10 @@ export const VIDEO_DATABASE = [
     url: 'https://videos.pexels.com/video-files/856980/856980-uhd_2560_1440_25fps.mp4',
     difficulty: DIFFICULTY.HARD,
     tags: ['stand-up', 'comedian', 'routine', 'adult', 'humor'],
-    previewImage: 'https://images.pexels.com/videos/856980/free-video-856980.jpg?auto=compress&cs=tinysrgb&dpr=1&w=500',
-    punchlineTimestamp: 25.6
-  }
+    previewImage:
+      'https://images.pexels.com/videos/856980/free-video-856980.jpg?auto=compress&cs=tinysrgb&dpr=1&w=500',
+    punchlineTimestamp: 25.6,
+  },
 ];
 
 /**
@@ -108,7 +116,7 @@ export const getAllVideos = () => {
  * @returns {Array} Filtered video array
  */
 export const getVideosByDifficulty = (difficulty) => {
-  return VIDEO_DATABASE.filter(video => video.difficulty === difficulty);
+  return VIDEO_DATABASE.filter((video) => video.difficulty === difficulty);
 };
 
 /**
@@ -117,7 +125,7 @@ export const getVideosByDifficulty = (difficulty) => {
  * @returns {Object|undefined} The video object or undefined if not found
  */
 export const getVideoById = (id) => {
-  return VIDEO_DATABASE.find(video => video.id === id);
+  return VIDEO_DATABASE.find((video) => video.id === id);
 };
 
 /**
@@ -126,7 +134,7 @@ export const getVideoById = (id) => {
  * @returns {Array} Array of videos containing the specified tag
  */
 export const getVideosByTag = (tag) => {
-  return VIDEO_DATABASE.filter(video => video.tags.includes(tag));
+  return VIDEO_DATABASE.filter((video) => video.tags.includes(tag));
 };
 
 /**
@@ -145,9 +153,7 @@ export const getRandomVideo = () => {
  */
 export const searchVideosByTitle = (searchTerm) => {
   const term = searchTerm.toLowerCase();
-  return VIDEO_DATABASE.filter(video => 
-    video.title.toLowerCase().includes(term)
-  );
+  return VIDEO_DATABASE.filter((video) => video.title.toLowerCase().includes(term));
 };
 
 /**
@@ -156,9 +162,9 @@ export const searchVideosByTitle = (searchTerm) => {
  */
 export const getDifficultyDistribution = () => {
   return {
-    easy: VIDEO_DATABASE.filter(v => v.difficulty === DIFFICULTY.EASY).length,
-    medium: VIDEO_DATABASE.filter(v => v.difficulty === DIFFICULTY.MEDIUM).length,
-    hard: VIDEO_DATABASE.filter(v => v.difficulty === DIFFICULTY.HARD).length
+    easy: VIDEO_DATABASE.filter((v) => v.difficulty === DIFFICULTY.EASY).length,
+    medium: VIDEO_DATABASE.filter((v) => v.difficulty === DIFFICULTY.MEDIUM).length,
+    hard: VIDEO_DATABASE.filter((v) => v.difficulty === DIFFICULTY.HARD).length,
   };
 };
 
@@ -181,16 +187,14 @@ export class VideoQueueManager {
    * @returns {Array} Shuffled video queue
    */
   generateShuffledQueue() {
-    const availableVideos = this.allVideos.filter(
-      video => !this.playedVideos.has(video.id)
-    );
-    
+    const availableVideos = this.allVideos.filter((video) => !this.playedVideos.has(video.id));
+
     const shuffled = [...availableVideos];
     for (let i = shuffled.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
     }
-    
+
     this.currentQueue = shuffled;
     return shuffled;
   }
@@ -249,7 +253,7 @@ export class VideoQueueManager {
       totalVideos: this.allVideos.length,
       playedCount: this.getPlayedCount(),
       remainingCount: this.getRemainingCount(),
-      playedVideoIds: Array.from(this.playedVideos)
+      playedVideoIds: Array.from(this.playedVideos),
     };
   }
 
@@ -274,13 +278,13 @@ export class VideoPreFetcher {
    */
   static preloadVideos(videos, count = 3) {
     const videosToPreload = videos.slice(0, count);
-    
+
     videosToPreload.forEach((video, index) => {
       // Check if link already exists
       const existingLink = document.querySelector(
         `link[rel="preload"][as="video"][data-video-id="${video.id}"]`
       );
-      
+
       if (!existingLink) {
         const link = document.createElement('link');
         link.rel = 'preload';
@@ -289,37 +293,34 @@ export class VideoPreFetcher {
         link.setAttribute('data-video-id', video.id);
         link.setAttribute('data-preload-index', index);
         document.head.appendChild(link);
-        
-        console.log(`[VideoPreFetcher] Preloading video ${index + 1}/${count}: ${video.title}`);
       }
     });
-    
+
     // Clean up old preload links (keep only current preloads)
     const preloadLinks = document.querySelectorAll('link[rel="preload"][as="video"]');
-    preloadLinks.forEach(link => {
+    preloadLinks.forEach((link) => {
       const linkVideoId = link.getAttribute('data-video-id');
-      const isInCurrentPreload = videosToPreload.some(v => v.id === linkVideoId);
+      const isInCurrentPreload = videosToPreload.some((v) => v.id === linkVideoId);
       if (!isInCurrentPreload) {
         link.remove();
       }
     });
   }
-  
+
   /**
    * Clear all video preload links
    */
   static clearPreloads() {
     const preloadLinks = document.querySelectorAll('link[rel="preload"][as="video"]');
-    preloadLinks.forEach(link => link.remove());
-    console.log('[VideoPreFetcher] Cleared all preload links');
+    preloadLinks.forEach((link) => link.remove());
   }
-  
+
   /**
    * Preload a specific video by ID
    * @param {string} videoId - ID of video to preload
    */
   static preloadVideoById(videoId) {
-    const video = VIDEO_DATABASE.find(v => v.id === videoId);
+    const video = VIDEO_DATABASE.find((v) => v.id === videoId);
     if (video) {
       const existingLink = document.querySelector(
         `link[rel="preload"][as="video"][data-video-id="${videoId}"]`
@@ -331,7 +332,6 @@ export class VideoPreFetcher {
         link.href = video.url;
         link.setAttribute('data-video-id', videoId);
         document.head.appendChild(link);
-        console.log(`[VideoPreFetcher] Preloading: ${video.title}`);
       }
     }
   }
@@ -352,5 +352,5 @@ export default {
   getVideosByTag,
   getRandomVideo,
   searchVideosByTitle,
-  getDifficultyDistribution
+  getDifficultyDistribution,
 };

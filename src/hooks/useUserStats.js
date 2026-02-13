@@ -61,7 +61,7 @@ export function useUserStats() {
         // Check if it's consecutive
         const yesterday = new Date();
         yesterday.setDate(yesterday.getDate() - 1);
-        
+
         if (lastPlayed === yesterday.toDateString()) {
           newStreak = prev.longestStreak + 1;
         } else if (lastPlayed !== today) {

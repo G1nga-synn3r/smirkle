@@ -10,7 +10,7 @@ export default function Leaderboard() {
 
   useEffect(() => {
     loadScores();
-    
+
     return () => {
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
@@ -23,21 +23,23 @@ export default function Leaderboard() {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
-    
+
     abortControllerRef.current = new AbortController();
     setIsLoading(true);
     try {
       // Try to fetch from Firestore first
-      const firestoreScores = await getGlobalLeaderboard(25, { signal: abortControllerRef.current.signal });
-      
+      const firestoreScores = await getGlobalLeaderboard(25, {
+        signal: abortControllerRef.current.signal,
+      });
+
       if (firestoreScores && firestoreScores.length > 0) {
         // Map Firestore field names to UI field names
-        const mappedScores = firestoreScores.map(score => ({
+        const mappedScores = firestoreScores.map((score) => ({
           id: score.id,
           name: score.username,
           score: score.score_value,
           time: score.survival_time,
-          date: score.date
+          date: score.date,
         }));
         setScores(mappedScores);
       } else {
@@ -127,9 +129,12 @@ export default function Leaderboard() {
   };
 
   const getRankCardStyle = (rank) => {
-    if (rank === 1) return 'bg-gradient-to-r from-yellow-500/20 via-yellow-400/10 to-orange-500/20 border-yellow-500/30';
-    if (rank === 2) return 'bg-gradient-to-r from-gray-400/10 via-gray-300/5 to-gray-400/10 border-gray-300/30';
-    if (rank === 3) return 'bg-gradient-to-r from-amber-600/20 via-amber-500/10 to-amber-600/20 border-amber-500/30';
+    if (rank === 1)
+      return 'bg-gradient-to-r from-yellow-500/20 via-yellow-400/10 to-orange-500/20 border-yellow-500/30';
+    if (rank === 2)
+      return 'bg-gradient-to-r from-gray-400/10 via-gray-300/5 to-gray-400/10 border-gray-300/30';
+    if (rank === 3)
+      return 'bg-gradient-to-r from-amber-600/20 via-amber-500/10 to-amber-600/20 border-amber-500/30';
     return 'bg-white/5 border-white/10 hover:bg-white/10';
   };
 
@@ -160,7 +165,9 @@ export default function Leaderboard() {
             <h2 className="text-2xl font-bold bg-gradient-to-r from-yellow-400 to-orange-500 bg-clip-text text-transparent">
               Leaderboard
             </h2>
-            <p className="text-sm text-gray-400">{showAll ? 'Top 100 players' : 'Top 25 players'}</p>
+            <p className="text-sm text-gray-400">
+              {showAll ? 'Top 100 players' : 'Top 25 players'}
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -201,7 +208,9 @@ export default function Leaderboard() {
               <span className="text-2xl font-bold text-gray-800">2</span>
             </div>
             <p className="font-medium text-gray-300">{scores[1]?.name}</p>
-            <p className="text-lg font-bold text-gray-400">{scores[1]?.score?.toLocaleString() ?? 'N/A'}</p>
+            <p className="text-lg font-bold text-gray-400">
+              {scores[1]?.score?.toLocaleString() ?? 'N/A'}
+            </p>
             <div className="w-24 h-20 bg-gradient-to-t from-gray-400/30 to-gray-400/10 rounded-t-lg mt-2 flex items-end justify-center pb-2">
               <span className="text-xs text-gray-500">{formatTime(scores[1]?.time)}</span>
             </div>

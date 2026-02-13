@@ -1,5 +1,19 @@
 import { useState, useEffect } from 'react';
-import { Search, Users, UserPlus, Shield, ShieldOff, Award, Heart, Trophy, Clock, Check, X, Bell, Loader } from 'lucide-react';
+import {
+  Search,
+  Users,
+  UserPlus,
+  Shield,
+  ShieldOff,
+  Award,
+  Heart,
+  Trophy,
+  Clock,
+  Check,
+  X,
+  Bell,
+  Loader,
+} from 'lucide-react';
 import { searchUsers, isFriend, toggleFriend } from '../services/userService';
 import { getCurrentUser } from '../utils/auth';
 
@@ -13,23 +27,97 @@ const initialFriendRequests = [
 
 // Mock activity notifications
 const mockActivities = [
-  { id: 1, user: 'Alex', action: 'set a 2-minute smirk-free record!', time: '2 min ago', type: 'achievement' },
-  { id: 2, user: 'Sarah', action: 'earned the "Poker Face Master" badge', time: '15 min ago', type: 'badge' },
-  { id: 3, user: 'Jordan', action: 'challenged you to a match', time: '1 hour ago', type: 'challenge' },
+  {
+    id: 1,
+    user: 'Alex',
+    action: 'set a 2-minute smirk-free record!',
+    time: '2 min ago',
+    type: 'achievement',
+  },
+  {
+    id: 2,
+    user: 'Sarah',
+    action: 'earned the "Poker Face Master" badge',
+    time: '15 min ago',
+    type: 'badge',
+  },
+  {
+    id: 3,
+    user: 'Jordan',
+    action: 'challenged you to a match',
+    time: '1 hour ago',
+    type: 'challenge',
+  },
   { id: 4, user: 'Emma', action: 'is now your friend', time: '3 hours ago', type: 'friend' },
   { id: 5, user: 'Taylor', action: 'reached a 5-day streak!', time: '5 hours ago', type: 'streak' },
 ];
 
 // Available badges
 const allBadges = [
-  { id: 1, name: 'Early Adopter', icon: '🚀', description: 'Joined during beta', earned: true, earnedDate: '2024-01-15' },
-  { id: 2, name: 'The Poker Face', icon: '🎭', description: 'Maintained neutral expression for 10 minutes', earned: true, earnedDate: '2024-02-01' },
-  { id: 3, name: 'Streak Master', icon: '🔥', description: '7-day smirk-free streak', earned: true, earnedDate: '2024-02-10' },
-  { id: 4, name: 'Champion', icon: '🏆', description: 'Won 10 matches', earned: true, earnedDate: '2024-02-15' },
-  { id: 5, name: 'Social Butterfly', icon: '🦋', description: 'Connected with 20 friends', earned: false, earnedDate: null },
-  { id: 6, name: 'Marathoner', icon: '🏃', description: '30-minute smirk-free session', earned: false, earnedDate: null },
-  { id: 7, name: 'Perfectionist', icon: '💎', description: '100% accuracy in a session', earned: false, earnedDate: null },
-  { id: 8, name: 'Legend', icon: '⭐', description: 'Reach level 50', earned: false, earnedDate: null },
+  {
+    id: 1,
+    name: 'Early Adopter',
+    icon: '🚀',
+    description: 'Joined during beta',
+    earned: true,
+    earnedDate: '2024-01-15',
+  },
+  {
+    id: 2,
+    name: 'The Poker Face',
+    icon: '🎭',
+    description: 'Maintained neutral expression for 10 minutes',
+    earned: true,
+    earnedDate: '2024-02-01',
+  },
+  {
+    id: 3,
+    name: 'Streak Master',
+    icon: '🔥',
+    description: '7-day smirk-free streak',
+    earned: true,
+    earnedDate: '2024-02-10',
+  },
+  {
+    id: 4,
+    name: 'Champion',
+    icon: '🏆',
+    description: 'Won 10 matches',
+    earned: true,
+    earnedDate: '2024-02-15',
+  },
+  {
+    id: 5,
+    name: 'Social Butterfly',
+    icon: '🦋',
+    description: 'Connected with 20 friends',
+    earned: false,
+    earnedDate: null,
+  },
+  {
+    id: 6,
+    name: 'Marathoner',
+    icon: '🏃',
+    description: '30-minute smirk-free session',
+    earned: false,
+    earnedDate: null,
+  },
+  {
+    id: 7,
+    name: 'Perfectionist',
+    icon: '💎',
+    description: '100% accuracy in a session',
+    earned: false,
+    earnedDate: null,
+  },
+  {
+    id: 8,
+    name: 'Legend',
+    icon: '⭐',
+    description: 'Reach level 50',
+    earned: false,
+    earnedDate: null,
+  },
 ];
 
 export default function SocialHub() {
@@ -72,7 +160,7 @@ export default function SocialHub() {
       setIsSearching(true);
       try {
         const results = await searchUsers(searchQuery, currentUser?.id);
-        
+
         // Add friend status to each result
         const enrichedResults = await Promise.all(
           results.map(async (user) => {
@@ -80,11 +168,11 @@ export default function SocialHub() {
             return {
               ...user,
               isFriend: isFriendStatus,
-              avatar: user.profile_picture_url || null
+              avatar: user.profile_picture_url || null,
             };
           })
         );
-        
+
         setSearchResults(enrichedResults);
       } catch (error) {
         console.error('Search error:', error);
@@ -98,31 +186,27 @@ export default function SocialHub() {
   }, [searchQuery, currentUser?.id]);
 
   const handleAcceptRequest = (id) => {
-    setFriendRequests(prev => prev.filter(req => req.id !== id));
+    setFriendRequests((prev) => prev.filter((req) => req.id !== id));
   };
 
   const handleRejectRequest = (id) => {
-    setFriendRequests(prev => prev.filter(req => req.id !== id));
+    setFriendRequests((prev) => prev.filter((req) => req.id !== id));
   };
 
   const handleAddFriend = async (userId) => {
     try {
       await toggleFriend(currentUser?.id, userId);
-      
+
       // Update search results to reflect friend status
-      setSearchResults(prev => 
-        prev.map(user => 
-          user.id === userId 
-            ? { ...user, isFriend: !user.isFriend }
-            : user
-        )
+      setSearchResults((prev) =>
+        prev.map((user) => (user.id === userId ? { ...user, isFriend: !user.isFriend } : user))
       );
     } catch (error) {
       console.error('Error toggling friend:', error);
     }
   };
 
-  const earnedBadgesCount = badges.filter(b => b.earned).length;
+  const earnedBadgesCount = badges.filter((b) => b.earned).length;
   const totalBadgesCount = badges.length;
 
   return (
@@ -135,7 +219,9 @@ export default function SocialHub() {
           </h1>
           {/* Privacy Toggle */}
           <div className="flex items-center gap-3 bg-slate-800/80 backdrop-blur-xl rounded-xl p-2 border border-white/10">
-            <span className={`text-sm px-3 py-1 rounded-lg transition-colors ${privacyMode === 'Public' ? 'bg-cyan-500/20 text-cyan-400' : 'text-gray-400'}`}>
+            <span
+              className={`text-sm px-3 py-1 rounded-lg transition-colors ${privacyMode === 'Public' ? 'bg-cyan-500/20 text-cyan-400' : 'text-gray-400'}`}
+            >
               <Shield size={16} className="inline mr-1" />
               Public
             </span>
@@ -147,7 +233,9 @@ export default function SocialHub() {
                 className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${privacyMode === 'Public' ? 'translate-x-7' : 'translate-x-1'}`}
               />
             </button>
-            <span className={`text-sm px-3 py-1 rounded-lg transition-colors ${privacyMode === 'Friends Only' ? 'bg-purple-500/20 text-purple-400' : 'text-gray-400'}`}>
+            <span
+              className={`text-sm px-3 py-1 rounded-lg transition-colors ${privacyMode === 'Friends Only' ? 'bg-purple-500/20 text-purple-400' : 'text-gray-400'}`}
+            >
               <ShieldOff size={16} className="inline mr-1" />
               Friends Only
             </span>
@@ -161,7 +249,7 @@ export default function SocialHub() {
             { id: 'find', label: 'Find Friends', icon: Search },
             { id: 'requests', label: `Requests (${friendRequests.length})`, icon: UserPlus },
             { id: 'badges', label: 'Badges', icon: Award },
-          ].map(tab => (
+          ].map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
@@ -187,18 +275,24 @@ export default function SocialHub() {
                 Activity Feed
               </h2>
               <div className="space-y-4">
-                {activities.map(activity => (
+                {activities.map((activity) => (
                   <div
                     key={activity.id}
                     className="flex items-start gap-4 p-4 bg-slate-700/30 rounded-2xl hover:bg-slate-700/50 transition-colors"
                   >
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                      activity.type === 'achievement' ? 'bg-amber-500/20 text-amber-400' :
-                      activity.type === 'badge' ? 'bg-purple-500/20 text-purple-400' :
-                      activity.type === 'challenge' ? 'bg-red-500/20 text-red-400' :
-                      activity.type === 'friend' ? 'bg-green-500/20 text-green-400' :
-                      'bg-orange-500/20 text-orange-400'
-                    }`}>
+                    <div
+                      className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                        activity.type === 'achievement'
+                          ? 'bg-amber-500/20 text-amber-400'
+                          : activity.type === 'badge'
+                            ? 'bg-purple-500/20 text-purple-400'
+                            : activity.type === 'challenge'
+                              ? 'bg-red-500/20 text-red-400'
+                              : activity.type === 'friend'
+                                ? 'bg-green-500/20 text-green-400'
+                                : 'bg-orange-500/20 text-orange-400'
+                      }`}
+                    >
                       {activity.type === 'achievement' && <Trophy size={20} />}
                       {activity.type === 'badge' && <Award size={20} />}
                       {activity.type === 'challenge' && <Heart size={20} />}
@@ -225,10 +319,13 @@ export default function SocialHub() {
                 <Search className="text-cyan-400" size={24} />
                 Find Friends
               </h2>
-              
+
               {/* Search Bar */}
               <div className="relative mb-6">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                <Search
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
+                  size={20}
+                />
                 <input
                   type="text"
                   value={searchQuery}
@@ -245,50 +342,64 @@ export default function SocialHub() {
                     <Loader size={24} className="animate-spin text-cyan-400" />
                   </div>
                 )}
-                {!isSearching && searchResults.length > 0 && searchResults.map(user => (
-                  <div
-                    key={user.id}
-                    className="flex items-center gap-4 p-4 bg-slate-700/30 rounded-2xl hover:bg-slate-700/50 transition-colors"
-                  >
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-400 to-purple-600 flex items-center justify-center text-white font-bold overflow-hidden">
-                      {user.avatar ? (
-                        <img src={user.avatar} alt={user.display_name} className="w-full h-full object-cover" />
-                      ) : (
-                        (user.display_name || user.username)[0].toUpperCase()
-                      )}
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-white font-medium">{user.display_name || user.username}</p>
-                      <p className="text-sm text-gray-400">@{user.username}</p>
-                      {user.bio && <p className="text-xs text-gray-500 mt-1 line-clamp-1">{user.bio}</p>}
-                    </div>
-                    <button
-                      onClick={() => handleAddFriend(user.id)}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-xl text-white font-medium transition-opacity whitespace-nowrap ${
-                        user.isFriend 
-                          ? 'bg-green-600/50 hover:bg-green-600/70' 
-                          : 'bg-gradient-to-r from-cyan-500 to-purple-500 hover:opacity-90'
-                      }`}
+                {!isSearching &&
+                  searchResults.length > 0 &&
+                  searchResults.map((user) => (
+                    <div
+                      key={user.id}
+                      className="flex items-center gap-4 p-4 bg-slate-700/30 rounded-2xl hover:bg-slate-700/50 transition-colors"
                     >
-                      {user.isFriend ? (
-                        <>
-                          <Check size={18} />
-                          Friend
-                        </>
-                      ) : (
-                        <>
-                          <UserPlus size={18} />
-                          Add
-                        </>
-                      )}
-                    </button>
-                  </div>
-                ))}
+                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-400 to-purple-600 flex items-center justify-center text-white font-bold overflow-hidden">
+                        {user.avatar ? (
+                          <img
+                            src={user.avatar}
+                            alt={user.display_name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          (user.display_name || user.username)[0].toUpperCase()
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-white font-medium">
+                          {user.display_name || user.username}
+                        </p>
+                        <p className="text-sm text-gray-400">@{user.username}</p>
+                        {user.bio && (
+                          <p className="text-xs text-gray-500 mt-1 line-clamp-1">{user.bio}</p>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => handleAddFriend(user.id)}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-white font-medium transition-opacity whitespace-nowrap ${
+                          user.isFriend
+                            ? 'bg-green-600/50 hover:bg-green-600/70'
+                            : 'bg-gradient-to-r from-cyan-500 to-purple-500 hover:opacity-90'
+                        }`}
+                      >
+                        {user.isFriend ? (
+                          <>
+                            <Check size={18} />
+                            Friend
+                          </>
+                        ) : (
+                          <>
+                            <UserPlus size={18} />
+                            Add
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  ))}
                 {!isSearching && searchQuery.trim().length > 0 && searchResults.length === 0 && (
-                  <p className="text-center text-gray-400 py-8">No users found for "{searchQuery}"</p>
+                  <p className="text-center text-gray-400 py-8">
+                    No users found for "{searchQuery}"
+                  </p>
                 )}
                 {searchQuery.trim().length === 0 && (
-                  <p className="text-center text-gray-400 py-8">Start typing to search for players...</p>
+                  <p className="text-center text-gray-400 py-8">
+                    Start typing to search for players...
+                  </p>
                 )}
               </div>
             </div>
@@ -301,19 +412,23 @@ export default function SocialHub() {
                 <UserPlus className="text-cyan-400" size={24} />
                 Friend Requests
               </h2>
-              
+
               {friendRequests.length === 0 ? (
                 <p className="text-center text-gray-400 py-8">No pending friend requests</p>
               ) : (
                 <div className="space-y-3">
-                  {friendRequests.map(request => (
+                  {friendRequests.map((request) => (
                     <div
                       key={request.id}
                       className="flex items-center gap-4 p-4 bg-slate-700/30 rounded-2xl"
                     >
                       <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-400 to-pink-600 flex items-center justify-center text-white font-bold">
                         {request.avatar ? (
-                          <img src={request.avatar} alt={request.name} className="w-full h-full rounded-full object-cover" />
+                          <img
+                            src={request.avatar}
+                            alt={request.name}
+                            className="w-full h-full rounded-full object-cover"
+                          />
                         ) : (
                           request.name[0]
                         )}
@@ -353,7 +468,8 @@ export default function SocialHub() {
                   Badges
                 </h2>
                 <div className="text-sm text-gray-400">
-                  <span className="text-cyan-400 font-semibold">{earnedBadgesCount}</span> / {totalBadgesCount} earned
+                  <span className="text-cyan-400 font-semibold">{earnedBadgesCount}</span> /{' '}
+                  {totalBadgesCount} earned
                 </div>
               </div>
 
@@ -369,7 +485,7 @@ export default function SocialHub() {
 
               {/* Badges Grid */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {badges.map(badge => (
+                {badges.map((badge) => (
                   <div
                     key={badge.id}
                     className={`relative p-6 rounded-2xl text-center transition-all ${
@@ -379,7 +495,9 @@ export default function SocialHub() {
                     }`}
                   >
                     <div className="text-4xl mb-3">{badge.icon}</div>
-                    <h3 className={`font-semibold mb-1 ${badge.earned ? 'text-white' : 'text-gray-400'}`}>
+                    <h3
+                      className={`font-semibold mb-1 ${badge.earned ? 'text-white' : 'text-gray-400'}`}
+                    >
                       {badge.name}
                     </h3>
                     <p className="text-sm text-gray-400">{badge.description}</p>

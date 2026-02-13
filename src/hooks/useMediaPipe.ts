@@ -38,6 +38,12 @@ export interface UseMediaPipeReturn extends MediaPipeState {
   setGPU: (enabled: boolean) => void;
   getPerformance: () => void;
   reset: () => void;
+  
+  // Camera state management (called from FaceTracker)
+  setCameraReady: (ready: boolean, error?: string) => void;
+  setFirstFrameReceived: (received: boolean) => void;
+  setDetectionReady: (ready: boolean) => void;
+  setCameraStatus: (status: 'checking' | 'active' | 'error') => void;
 }
 
 const DEFAULT_OPTIONS: Required<UseMediaPipeOptions> = {
@@ -68,6 +74,16 @@ export function useMediaPipe(options: UseMediaPipeOptions = {}): UseMediaPipeRet
     gpuEnabled: true,
     cpuFallback: false,
     error: null,
+    
+    // Camera readiness state
+    cameraReady: false,
+    cameraStatus: 'checking',
+    cameraError: null,
+    firstFrameReceived: false,
+    
+    // Detection state
+    detectionReady: false,
+    
     lastResult: null,
     performance: null
   });
@@ -77,7 +93,6 @@ export function useMediaPipe(options: UseMediaPipeOptions = {}): UseMediaPipeRet
    */
   const initialize = useCallback(async () => {
     if (workerRef.current && workerReadyRef.current) {
-      console.log('[useMediaPipe] Worker already initialized');
       return;
     }
     
@@ -86,13 +101,11 @@ export function useMediaPipe(options: UseMediaPipeOptions = {}): UseMediaPipeRet
     try {
       // Detect GPU capabilities
       const gpuInfo = await detectGPUCapability();
-      console.log('[useMediaPipe] GPU Info:', gpuInfo);
       
       // Select fallback strategy
       const strategy = selectFallbackStrategy(gpuInfo);
       const config = getFallbackConfig(strategy);
       
-      console.log(`[useMediaPipe] Fallback strategy: ${strategy}`);
       
       // Dynamically import worker module
       const MediaPipeWorkerModule = await import('../workers/MediaPipeWorker.js');
@@ -106,7 +119,6 @@ export function useMediaPipe(options: UseMediaPipeOptions = {}): UseMediaPipeRet
         switch (type) {
           case 'loadingProgress':
             // Track loading progress from worker
-            console.log(`[useMediaPipe] Loading ${payload.stage}: ${payload.progress}%`);
             setState(prev => ({
               ...prev,
               loadingStage: payload.stage,
@@ -117,7 +129,6 @@ export function useMediaPipe(options: UseMediaPipeOptions = {}): UseMediaPipeRet
             
           case 'modelsLoaded':
             // ALL models loaded - this is the key state transition
-            console.log('[useMediaPipe] All models loaded:', payload);
             workerReadyRef.current = true;
             setState(prev => ({
               ...prev,
@@ -137,7 +148,6 @@ export function useMediaPipe(options: UseMediaPipeOptions = {}): UseMediaPipeRet
             
           case 'INIT_SUCCESS':
             // Legacy support - may still be sent by older worker versions
-            console.log('[useMediaPipe] Worker initialized successfully');
             workerReadyRef.current = true;
             setState(prev => ({
               ...prev,
@@ -322,6 +332,16 @@ export function useMediaPipe(options: UseMediaPipeOptions = {}): UseMediaPipeRet
       gpuEnabled: true,
       cpuFallback: false,
       error: null,
+      
+      // Camera readiness state
+      cameraReady: false,
+      cameraStatus: 'checking',
+      cameraError: null,
+      firstFrameReceived: false,
+      
+      // Detection state
+      detectionReady: false,
+      
       lastResult: null,
       performance: null
     });
@@ -330,7 +350,50 @@ export function useMediaPipe(options: UseMediaPipeOptions = {}): UseMediaPipeRet
       resolutionManagerRef.current.reset();
     }
     
-    console.log('[useMediaPipe] Reset complete');
+  }, []);
+  
+  /**
+   * Set camera ready state
+   * Called from FaceTracker when camera is fully ready
+   */
+  const setCameraReady = useCallback((ready: boolean, error?: string) => {
+    setState(prev => ({
+      ...prev,
+      cameraReady: ready,
+      cameraStatus: ready ? 'active' : prev.cameraStatus,
+      cameraError: error || null,
+      firstFrameReceived: ready || prev.firstFrameReceived
+    }));
+  }, []);
+  
+  /**
+   * Set first frame received state
+   */
+  const setFirstFrameReceived = useCallback((received: boolean) => {
+    setState(prev => ({
+      ...prev,
+      firstFrameReceived: received
+    }));
+  }, []);
+  
+  /**
+   * Set detection ready state (first valid face detection)
+   */
+  const setDetectionReady = useCallback((ready: boolean) => {
+    setState(prev => ({
+      ...prev,
+      detectionReady: ready
+    }));
+  }, []);
+  
+  /**
+   * Set camera status
+   */
+  const setCameraStatus = useCallback((status: 'checking' | 'active' | 'error') => {
+    setState(prev => ({
+      ...prev,
+      cameraStatus: status
+    }));
   }, []);
   
   /**
@@ -355,6 +418,12 @@ export function useMediaPipe(options: UseMediaPipeOptions = {}): UseMediaPipeRet
     detect,
     setGPU,
     getPerformance,
-    reset
+    reset,
+    
+    // Camera state management
+    setCameraReady,
+    setFirstFrameReceived,
+    setDetectionReady,
+    setCameraStatus
   };
 }

@@ -65,9 +65,7 @@ export async function detectGPUCapability(): Promise<GPUInfo> {
   
   // Try to get WebGL 2 context first
   if (gl instanceof WebGL2RenderingContext) {
-    console.log('[GPUDetector] WebGL 2.0 supported');
   } else {
-    console.log('[GPUDetector] WebGL 1.0 only (limited performance expected)');
   }
   
   // Try to get debug renderer info
@@ -79,9 +77,7 @@ export async function detectGPUCapability(): Promise<GPUInfo> {
   if (debugInfo) {
     renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
     vendor = gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL);
-    console.log(`[GPUDetector] GPU: ${renderer} (${vendor})`);
   } else {
-    console.log('[GPUDetector] Debug info not available, cannot identify GPU');
   }
   
   // Check for software renderers
@@ -194,16 +190,4 @@ export function checkDeviceCapabilities(): {
  * Log device capabilities to console
  */
 export function logDeviceCapabilities(): void {
-  const caps = checkDeviceCapabilities();
-  const gpu = detectGPUCapability();
-  
-  gpu.then(info => {
-    console.log('[GPUDetector] === Device Capabilities ===');
-    console.log(`[GPUDetector] WebGL: ${caps.webglSupported} (v${caps.webglVersion})`);
-    console.log(`[GPUDetector] Web Worker: ${caps.workerSupported}`);
-    console.log(`[GPUDetector] MediaPipe Capable: ${caps.canRunMediaPipe}`);
-    console.log(`[GPUDetector] GPU Supported: ${info.supported}`);
-    console.log(`[GPUDetector] Fallback: ${info.fallbackReason || 'None'}`);
-    console.log('[GPUDetector] ==========================');
-  });
 }

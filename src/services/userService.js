@@ -1,6 +1,6 @@
 /**
  * User Service - Firestore User Profile Operations
- * 
+ *
  * Provides functions for managing user profiles in the Firestore 'users' collection.
  * Uses the db instance from ./firebaseConfig.js
  */
@@ -16,7 +16,7 @@ import {
   collection,
   query,
   where,
-  getDocs
+  getDocs,
 } from 'firebase/firestore';
 import { db } from './firebaseConfig.js';
 
@@ -35,13 +35,13 @@ const DEFAULT_USER_STATS = {
   poker_face_level: 1,
   experience: 0,
   games_played: 0,
-  last_played_date: null
+  last_played_date: null,
 };
 
 /**
  * Create or update a user profile in Firestore
  * Uses setDoc with merge to avoid race conditions between read and write
- * 
+ *
  * @param {string} userId - The unique user identifier
  * @param {Object} profileData - Profile data to save
  * @param {string} profileData.username - Display name
@@ -54,26 +54,26 @@ const DEFAULT_USER_STATS = {
 export async function createOrUpdateUser(userId, profileData) {
   const userRef = doc(db, USERS_COLLECTION, userId);
   const now = new Date().toISOString();
-  
+
   const dataToSave = {
     username: profileData.username,
     motto: profileData.motto || '',
     profile_picture_url: profileData.profile_picture_url || '',
     bio: profileData.bio || '',
     birthdate: profileData.birthdate || '',
-    updated_at: now
+    updated_at: now,
   };
-  
+
   // Check if document exists using getDoc (lightweight compared to exists())
   const userDoc = await getDoc(userRef);
-  
+
   if (!userDoc.exists()) {
     // Creating new user - add creation timestamp and defaults
     await setDoc(userRef, {
       ...dataToSave,
       created_at: now,
       stats: DEFAULT_USER_STATS,
-      friend_list: []
+      friend_list: [],
     });
   } else {
     // Updating existing user - merge updates
@@ -84,7 +84,7 @@ export async function createOrUpdateUser(userId, profileData) {
 /**
  * Toggle a friend in the user's friend_list
  * Adds the friend if not present, removes if already in list
- * 
+ *
  * @param {string} userId - The current user's ID
  * @param {string} friendId - The friend user's ID to toggle
  * @returns {Promise<void>}
@@ -92,30 +92,30 @@ export async function createOrUpdateUser(userId, profileData) {
 export async function toggleFriend(userId, friendId) {
   const userRef = doc(db, USERS_COLLECTION, userId);
   const userDoc = await getDoc(userRef);
-  
+
   if (!userDoc.exists()) {
     throw new Error('User not found');
   }
-  
+
   const userData = userDoc.data();
   const friendList = userData.friend_list || [];
-  
+
   if (friendList.includes(friendId)) {
     // Remove friend
     await updateDoc(userRef, {
-      friend_list: arrayRemove(friendId)
+      friend_list: arrayRemove(friendId),
     });
   } else {
     // Add friend
     await updateDoc(userRef, {
-      friend_list: arrayUnion(friendId)
+      friend_list: arrayUnion(friendId),
     });
   }
 }
 
 /**
  * Fetch a user's profile by their ID
- * 
+ *
  * @param {string} userId - The user ID to fetch
  * @returns {Promise<Object|null>} User profile data or null if not found
  * @returns {string} returns.id - The user ID
@@ -130,27 +130,27 @@ export async function toggleFriend(userId, friendId) {
 export async function getUserProfile(userId) {
   const userRef = doc(db, USERS_COLLECTION, userId);
   const userDoc = await getDoc(userRef);
-  
+
   if (userDoc.exists()) {
     return {
       id: userDoc.id,
-      ...userDoc.data()
+      ...userDoc.data(),
     };
   }
-  
+
   return null;
 }
 
 /**
  * Get multiple user profiles by IDs
  * Useful for fetching friend details or leaderboard profiles
- * 
+ *
  * @param {string[]} userIds - Array of user IDs to fetch
  * @returns {Promise<Map<string, Object>>} Map of userId -> profile data
  */
 export async function getUserProfiles(userIds) {
   const profiles = new Map();
-  
+
   // Fetch in parallel using Promise.all
   const promises = userIds.map(async (userId) => {
     const profile = await getUserProfile(userId);
@@ -158,14 +158,14 @@ export async function getUserProfiles(userIds) {
       profiles.set(userId, profile);
     }
   });
-  
+
   await Promise.all(promises);
   return profiles;
 }
 
 /**
  * Check if a user is a friend of another user
- * 
+ *
  * @param {string} userId - The current user's ID
  * @param {string} targetUserId - The target user's ID to check
  * @returns {Promise<boolean>} True if target is a friend
@@ -173,34 +173,34 @@ export async function getUserProfiles(userIds) {
 export async function isFriend(userId, targetUserId) {
   const userRef = doc(db, USERS_COLLECTION, userId);
   const userDoc = await getDoc(userRef);
-  
+
   if (!userDoc.exists()) {
     return false;
   }
-  
+
   const friendList = userDoc.data().friend_list || [];
   return friendList.includes(targetUserId);
 }
 
 /**
  * Get user's friend list with full profile data
- * 
+ *
  * @param {string} userId - The user's ID
  * @returns {Promise<Object[]>} Array of friend profile objects
  */
 export async function getFriendsWithProfiles(userId) {
   const userDoc = await getDoc(doc(db, USERS_COLLECTION, userId));
-  
+
   if (!userDoc.exists()) {
     return [];
   }
-  
+
   const friendIds = userDoc.data().friend_list || [];
-  
+
   if (friendIds.length === 0) {
     return [];
   }
-  
+
   const profiles = await getUserProfiles(friendIds);
   return Array.from(profiles.values());
 }
@@ -208,7 +208,7 @@ export async function getFriendsWithProfiles(userId) {
 /**
  * Search for users by username or name (partial match)
  * Case-insensitive search that queries the Firestore 'users' collection
- * 
+ *
  * @param {string} searchQuery - The search term (username, name, or part of either)
  * @param {string} [currentUserId] - Optional: exclude current user from results
  * @returns {Promise<Object[]>} Array of user profiles matching the search
@@ -221,11 +221,11 @@ export async function searchUsers(searchQuery, currentUserId = null) {
   try {
     const usersRef = collection(db, USERS_COLLECTION);
     const usersSnapshot = await getDocs(usersRef);
-    
+
     const searchLower = searchQuery.toLowerCase();
     const results = [];
 
-    usersSnapshot.forEach(doc => {
+    usersSnapshot.forEach((doc) => {
       // Skip the current user if provided
       if (currentUserId && doc.id === currentUserId) {
         return;
@@ -249,7 +249,7 @@ export async function searchUsers(searchQuery, currentUserId = null) {
           profile_picture_url: userData.profile_picture_url || '',
           bio: userData.bio || '',
           stats: userData.stats || {},
-          created_at: userData.created_at
+          created_at: userData.created_at,
         });
       }
     });
@@ -268,5 +268,5 @@ export default {
   getUserProfiles,
   isFriend,
   getFriendsWithProfiles,
-  searchUsers
+  searchUsers,
 };

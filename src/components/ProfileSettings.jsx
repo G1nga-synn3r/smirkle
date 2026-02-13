@@ -1,5 +1,20 @@
 import { useState, useEffect } from 'react';
-import { User, Calendar, FileText, Quote, Eye, EyeOff, Save, X, Vibrate, Volume2, VolumeX, Settings, Monitor, Check } from 'lucide-react';
+import {
+  User,
+  Calendar,
+  FileText,
+  Quote,
+  Eye,
+  EyeOff,
+  Save,
+  X,
+  Vibrate,
+  Volume2,
+  VolumeX,
+  Settings,
+  Monitor,
+  Check,
+} from 'lucide-react';
 
 const STORAGE_KEY = 'smirkle_app_settings';
 const HAPTIC_STORAGE_KEY = 'smirkle_haptic_enabled';
@@ -76,7 +91,7 @@ export default function ProfileSettings() {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        setSettings(prev => ({ ...defaultSettings, ...parsed }));
+        setSettings((prev) => ({ ...defaultSettings, ...parsed }));
       } catch (e) {
         console.error('Failed to load settings:', e);
       }
@@ -194,7 +209,8 @@ export default function ProfileSettings() {
             <div className="bg-slate-800 rounded-2xl p-6 max-w-sm w-full">
               <h3 className="text-xl font-bold text-white mb-2">Reset Settings?</h3>
               <p className="text-gray-400 mb-6">
-                This will permanently delete all your profile settings. This action cannot be undone.
+                This will permanently delete all your profile settings. This action cannot be
+                undone.
               </p>
               <div className="flex gap-3">
                 <button
@@ -220,7 +236,9 @@ export default function ProfileSettings() {
           <div className="mb-6 p-5 bg-gradient-to-r from-purple-500/10 to-cyan-500/10 border border-purple-500/20 rounded-xl">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <div className={`p-3 rounded-xl ${hapticEnabled ? 'bg-purple-500/20 text-purple-400' : 'bg-slate-700/50 text-gray-400'}`}>
+                <div
+                  className={`p-3 rounded-xl ${hapticEnabled ? 'bg-purple-500/20 text-purple-400' : 'bg-slate-700/50 text-gray-400'}`}
+                >
                   <Vibrate size={24} />
                 </div>
                 <div>
@@ -231,8 +249,8 @@ export default function ProfileSettings() {
               <button
                 onClick={() => setHapticEnabled(!hapticEnabled)}
                 className={`relative inline-flex h-8 w-14 items-center rounded-full transition-all duration-300 ${
-                  hapticEnabled 
-                    ? 'bg-gradient-to-r from-purple-500 to-cyan-500 shadow-lg shadow-purple-500/30' 
+                  hapticEnabled
+                    ? 'bg-gradient-to-r from-purple-500 to-cyan-500 shadow-lg shadow-purple-500/30'
                     : 'bg-slate-600'
                 }`}
               >
@@ -249,7 +267,9 @@ export default function ProfileSettings() {
           <div className="mb-6 p-5 bg-gradient-to-r from-blue-500/10 to-cyan-500/10 border border-blue-500/20 rounded-xl">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-4">
-                <div className={`p-3 rounded-xl ${volume > 0 ? 'bg-blue-500/20 text-blue-400' : 'bg-slate-700/50 text-gray-400'}`}>
+                <div
+                  className={`p-3 rounded-xl ${volume > 0 ? 'bg-blue-500/20 text-blue-400' : 'bg-slate-700/50 text-gray-400'}`}
+                >
                   {getVolumeIcon()}
                 </div>
                 <div>
@@ -303,12 +323,12 @@ export default function ProfileSettings() {
                       <Check size={16} className="text-green-400" />
                     </div>
                   )}
-                  <div className={`font-semibold ${videoQuality === option.value ? 'text-white' : 'text-gray-300'}`}>
+                  <div
+                    className={`font-semibold ${videoQuality === option.value ? 'text-white' : 'text-gray-300'}`}
+                  >
                     {option.label}
                   </div>
-                  <div className="text-xs text-gray-400 mt-1">
-                    {option.description}
-                  </div>
+                  <div className="text-xs text-gray-400 mt-1">{option.description}</div>
                 </button>
               ))}
             </div>

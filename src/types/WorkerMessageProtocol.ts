@@ -236,15 +236,28 @@ export interface PerformanceMetrics {
   cpuFallback: boolean;
 }
 
+// Camera readiness states
+export type CameraStatus = 'checking' | 'active' | 'error';
+
 export interface MediaPipeState {
+  // Model loading state
   isInitialized: boolean;
   isLoading: boolean;
-  modelsLoaded: boolean;           // NEW: True only after modelsLoaded message
-  loadingStage: LoadingStage | null; // NEW: Current loading stage
-  loadingProgress: number;         // NEW: 0-100 progress
+  modelsLoaded: boolean;
+  loadingStage: LoadingStage | null;
+  loadingProgress: number;
   gpuEnabled: boolean;
   cpuFallback: boolean;
   error: string | null;
+  
+  // Camera readiness state (unified signal)
+  cameraReady: boolean;
+  cameraStatus: CameraStatus;
+  cameraError: string | null;
+  firstFrameReceived: boolean;
+  
+  // Detection state
+  detectionReady: boolean;
   lastResult: DetectionResult | null;
   performance: PerformanceMetrics | null;
 }

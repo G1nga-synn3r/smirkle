@@ -3,8 +3,6 @@ import ReactDOM from 'react-dom/client';
 import App from './App.jsx';
 import './style.css';
 
-console.log('[main] Starting app initialization...');
-
 const renderApp = () => {
   const rootElement = document.getElementById('root');
   if (!rootElement) {
@@ -12,17 +10,13 @@ const renderApp = () => {
     setTimeout(renderApp, 10);
     return;
   }
-  
-  console.log('[main] Root element found, creating React root...');
-  
+
   const root = ReactDOM.createRoot(rootElement);
   root.render(
     <React.StrictMode>
       <App />
     </React.StrictMode>
   );
-  
-  console.log('[main] App rendered successfully');
 };
 
 renderApp();

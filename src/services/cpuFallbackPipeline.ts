@@ -41,7 +41,6 @@ export class CPUFallbackPipeline {
    */
   async initialize(): Promise<void> {
     try {
-      console.log('[CPUFallbackPipeline] Initializing with CPU delegate...');
       
       // Load vision fileset from CDN
       const vision = await FilesetResolver.forVisionTasks(
@@ -61,7 +60,6 @@ export class CPUFallbackPipeline {
       });
       
       this.isInitialized = true;
-      console.log('[CPUFallbackPipeline] Initialization complete');
       
     } catch (error) {
       console.error('[CPUFallbackPipeline] Initialization failed:', error);
@@ -165,7 +163,6 @@ export class CPUFallbackPipeline {
       this.landmarker = null;
     }
     this.isInitialized = false;
-    console.log('[CPUFallbackPipeline] Disposed');
   }
 }
 

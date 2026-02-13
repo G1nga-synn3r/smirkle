@@ -19,24 +19,24 @@ function RegistrationForm() {
     state: RegistrationStatus.IDLE,
     progress: 0,
     message: null,
-    isOnline: navigator.onLine
+    isOnline: navigator.onLine,
   });
 
   // Listen for registration state changes from auth.js
   useEffect(() => {
     const handleStateChange = (newState) => {
-      setSyncState(prev => ({ ...prev, ...newState }));
+      setSyncState((prev) => ({ ...prev, ...newState }));
     };
-    
+
     const unsubscribe = onRegistrationStateChange(handleStateChange);
-    
+
     // Listen for online/offline events
-    const handleOnline = () => setSyncState(prev => ({ ...prev, isOnline: true }));
-    const handleOffline = () => setSyncState(prev => ({ ...prev, isOnline: false }));
-    
+    const handleOnline = () => setSyncState((prev) => ({ ...prev, isOnline: true }));
+    const handleOffline = () => setSyncState((prev) => ({ ...prev, isOnline: false }));
+
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
-    
+
     return () => {
       unsubscribe();
       window.removeEventListener('online', handleOnline);
@@ -148,7 +148,7 @@ function RegistrationForm() {
       age--;
     }
     const isAgeValid = age >= 14;
-    
+
     return (
       formData.username.trim().length >= 3 &&
       /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email) &&
@@ -199,7 +199,6 @@ function RegistrationForm() {
         if (result.success) {
           setRegisteredUser(result.user);
           setRegistrationSuccess(true);
-          console.log('Registration successful:', result.user);
         } else {
           setGeneralError(result.error || 'Registration failed. Please try again.');
         }
@@ -216,7 +215,7 @@ function RegistrationForm() {
     RegistrationStatus.VALIDATING,
     RegistrationStatus.CHECKING_AVAILABILITY,
     RegistrationStatus.SYNCING,
-    RegistrationStatus.OFFLINE_FALLBACK
+    RegistrationStatus.OFFLINE_FALLBACK,
   ].includes(syncState.state);
 
   const isComplete = syncState.state === RegistrationStatus.COMPLETE;
@@ -226,17 +225,47 @@ function RegistrationForm() {
   const getStatusConfig = () => {
     switch (syncState.state) {
       case RegistrationStatus.VALIDATING:
-        return { icon: Loader2, color: 'text-blue-500', bg: 'bg-blue-500/20', message: 'Validating inputs...' };
+        return {
+          icon: Loader2,
+          color: 'text-blue-500',
+          bg: 'bg-blue-500/20',
+          message: 'Validating inputs...',
+        };
       case RegistrationStatus.CHECKING_AVAILABILITY:
-        return { icon: Loader2, color: 'text-blue-500', bg: 'bg-blue-500/20', message: 'Checking username availability...' };
+        return {
+          icon: Loader2,
+          color: 'text-blue-500',
+          bg: 'bg-blue-500/20',
+          message: 'Checking username availability...',
+        };
       case RegistrationStatus.SYNCING:
-        return { icon: Loader2, color: 'text-green-500', bg: 'bg-green-500/20', message: syncState.message || 'Saving profile to network...' };
+        return {
+          icon: Loader2,
+          color: 'text-green-500',
+          bg: 'bg-green-500/20',
+          message: syncState.message || 'Saving profile to network...',
+        };
       case RegistrationStatus.OFFLINE_FALLBACK:
-        return { icon: WifiOff, color: 'text-yellow-500', bg: 'bg-yellow-500/20', message: syncState.message || 'Network unavailable, saving locally...' };
+        return {
+          icon: WifiOff,
+          color: 'text-yellow-500',
+          bg: 'bg-yellow-500/20',
+          message: syncState.message || 'Network unavailable, saving locally...',
+        };
       case RegistrationStatus.COMPLETE:
-        return { icon: CheckCircle, color: 'text-green-500', bg: 'bg-green-500/20', message: syncState.message || 'Profile saved!' };
+        return {
+          icon: CheckCircle,
+          color: 'text-green-500',
+          bg: 'bg-green-500/20',
+          message: syncState.message || 'Profile saved!',
+        };
       case RegistrationStatus.FAILED:
-        return { icon: AlertCircle, color: 'text-red-500', bg: 'bg-red-500/20', message: syncState.error || 'Registration failed' };
+        return {
+          icon: AlertCircle,
+          color: 'text-red-500',
+          bg: 'bg-red-500/20',
+          message: syncState.error || 'Registration failed',
+        };
       default:
         return null;
     }
@@ -251,34 +280,39 @@ function RegistrationForm() {
           <div className="w-16 h-16 mx-auto mb-4 bg-green-100 rounded-full flex items-center justify-center">
             <CheckCircle className="w-8 h-8 text-green-500" />
           </div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">
-            Account Created!
-          </h2>
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">Account Created!</h2>
           <p className="text-gray-600 mb-4">
             Welcome, <span className="font-semibold">{registeredUser?.username}</span>!
           </p>
-          
+
           {/* Network sync status */}
-          <div className={`p-4 rounded-lg ${syncState.isOnline ? 'bg-green-50' : 'bg-yellow-50'} mb-4`}>
+          <div
+            className={`p-4 rounded-lg ${syncState.isOnline ? 'bg-green-50' : 'bg-yellow-50'} mb-4`}
+          >
             <div className="flex items-center justify-center gap-2 mb-2">
               {syncState.isOnline ? (
                 <Wifi className="w-4 h-4 text-green-500" />
               ) : (
                 <WifiOff className="w-4 h-4 text-yellow-500" />
               )}
-              <span className={`text-sm font-medium ${syncState.isOnline ? 'text-green-700' : 'text-yellow-700'}`}>
+              <span
+                className={`text-sm font-medium ${syncState.isOnline ? 'text-green-700' : 'text-yellow-700'}`}
+              >
                 {syncState.isOnline ? 'Online' : 'Offline Mode'}
               </span>
             </div>
             <p className="text-sm text-gray-600">
-              {registeredUser?.isNetworkSynced 
+              {registeredUser?.isNetworkSynced
                 ? 'Your profile is saved to the cloud and accessible from any device.'
-                : 'Your profile is saved locally. It will sync to the cloud when you\'re back online.'}
+                : "Your profile is saved locally. It will sync to the cloud when you're back online."}
             </p>
           </div>
 
           <p className="text-sm text-gray-500">
-            Player ID: <code className="text-xs bg-gray-100 px-2 py-1 rounded">{registeredUser?.playerId}</code>
+            Player ID:{' '}
+            <code className="text-xs bg-gray-100 px-2 py-1 rounded">
+              {registeredUser?.playerId}
+            </code>
           </p>
         </div>
       </div>
@@ -288,9 +322,7 @@ function RegistrationForm() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
       <div className="w-full max-w-md bg-white rounded-xl shadow-lg p-8">
-        <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">
-          Create Account
-        </h2>
+        <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">Create Account</h2>
 
         <form onSubmit={handleSubmit} className="space-y-5">
           {/* General error message */}
@@ -306,7 +338,11 @@ function RegistrationForm() {
               <div className="flex items-center gap-3">
                 {(() => {
                   const Icon = statusConfig.icon;
-                  return <Icon className={`w-5 h-5 ${statusConfig.color} ${isSyncing ? 'animate-spin' : ''}`} />;
+                  return (
+                    <Icon
+                      className={`w-5 h-5 ${statusConfig.color} ${isSyncing ? 'animate-spin' : ''}`}
+                    />
+                  );
                 })()}
                 <div>
                   <p className={`text-sm font-medium ${statusConfig.color}`}>
@@ -314,7 +350,7 @@ function RegistrationForm() {
                   </p>
                   {/* Progress bar */}
                   <div className="mt-2 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                    <div 
+                    <div
                       className={`h-full ${statusConfig.color.replace('text-', 'bg-')} transition-all duration-300`}
                       style={{ width: `${syncState.progress}%` }}
                     />
@@ -343,15 +379,14 @@ function RegistrationForm() {
           {!syncState.isOnline && !isComplete && (
             <div className="p-3 rounded-lg bg-yellow-500/20 border border-yellow-500/50 flex items-center gap-2">
               <WifiOff className="w-4 h-4 text-yellow-500" />
-              <span className="text-sm text-yellow-400">You're offline. Profile will sync when online.</span>
+              <span className="text-sm text-yellow-400">
+                You're offline. Profile will sync when online.
+              </span>
             </div>
           )}
 
           <div>
-            <label
-              htmlFor="username"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
+            <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
               Username
             </label>
             <input
@@ -375,10 +410,7 @@ function RegistrationForm() {
           </div>
 
           <div>
-            <label
-              htmlFor="email"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
+            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
               Email
             </label>
             <input
@@ -402,10 +434,7 @@ function RegistrationForm() {
           </div>
 
           <div>
-            <label
-              htmlFor="password"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
+            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
               Password
             </label>
             <input
@@ -480,10 +509,7 @@ function RegistrationForm() {
 
           {/* Birthdate Field - Age Gate (minimum 14 years) */}
           <div>
-            <label
-              htmlFor="birthdate"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
+            <label htmlFor="birthdate" className="block text-sm font-medium text-gray-700 mb-1">
               <Calendar className="inline w-4 h-4 mr-2" />
               Birthdate
             </label>
@@ -509,7 +535,9 @@ function RegistrationForm() {
             {touched.birthdate && errors.birthdate && (
               <p className="mt-1 text-sm text-red-500">{errors.birthdate}</p>
             )}
-            <p className="text-xs text-gray-500 mt-1">You must be at least 14 years old to create an account</p>
+            <p className="text-xs text-gray-500 mt-1">
+              You must be at least 14 years old to create an account
+            </p>
           </div>
 
           <button
@@ -539,4 +567,3 @@ function RegistrationForm() {
 }
 
 export default RegistrationForm;
-

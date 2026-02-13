@@ -3,7 +3,7 @@ import '@testing-library/jest-dom';
 // Mock window.matchMedia
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
-  value: jest.fn().mockImplementation(query => ({
+  value: jest.fn().mockImplementation((query) => ({
     matches: false,
     media: query,
     onchange: null,
@@ -18,7 +18,7 @@ Object.defineProperty(window, 'matchMedia', {
 // Mock navigator.mediaDevices.getUserMedia
 Object.defineProperty(navigator, 'mediaDevices', {
   value: {
-    getUserMedia: jest.fn(() => 
+    getUserMedia: jest.fn(() =>
       Promise.resolve({
         getTracks: () => [],
       })
@@ -30,10 +30,7 @@ Object.defineProperty(navigator, 'mediaDevices', {
 const originalError = console.error;
 beforeAll(() => {
   console.error = (...args) => {
-    if (
-      typeof args[0] === 'string' &&
-      args[0].includes('Warning: ReactDOM.render')
-    ) {
+    if (typeof args[0] === 'string' && args[0].includes('Warning: ReactDOM.render')) {
       return;
     }
     originalError.call(console, ...args);

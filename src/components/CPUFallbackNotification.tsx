@@ -1,11 +1,9 @@
 /**
  * CPU Fallback Notification Component
- * 
+ *
  * Displays a subtle, non-intrusive notification when the app
  * is running in CPU fallback mode.
  */
-
-import React from 'react';
 
 interface CPUFallbackNotificationProps {
   visible: boolean;
@@ -59,18 +57,6 @@ export function CPUFallbackNotification({ visible, onDismiss }: CPUFallbackNotif
           </svg>
         </button>
       )}
-    </div>
-  );
-}
-
-/**
- * CPU Fallback Badge (smaller, simpler version)
- */
-export function CPUFallbackBadge() {
-  return (
-    <div className="cpu-fallback-badge" title="Running in compatibility mode">
-      <span className="cpu-badge-icon">⚡</span>
-      <span className="cpu-badge-text">Compatibility Mode</span>
     </div>
   );
 }

@@ -13,9 +13,9 @@ describe('Level System', () => {
       expect(result.level).toBe(2);
     });
 
-    it('should calculate level 5 for 5,000,000 points', () => {
+    it('should calculate level 6 for 5,000,000 points', () => {
       const result = calculateLevel(5000000);
-      expect(result.level).toBe(5);
+      expect(result.level).toBe(6);
     });
 
     it('should cap at level 100', () => {

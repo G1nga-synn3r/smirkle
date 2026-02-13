@@ -10,32 +10,53 @@ export const BANNED_CATEGORIES = {
   ADULT: 'adult',
   SPAM: 'spam',
   COPYRIGHT: 'copyright',
-  HARASSMENT: 'harassment'
+  HARASSMENT: 'harassment',
 };
 
 // Banned keywords organized by category
 export const BANNED_KEYWORDS = {
   [BANNED_CATEGORIES.VIOLENCE]: [
-    'violence', 'violent', 'fight', 'attack', 'assault', 'murder', 'kill',
-    'weapon', 'guns', 'shooting', 'blood', 'gore', 'torture'
+    'violence',
+    'violent',
+    'fight',
+    'attack',
+    'assault',
+    'murder',
+    'kill',
+    'weapon',
+    'guns',
+    'shooting',
+    'blood',
+    'gore',
+    'torture',
   ],
   [BANNED_CATEGORIES.HATE]: [
-    'hate', 'racist', 'discrimination', 'slur', 'nazi', 'supremacy',
-    'bigotry', 'prejudice', 'xenophobia', 'antisemitism'
+    'hate',
+    'racist',
+    'discrimination',
+    'slur',
+    'nazi',
+    'supremacy',
+    'bigotry',
+    'prejudice',
+    'xenophobia',
+    'antisemitism',
   ],
   [BANNED_CATEGORIES.ADULT]: [
-    'nsfw', 'porn', 'explicit', 'adult', 'nude', 'naked', 'sexual',
-    'erotic', 'xxx', 'adult content'
+    'nsfw',
+    'porn',
+    'explicit',
+    'adult',
+    'nude',
+    'naked',
+    'sexual',
+    'erotic',
+    'xxx',
+    'adult content',
   ],
-  [BANNED_CATEGORIES.SPAM]: [
-    'clickbait', 'spam', 'bot', 'fake', 'scam', 'phishing', 'malware'
-  ],
-  [BANNED_CATEGORIES.COPYRIGHT]: [
-    'copyright', 'pirated', 'stolen', 'illegal download', 'torrent'
-  ],
-  [BANNED_CATEGORIES.HARASSMENT]: [
-    'bullying', 'harass', 'stalk', 'threat', 'intimidate', 'doxx'
-  ]
+  [BANNED_CATEGORIES.SPAM]: ['clickbait', 'spam', 'bot', 'fake', 'scam', 'phishing', 'malware'],
+  [BANNED_CATEGORIES.COPYRIGHT]: ['copyright', 'pirated', 'stolen', 'illegal download', 'torrent'],
+  [BANNED_CATEGORIES.HARASSMENT]: ['bullying', 'harass', 'stalk', 'threat', 'intimidate', 'doxx'],
 };
 
 /**
@@ -53,9 +74,7 @@ export const getAllBannedKeywords = () => {
  */
 export const isKeywordBanned = (keyword) => {
   const normalizedKeyword = keyword.toLowerCase();
-  return getAllBannedKeywords().some(banned => 
-    normalizedKeyword.includes(banned.toLowerCase())
-  );
+  return getAllBannedKeywords().some((banned) => normalizedKeyword.includes(banned.toLowerCase()));
 };
 
 /**
@@ -66,18 +85,18 @@ export const isKeywordBanned = (keyword) => {
 export const findBannedKeywords = (text) => {
   const normalizedText = text.toLowerCase();
   const foundKeywords = [];
-  
+
   for (const [category, keywords] of Object.entries(BANNED_KEYWORDS)) {
-    keywords.forEach(keyword => {
+    keywords.forEach((keyword) => {
       if (normalizedText.includes(keyword.toLowerCase())) {
         foundKeywords.push({
           keyword,
-          category
+          category,
         });
       }
     });
   }
-  
+
   return foundKeywords;
 };
 
@@ -91,7 +110,7 @@ export const checkContentModeration = (content) => {
   return {
     passed: flagged.length === 0,
     flaggedKeywords: flagged,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   };
 };
 
@@ -101,5 +120,5 @@ export default {
   getAllBannedKeywords,
   isKeywordBanned,
   findBannedKeywords,
-  checkContentModeration
+  checkContentModeration,
 };

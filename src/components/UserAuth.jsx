@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { X, User, Mail, Lock, MessageSquare, Sparkles, Eye, EyeOff, Calendar } from 'lucide-react';
-import { 
-  registerUser, 
-  authenticateUser, 
-  getCurrentUser, 
+import {
+  registerUser,
+  authenticateUser,
+  getCurrentUser,
   logoutUser,
   isUsernameAvailable,
-  isEmailAvailable
+  isEmailAvailable,
 } from '../utils/auth';
 
 /**
@@ -22,7 +22,7 @@ export default function UserAuth({ isOpen, onClose, onAuthChange }) {
     confirmPassword: '',
     birthdate: '',
     bio: '',
-    motto: ''
+    motto: '',
   });
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState({});
@@ -36,7 +36,7 @@ export default function UserAuth({ isOpen, onClose, onAuthChange }) {
     { regex: /[A-Z]/, label: 'One uppercase letter (A-Z)' },
     { regex: /[a-z]/, label: 'One lowercase letter (a-z)' },
     { regex: /\d/, label: 'One number (0-9)' },
-    { regex: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/, label: 'One symbol (!@#$%^&*...)' }
+    { regex: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/, label: 'One symbol (!@#$%^&*...)' },
   ];
 
   useEffect(() => {
@@ -47,10 +47,10 @@ export default function UserAuth({ isOpen, onClose, onAuthChange }) {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
     // Clear error when user starts typing
     if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: '' }));
+      setErrors((prev) => ({ ...prev, [name]: '' }));
     }
     setGeneralError('');
   };
@@ -64,7 +64,7 @@ export default function UserAuth({ isOpen, onClose, onAuthChange }) {
 
   const validateRegisterForm = async () => {
     const newErrors = {};
-    
+
     if (!formData.username.trim()) {
       newErrors.username = 'Username is required';
     } else if (formData.username.length < 3) {
@@ -72,7 +72,7 @@ export default function UserAuth({ isOpen, onClose, onAuthChange }) {
     } else if (formData.username.length > 20) {
       newErrors.username = 'Username must be less than 20 characters';
     }
-    
+
     if (!formData.email) {
       newErrors.email = 'Email is required';
     } else {
@@ -83,17 +83,18 @@ export default function UserAuth({ isOpen, onClose, onAuthChange }) {
         newErrors.email = 'Email already registered';
       }
     }
-    
+
     // Password validation (Requirement #3 - Strong password)
     if (!formData.password) {
       newErrors.password = 'Password is required';
     } else {
-      const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{8,}$/;
+      const passwordRegex =
+        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{8,}$/;
       if (!passwordRegex.test(formData.password)) {
         newErrors.password = 'Password does not meet complexity requirements';
       }
     }
-    
+
     if (formData.password !== formData.confirmPassword) {
       newErrors.confirmPassword = 'Passwords do not match';
     }
@@ -106,17 +107,17 @@ export default function UserAuth({ isOpen, onClose, onAuthChange }) {
       const today = new Date();
       let age = today.getFullYear() - birthDate.getFullYear();
       const monthDiff = today.getMonth() - birthDate.getMonth();
-      
+
       // Adjust age if birthday hasn't occurred yet this year
       if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
         age--;
       }
-      
+
       if (age < 14) {
         newErrors.birthdate = 'You must be at least 14 years old to create an account';
       }
     }
-    
+
     return newErrors;
   };
 
@@ -124,7 +125,7 @@ export default function UserAuth({ isOpen, onClose, onAuthChange }) {
     e.preventDefault();
     setIsLoading(true);
     setGeneralError('');
-    
+
     const validationErrors = validateLoginForm();
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
@@ -152,7 +153,7 @@ export default function UserAuth({ isOpen, onClose, onAuthChange }) {
     e.preventDefault();
     setIsLoading(true);
     setGeneralError('');
-    
+
     const validationErrors = await validateRegisterForm();
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
@@ -167,7 +168,7 @@ export default function UserAuth({ isOpen, onClose, onAuthChange }) {
         password: formData.password,
         birthdate: formData.birthdate,
         bio: formData.bio.trim(),
-        motto: formData.motto.trim()
+        motto: formData.motto.trim(),
       });
       setCurrentUser(user);
       onAuthChange?.(user);
@@ -194,7 +195,7 @@ export default function UserAuth({ isOpen, onClose, onAuthChange }) {
       confirmPassword: '',
       birthdate: '',
       bio: '',
-      motto: ''
+      motto: '',
     });
     setErrors({});
     setGeneralError('');
@@ -219,11 +220,8 @@ export default function UserAuth({ isOpen, onClose, onAuthChange }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
-      <div 
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-        onClick={handleClose}
-      />
-      
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={handleClose} />
+
       {/* Modal */}
       <div className="relative w-full max-w-md mx-4">
         <div className="bg-gradient-to-br from-[#1a1f3c] via-[#0f1429] to-[#1a1f3c] rounded-2xl border border-blue-500/30 shadow-2xl shadow-purple-500/20 overflow-hidden">
@@ -235,17 +233,25 @@ export default function UserAuth({ isOpen, onClose, onAuthChange }) {
             >
               <X className="w-5 h-5 text-gray-400" />
             </button>
-            
+
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
                 <User className="w-5 h-5 text-white" />
               </div>
               <div>
                 <h2 className="text-xl font-bold text-white">
-                  {currentUser ? `Welcome, ${currentUser.username}!` : (mode === 'login' ? 'Welcome Back' : 'Create Account')}
+                  {currentUser
+                    ? `Welcome, ${currentUser.username}!`
+                    : mode === 'login'
+                      ? 'Welcome Back'
+                      : 'Create Account'}
                 </h2>
                 <p className="text-sm text-gray-400">
-                  {currentUser ? 'You are logged in' : (mode === 'login' ? 'Sign in to continue playing' : 'Join the smirking challenge')}
+                  {currentUser
+                    ? 'You are logged in'
+                    : mode === 'login'
+                      ? 'Sign in to continue playing'
+                      : 'Join the smirking challenge'}
                 </p>
               </div>
             </div>
@@ -259,18 +265,18 @@ export default function UserAuth({ isOpen, onClose, onAuthChange }) {
                 <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-3xl">
                   {currentUser.username.charAt(0).toUpperCase()}
                 </div>
-                
+
                 {currentUser.bio && (
                   <p className="text-gray-300 mb-4 italic">"{currentUser.bio}"</p>
                 )}
-                
+
                 {currentUser.motto && (
                   <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-blue-500/30 mb-6">
                     <Sparkles className="w-4 h-4 text-yellow-400" />
                     <span className="text-sm text-gray-300">{currentUser.motto}</span>
                   </div>
                 )}
-                
+
                 <button
                   onClick={handleLogout}
                   className="w-full py-3 px-4 rounded-xl bg-red-500/20 hover:bg-red-500/30 border border-red-500/50 text-red-400 font-medium transition-all duration-200"
@@ -333,7 +339,9 @@ export default function UserAuth({ isOpen, onClose, onAuthChange }) {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">Password</label>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                        Password
+                      </label>
                       <div className="relative">
                         <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                         <input
@@ -351,10 +359,16 @@ export default function UserAuth({ isOpen, onClose, onAuthChange }) {
                           onClick={() => setShowPassword(!showPassword)}
                           className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
                         >
-                          {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                          {showPassword ? (
+                            <EyeOff className="w-5 h-5" />
+                          ) : (
+                            <Eye className="w-5 h-5" />
+                          )}
                         </button>
                       </div>
-                      {errors.password && <p className="mt-1 text-sm text-red-400">{errors.password}</p>}
+                      {errors.password && (
+                        <p className="mt-1 text-sm text-red-400">{errors.password}</p>
+                      )}
                     </div>
 
                     <button
@@ -371,7 +385,9 @@ export default function UserAuth({ isOpen, onClose, onAuthChange }) {
                 {mode === 'register' && (
                   <form onSubmit={handleRegister} className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">Username</label>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                        Username
+                      </label>
                       <div className="relative">
                         <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                         <input
@@ -386,7 +402,9 @@ export default function UserAuth({ isOpen, onClose, onAuthChange }) {
                           } text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 transition-colors`}
                         />
                       </div>
-                      {errors.username && <p className="mt-1 text-sm text-red-400">{errors.username}</p>}
+                      {errors.username && (
+                        <p className="mt-1 text-sm text-red-400">{errors.username}</p>
+                      )}
                     </div>
 
                     <div>
@@ -426,12 +444,18 @@ export default function UserAuth({ isOpen, onClose, onAuthChange }) {
                           } text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 transition-colors`}
                         />
                       </div>
-                      {errors.birthdate && <p className="mt-1 text-sm text-red-400">{errors.birthdate}</p>}
-                      <p className="text-xs text-gray-500 mt-1">You must be at least 14 years old to create an account</p>
+                      {errors.birthdate && (
+                        <p className="mt-1 text-sm text-red-400">{errors.birthdate}</p>
+                      )}
+                      <p className="text-xs text-gray-500 mt-1">
+                        You must be at least 14 years old to create an account
+                      </p>
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">Password</label>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                        Password
+                      </label>
                       <div className="relative">
                         <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                         <input
@@ -449,25 +473,33 @@ export default function UserAuth({ isOpen, onClose, onAuthChange }) {
                           onClick={() => setShowPassword(!showPassword)}
                           className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
                         >
-                          {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                          {showPassword ? (
+                            <EyeOff className="w-5 h-5" />
+                          ) : (
+                            <Eye className="w-5 h-5" />
+                          )}
                         </button>
                       </div>
-                      {errors.password && <p className="mt-1 text-sm text-red-400">{errors.password}</p>}
-                      
+                      {errors.password && (
+                        <p className="mt-1 text-sm text-red-400">{errors.password}</p>
+                      )}
+
                       {/* Password Requirements Display (Requirement #3) */}
                       <div className="mt-3 space-y-1">
                         {passwordRequirements.map((req, index) => {
                           const isMet = req.regex.test(formData.password);
                           return (
-                            <div 
-                              key={index} 
+                            <div
+                              key={index}
                               className={`flex items-center gap-2 text-xs transition-colors ${
                                 isMet ? 'text-green-400' : 'text-gray-500'
                               }`}
                             >
-                              <span className={`inline-block w-2 h-2 rounded-full ${
-                                isMet ? 'bg-green-400' : 'bg-gray-500'
-                              }`} />
+                              <span
+                                className={`inline-block w-2 h-2 rounded-full ${
+                                  isMet ? 'bg-green-400' : 'bg-gray-500'
+                                }`}
+                              />
                               {req.label}
                             </div>
                           );
@@ -476,7 +508,9 @@ export default function UserAuth({ isOpen, onClose, onAuthChange }) {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">Confirm Password</label>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                        Confirm Password
+                      </label>
                       <div className="relative">
                         <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                         <input
@@ -490,7 +524,9 @@ export default function UserAuth({ isOpen, onClose, onAuthChange }) {
                           } text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 transition-colors`}
                         />
                       </div>
-                      {errors.confirmPassword && <p className="mt-1 text-sm text-red-400">{errors.confirmPassword}</p>}
+                      {errors.confirmPassword && (
+                        <p className="mt-1 text-sm text-red-400">{errors.confirmPassword}</p>
+                      )}
                     </div>
 
                     <div className="pt-2 border-t border-blue-500/20">
@@ -507,7 +543,9 @@ export default function UserAuth({ isOpen, onClose, onAuthChange }) {
                         maxLength={150}
                         className="w-full px-4 py-3 rounded-xl bg-white/5 border border-blue-500/30 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 transition-colors resize-none"
                       />
-                      <p className="text-xs text-gray-500 mt-1">{formData.bio.length}/150 characters</p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {formData.bio.length}/150 characters
+                      </p>
                     </div>
 
                     <div>
@@ -524,7 +562,9 @@ export default function UserAuth({ isOpen, onClose, onAuthChange }) {
                         maxLength={100}
                         className="w-full px-4 py-3 rounded-xl bg-white/5 border border-blue-500/30 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 transition-colors"
                       />
-                      <p className="text-xs text-gray-500 mt-1">{formData.motto.length}/100 characters</p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {formData.motto.length}/100 characters
+                      </p>
                     </div>
 
                     <button

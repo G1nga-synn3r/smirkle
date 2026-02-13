@@ -3,56 +3,184 @@ import { User, Mail, Lock, Eye, EyeOff, Sparkles, UserPlus, Calendar } from 'luc
 import { getCurrentUser, setCurrentUser, registerUser, authenticateUser } from '../utils/auth';
 
 /**
- * AuthGate - Authentication gate component for Smirkle
- * Shows landing screen with 'Create Profile' or 'Play as Guest' options
- * Guest mode bypasses login, registered users get full profile features
+ * AuthGate - Authentication Gate Component for Smirkle Application
+ *
+ * This component serves as the main authentication entry point for the Smirkle application.
+ * It manages the complete authentication flow including user registration, login, and guest
+ * access modes. The component acts as a "gate" that determines whether to render the
+ * protected application content or show authentication UI based on user authentication state.
+ *
+ * @component
+ * @example
+ * // Usage in App.jsx
+ * <AuthGate>
+ *   <MainAppContent />
+ * </AuthGate>
+ *
+ * ## Authentication States
+ *
+ * The component manages three primary authentication states:
+ *
+ * | State | Description |
+ * |-------|-------------|
+ * | **Loading** | Initial app load, checking for existing session |
+ * | **Authenticated** | User is logged in with registered account |
+ * | **Guest** | User is playing without an account |
+ * | **Unauthenticated** | User needs to register/login to access app |
+ *
+ * ## Features
+ *
+ * - **Landing Screen**: First-time users see branded landing page with call-to-action buttons
+ * - **Guest Mode**: Allows immediate gameplay without account creation
+ *   - Guest users get temporary session (persisted in localStorage)
+ *   - Guest scores NOT saved to leaderboards
+ *   - Limited profile features compared to registered users
+ * - **User Registration**: Full account creation with validation
+ *   - Username: 3-20 characters
+ *   - Email: Valid email format required
+ *   - Password: Strong password requirements (8+ chars, uppercase, lowercase, number, symbol)
+ *   - Birthdate: Required, minimum age 14 for account creation
+ * - **User Login**: Authentication with email/password credentials
+ * - **Password Visibility Toggle**: Show/hide password during input
+ * - **Form Validation**: Real-time and submit-time validation with error messages
+ * - **Session Persistence**: User session persisted via localStorage
+ *
+ * ## Props
+ *
+ * | Prop | Type | Required | Description |
+ * |------|------|----------|-------------|
+ * | children | React.ReactNode | Yes | The protected content to render when authenticated |
+ *
+ * ## State Management
+ *
+ * ### Component State
+ *
+ * | State | Type | Purpose |
+ * |-------|------|---------|
+ * | user | UserObject | null | Current authenticated user or null |
+ * | isLoading | boolean | Initial loading state while checking session |
+ * | showAuthForm | boolean | Toggle between landing and auth forms |
+ * | authMode | 'login' | 'register' | Current auth form mode |
+ * | formData | FormDataObject | User input for auth forms |
+ * | showPassword | boolean | Toggle password field visibility |
+ * | errors | ErrorsObject | Form field validation errors |
+ * | generalError | string | Non-field specific error messages |
+ * | isSubmitting | boolean | Form submission in progress state |
+ *
+ * ### User Object Structure
+ *
+ * ```javascript
+ * {
+ *   id: string,          // Unique user identifier (or 'guest_' prefix for guests)
+ *   username: string,     // Display name
+ *   email: string,       // User email (not present for guests)
+ *   isGuest: boolean,   // True if guest mode
+ *   createdAt: string,  // ISO date string
+ *   stats: {             // User gameplay statistics
+ *     totalGames: number,
+ *     totalSmirksDetected: number,
+ *     totalSmilesDetected: number,
+ *     bestSurvivalTime: number,
+ *     averageSurvivalTime: number,
+ *     achievements: array
+ *   }
+ * }
+ * ```
+ *
+ * ## Dependencies
+ *
+ * ### External Dependencies
+ *
+ * - **React**: Core framework hooks (useState, useEffect)
+ * - **lucide-react**: Icon components (User, Mail, Lock, etc.)
+ *
+ * ### Internal Dependencies
+ *
+ * - **../utils/auth**: Authentication utility functions
+ *   - getCurrentUser(): Retrieves stored user session
+ *   - setCurrentUser(user): Persists user session to storage
+ *   - registerUser(data): Creates new user account
+ *   - authenticateUser(email, password): Validates user credentials
+ *
+ * ## Password Requirements
+ *
+ * Registered user passwords must meet all these requirements:
+ * 1. At least 8 characters in length
+ * 2. Contains at least one uppercase letter (A-Z)
+ * 3. Contains at least one lowercase letter (a-z)
+ * 4. Contains at least one number (0-9)
+ * 5. Contains at least one symbol (!@#$%^&* etc.)
+ *
+ * ## Age Restriction
+ *
+ * - Minimum age for account registration: 14 years
+ * - Age calculated from birthdate against current date
+ * - Guest mode has no age restrictions
+ *
+ * ## Persistence
+ *
+ * User sessions are persisted via localStorage under the 'currentUser' key.
+ * This allows users to remain logged in across browser sessions.
+ *
+ * @param {React.ReactNode} children - The protected application content
+ * @returns {JSX.Element} The authentication gate component
  */
 export default function AuthGate({ children }) {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showAuthForm, setShowAuthForm] = useState(false);
   const [authMode, setAuthMode] = useState('login'); // 'login' | 'register'
-  const [formData, setFormData] = useState({ username: '', email: '', password: '', birthdate: '' });
+  const [formData, setFormData] = useState({
+    username: '',
+    email: '',
+    password: '',
+    birthdate: '',
+  });
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState({});
   const [generalError, setGeneralError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    // Check for existing user on mount
+    // Check for existing user session on component mount
+    // This restores the user session from localStorage if it exists
     const currentUser = getCurrentUser();
     if (currentUser) {
       setUser(currentUser);
     }
+    // Clear loading state after session check completes
     setIsLoading(false);
   }, []);
 
   const handleGuestPlay = () => {
-    // Set guest user state
+    // Creates a temporary guest user session for immediate gameplay
+    // Guest sessions are temporary and scores are NOT saved to leaderboards
     const guestUser = {
-      id: 'guest_' + Date.now(),
-      username: 'Guest',
-      email: 'guest@smirkle.app',
-      isGuest: true,
-      createdAt: new Date().toISOString(),
-      stats: {
+      id: 'guest_' + Date.now(), // Unique guest ID with timestamp
+      username: 'Guest',         // Default display name
+      email: 'guest@smirkle.app', // Placeholder email for guest accounts
+      isGuest: true,             // Flag to distinguish guest from registered users
+      createdAt: new Date().toISOString(), // Session creation timestamp
+      stats: {                   // Initialize empty stats object for guest
         totalGames: 0,
         totalSmirksDetected: 0,
         totalSmilesDetected: 0,
         bestSurvivalTime: 0,
         averageSurvivalTime: 0,
-        achievements: []
-      }
+        achievements: [],
+      },
     };
+    // Persist guest session to localStorage
     setCurrentUser(guestUser);
+    // Update component state to reflect guest login
     setUser(guestUser);
   };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
     if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: '' }));
+      setErrors((prev) => ({ ...prev, [name]: '' }));
     }
     setGeneralError('');
   };
@@ -157,7 +285,7 @@ export default function AuthGate({ children }) {
         username: formData.username.trim(),
         email: formData.email.trim().toLowerCase(),
         password: formData.password,
-        birthdate: formData.birthdate
+        birthdate: formData.birthdate,
       });
       setUser(user);
       setShowAuthForm(false);
@@ -169,7 +297,7 @@ export default function AuthGate({ children }) {
   };
 
   const switchAuthMode = () => {
-    setAuthMode(prev => prev === 'login' ? 'register' : 'login');
+    setAuthMode((prev) => (prev === 'login' ? 'register' : 'login'));
     setErrors({});
     setGeneralError('');
   };
@@ -197,7 +325,10 @@ export default function AuthGate({ children }) {
       {/* Animated background */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -top-1/2 -left-1/2 w-full h-full bg-gradient-to-br from-purple-600/20 to-transparent rounded-full blur-3xl animate-pulse" />
-        <div className="absolute -bottom-1/2 -right-1/2 w-full h-full bg-gradient-to-tl from-pink-600/20 to-transparent rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+        <div
+          className="absolute -bottom-1/2 -right-1/2 w-full h-full bg-gradient-to-tl from-pink-600/20 to-transparent rounded-full blur-3xl animate-pulse"
+          style={{ animationDelay: '1s' }}
+        />
       </div>
 
       {!showAuthForm ? (
@@ -271,7 +402,9 @@ export default function AuthGate({ children }) {
                 {authMode === 'login' ? 'Welcome Back' : 'Create Account'}
               </h2>
               <p className="text-sm text-gray-400 mt-1">
-                {authMode === 'login' ? 'Sign in to save your progress' : 'Join the smirking challenge'}
+                {authMode === 'login'
+                  ? 'Sign in to save your progress'
+                  : 'Join the smirking challenge'}
               </p>
             </div>
 
@@ -287,7 +420,11 @@ export default function AuthGate({ children }) {
               {/* Form toggle */}
               <div className="flex gap-2 p-1 rounded-xl bg-white/5 mb-6">
                 <button
-                  onClick={() => { setAuthMode('login'); setErrors({}); setGeneralError(''); }}
+                  onClick={() => {
+                    setAuthMode('login');
+                    setErrors({});
+                    setGeneralError('');
+                  }}
                   className={`flex-1 py-2.5 rounded-lg font-medium transition-all duration-200 ${
                     authMode === 'login'
                       ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
@@ -297,7 +434,11 @@ export default function AuthGate({ children }) {
                   Login
                 </button>
                 <button
-                  onClick={() => { setAuthMode('register'); setErrors({}); setGeneralError(''); }}
+                  onClick={() => {
+                    setAuthMode('register');
+                    setErrors({});
+                    setGeneralError('');
+                  }}
                   className={`flex-1 py-2.5 rounded-lg font-medium transition-all duration-200 ${
                     authMode === 'register'
                       ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
@@ -348,10 +489,16 @@ export default function AuthGate({ children }) {
                         onClick={() => setShowPassword(!showPassword)}
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
                       >
-                        {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                        {showPassword ? (
+                          <EyeOff className="w-5 h-5" />
+                        ) : (
+                          <Eye className="w-5 h-5" />
+                        )}
                       </button>
                     </div>
-                    {errors.password && <p className="mt-1 text-sm text-red-400">{errors.password}</p>}
+                    {errors.password && (
+                      <p className="mt-1 text-sm text-red-400">{errors.password}</p>
+                    )}
                   </div>
 
                   <button
@@ -383,7 +530,9 @@ export default function AuthGate({ children }) {
                         } text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 transition-colors`}
                       />
                     </div>
-                    {errors.username && <p className="mt-1 text-sm text-red-400">{errors.username}</p>}
+                    {errors.username && (
+                      <p className="mt-1 text-sm text-red-400">{errors.username}</p>
+                    )}
                   </div>
 
                   <div>
@@ -405,7 +554,9 @@ export default function AuthGate({ children }) {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Birthdate</label>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Birthdate
+                    </label>
                     <div className="relative">
                       <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                       <input
@@ -419,7 +570,9 @@ export default function AuthGate({ children }) {
                         } text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 transition-colors`}
                       />
                     </div>
-                    {errors.birthdate && <p className="mt-1 text-sm text-red-400">{errors.birthdate}</p>}
+                    {errors.birthdate && (
+                      <p className="mt-1 text-sm text-red-400">{errors.birthdate}</p>
+                    )}
                   </div>
 
                   <div>
@@ -441,23 +594,35 @@ export default function AuthGate({ children }) {
                         onClick={() => setShowPassword(!showPassword)}
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
                       >
-                        {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                        {showPassword ? (
+                          <EyeOff className="w-5 h-5" />
+                        ) : (
+                          <Eye className="w-5 h-5" />
+                        )}
                       </button>
                     </div>
-                    {errors.password && <p className="mt-1 text-sm text-red-400">{errors.password}</p>}
-                    
+                    {errors.password && (
+                      <p className="mt-1 text-sm text-red-400">{errors.password}</p>
+                    )}
+
                     {/* Password Requirements Display */}
                     <div className="mt-3 space-y-1">
                       {passwordRequirements.map((req, index) => (
                         <div key={index} className="flex items-center gap-2 text-xs">
-                          <span className={`w-4 h-4 rounded-full flex items-center justify-center ${
-                            req.test(formData.password) 
-                              ? 'bg-green-500/20 text-green-400' 
-                              : 'bg-white/5 text-gray-500'
-                          }`}>
+                          <span
+                            className={`w-4 h-4 rounded-full flex items-center justify-center ${
+                              req.test(formData.password)
+                                ? 'bg-green-500/20 text-green-400'
+                                : 'bg-white/5 text-gray-500'
+                            }`}
+                          >
                             {req.test(formData.password) ? '✓' : '○'}
                           </span>
-                          <span className={req.test(formData.password) ? 'text-green-400' : 'text-gray-500'}>
+                          <span
+                            className={
+                              req.test(formData.password) ? 'text-green-400' : 'text-gray-500'
+                            }
+                          >
                             {req.label}
                           </span>
                         </div>

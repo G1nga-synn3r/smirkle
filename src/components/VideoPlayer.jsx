@@ -7,22 +7,22 @@ import { VIDEO_DATABASE } from '../data/videoLibrary.js';
 const recentVideosModule = {
   history: [],
   maxHistory: 3,
-  
+
   add(videoId) {
     this.history = [...this.history, videoId].slice(-this.maxHistory);
   },
-  
+
   isRecentlyPlayed(videoId) {
     return this.history.includes(videoId);
   },
-  
+
   clear() {
     this.history = [];
   },
-  
+
   getHistory() {
     return [...this.history];
-  }
+  },
 };
 
 /**
@@ -34,16 +34,16 @@ const recentVideosModule = {
 function getNextVideo(excludeIds = []) {
   // Filter out recently played videos (last 3 rounds)
   const availableVideos = VIDEO_DATABASE.filter(
-    video => !recentVideosModule.isRecentlyPlayed(video.id) && !excludeIds.includes(video.id)
+    (video) => !recentVideosModule.isRecentlyPlayed(video.id) && !excludeIds.includes(video.id)
   );
 
   // If all videos were played recently, fallback to full database
   const pool = availableVideos.length > 0 ? availableVideos : VIDEO_DATABASE;
-  
+
   if (pool.length === 0) {
     return VIDEO_DATABASE[0]; // Fallback to first video
   }
-  
+
   const randomIndex = Math.floor(Math.random() * pool.length);
   const selectedVideo = pool[randomIndex];
 
@@ -56,7 +56,7 @@ function getNextVideo(excludeIds = []) {
 /**
  * VideoPlayer Component
  * Handles video playback with fade transitions and anti-repeat selection
- * 
+ *
  * @param {Object} props
  * @param {boolean} props.isSmiling - Whether the user is smiling (pauses video)
  * @param {React.Ref} props.videoRef - Shared video element ref
@@ -66,11 +66,11 @@ function getNextVideo(excludeIds = []) {
  * @param {number} props.survivalTime - Current survival time for score display
  * @param {React.Ref} props.cameraRef - Ref to camera canvas for fullscreen display
  */
-function VideoPlayer({ 
-  isSmiling, 
+function VideoPlayer({
+  isSmiling,
   isEyesOpen = false,
-  videoRef: propVideoRef, 
-  currentVideo, 
+  videoRef: propVideoRef,
+  currentVideo,
   onVideoChange,
   onResetHappiness,
   survivalTime = 0,
@@ -78,7 +78,7 @@ function VideoPlayer({
   isFullscreenActive = false,
   onToggleFullscreen,
   warningActive = false,
-  failPhase = false
+  failPhase = false,
 }) {
   const localVideoRef = useRef(null);
   const videoElement = propVideoRef || localVideoRef;
@@ -86,7 +86,7 @@ function VideoPlayer({
   const [fadeState, setFadeState] = useState('idle');
   const [isFullscreen, setIsFullscreen] = useState(isFullscreenActive);
   const fullscreenContainerRef = useRef(null);
-  
+
   // Store handleCanPlayThrough in a ref to avoid scope issues
   const handleCanPlayThroughRef = useRef(null);
 
@@ -96,7 +96,7 @@ function VideoPlayer({
   const getSessionStats = useCallback(() => {
     return {
       recentVideos: recentVideosModule.getHistory(),
-      totalInDatabase: VIDEO_DATABASE.length
+      totalInDatabase: VIDEO_DATABASE.length,
     };
   }, []);
 
@@ -118,11 +118,11 @@ function VideoPlayer({
     // After fade out, load new video
     const fadeOutTimer = setTimeout(() => {
       setIsVideoLoaded(false);
-      
+
       video.src = currentVideo.url;
       video.load();
-      
-      video.play().catch(e => {
+
+      video.play().catch((e) => {
         console.error('Autoplay blocked, user interaction required:', e.message);
       });
 
@@ -135,10 +135,10 @@ function VideoPlayer({
         }
         video.removeEventListener('canplaythrough', handleCanPlayThroughRef.current);
       };
-      
+
       // Store handler in ref for cleanup access
       handleCanPlayThroughRef.current = handleCanPlayThrough;
-      
+
       video.addEventListener('canplaythrough', handleCanPlayThrough);
     }, 500); // Match transition duration
 
@@ -158,18 +158,19 @@ function VideoPlayer({
         // Pause whenever the user is smiling OR eyes are closed/not detected
         if (!video.paused) {
           video.pause();
-          console.log('[Video] Paused: smiling or eyes closed');
         }
         // Trigger haptic feedback on player failure (smiling)
         if (isSmiling && window.navigator && window.navigator.vibrate) {
           window.navigator.vibrate([100, 50, 100]); // Strong vibration pattern on fail
-          console.log('[Haptic] Vibration triggered: player failed (smiling)');
         }
       } else {
         // Resume video only if eyes open, not smiling, and video is loaded
         if (video.paused && isVideoLoaded) {
-          video.play().catch(err => console.warn('[Video] Auto-play failed (browser policy):', err.message));
-          console.log('[Video] Playing: conditions met (eyes open & not smiling)');
+          video
+            .play()
+            .catch((err) =>
+              console.warn('[Video] Auto-play failed (browser policy):', err.message)
+            );
         }
       }
     }
@@ -178,7 +179,6 @@ function VideoPlayer({
   // Sync external fullscreen state with internal state
   useEffect(() => {
     if (isFullscreenActive && !isFullscreen) {
-      console.log('[Video] Auto-entering fullscreen mode');
       handleFullscreenClick();
     }
   }, [isFullscreenActive, isFullscreen, handleFullscreenClick]);
@@ -203,8 +203,12 @@ function VideoPlayer({
         setIsFullscreen(true);
       } else {
         // Exit fullscreen
-        if (document.fullscreenElement || document.webkitFullscreenElement || 
-            document.mozFullScreenElement || document.msFullscreenElement) {
+        if (
+          document.fullscreenElement ||
+          document.webkitFullscreenElement ||
+          document.mozFullScreenElement ||
+          document.msFullscreenElement
+        ) {
           if (document.exitFullscreen) {
             await document.exitFullscreen();
           } else if (document.webkitExitFullscreen) {
@@ -226,9 +230,9 @@ function VideoPlayer({
   useEffect(() => {
     const handleFullscreenChange = () => {
       const currentFullscreen = !!(
-        document.fullscreenElement || 
-        document.webkitFullscreenElement || 
-        document.mozFullScreenElement || 
+        document.fullscreenElement ||
+        document.webkitFullscreenElement ||
+        document.mozFullScreenElement ||
         document.msFullscreenElement
       );
       setIsFullscreen(currentFullscreen);
@@ -265,7 +269,7 @@ function VideoPlayer({
   // Fullscreen layout
   if (isFullscreen && cameraRef?.current) {
     return (
-      <div 
+      <div
         ref={fullscreenContainerRef}
         className="fixed inset-0 bg-black z-40 flex items-center justify-center"
       >
@@ -284,7 +288,7 @@ function VideoPlayer({
           {warningActive && (
             <div className="absolute inset-0 bg-yellow-500/20 pointer-events-none z-20 animate-pulse" />
           )}
-          
+
           {/* Fail Overlay - Red flash */}
           {failPhase && (
             <div className="absolute inset-0 bg-red-600/80 pointer-events-none z-30 flex items-center justify-center animate-pulse">
@@ -302,10 +306,7 @@ function VideoPlayer({
 
           {/* Camera preview - bottom right corner */}
           <div className="absolute bottom-6 right-6 w-40 h-40 rounded-2xl overflow-hidden bg-black/80 border-2 border-cyan-400 shadow-2xl z-20">
-            <canvas
-              ref={cameraRef}
-              className="w-full h-full object-cover"
-            />
+            <canvas ref={cameraRef} className="w-full h-full object-cover" />
             <div className="absolute inset-0 pointer-events-none border-2 border-cyan-400/50 rounded-2xl" />
           </div>
 
@@ -340,19 +341,19 @@ function VideoPlayer({
         muted={false}
         loop={false}
       />
-      
+
       {/* Warning Overlay - Yellow tint */}
       {warningActive && (
         <div className="absolute inset-0 bg-yellow-500/20 pointer-events-none z-20 animate-pulse" />
       )}
-      
+
       {/* Fail Overlay - Red flash */}
       {failPhase && (
         <div className="absolute inset-0 bg-red-600/80 pointer-events-none z-30 flex items-center justify-center animate-pulse">
           <h1 className="text-6xl md:text-8xl font-bold text-white animate-bounce">FAIL</h1>
         </div>
       )}
-      
+
       {/* Fullscreen button - top right */}
       <button
         onClick={handleFullscreenClick}
@@ -366,7 +367,7 @@ function VideoPlayer({
       <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-sm px-4 py-2 rounded-lg border border-white/20 z-10">
         <p className="text-gray-300 text-xs font-medium">Score: {Math.floor(survivalTime * 100)}</p>
       </div>
-      
+
       {/* Loading placeholder when no video */}
       {!currentVideo && (
         <div className="absolute inset-0 flex items-center justify-center bg-gray-900">

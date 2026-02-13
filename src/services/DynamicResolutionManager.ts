@@ -58,7 +58,6 @@ export class DynamicResolutionManager {
     this.fpsHistory = [];
     this.latencyHistory = [];
     
-    console.log('[DynamicResolutionManager] Initialized');
   }
   
   /**
@@ -242,7 +241,6 @@ export class DynamicResolutionManager {
     this.fpsHistory = [];
     this.latencyHistory = [];
     
-    console.log('[DynamicResolutionManager] Reset to high quality');
   }
   
   /**

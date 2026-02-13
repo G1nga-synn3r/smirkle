@@ -27,7 +27,7 @@ export const CONSECUTIVE_FRAMES_REQUIRED = 3;
  * Happiness threshold for smile fail detection
  * Values >= 0.30 trigger the fail phase after warning duration
  */
-export const SMILE_FAIL_THRESHOLD = 0.30;
+export const SMILE_FAIL_THRESHOLD = 0.3;
 
 /**
  * Duration of warning phase before fail triggers
@@ -52,7 +52,7 @@ export const FRAME_CAPTURE_INTERVAL = 100;
  */
 export const FACE_DETECTION_OPTIONS = {
   inputSize: 320,
-  scoreThreshold: 0.5
+  scoreThreshold: 0.5,
 };
 
 // ===========================
@@ -80,35 +80,31 @@ export const NEUTRAL_EXPRESSION_THRESHOLD = 0.15;
 // Calibration Complete Transition
 // ===========================
 export const CALIBRATION_COMPLETE_TRANSITION = {
-  FULLSCREEN_DELAY: 100,      // ms delay before requesting fullscreen
-  PIP_SHOW_DELAY: 200,       // ms delay before showing PiP camera
-  UI_HIDE_DELAY: 300,        // ms delay before hiding calibration UI
-  TIMER_START_DELAY: 0       // Immediate timer start
+  FULLSCREEN_DELAY: 100, // ms delay before requesting fullscreen
+  PIP_SHOW_DELAY: 200, // ms delay before showing PiP camera
+  UI_HIDE_DELAY: 300, // ms delay before hiding calibration UI
+  TIMER_START_DELAY: 0, // Immediate timer start
 };
 
 // ===========================
 // Model Preload Settings
 // ===========================
 export const MODEL_PRELOAD = {
-  TIMEOUT: 10000,            // 10 seconds max for model load
-  RETRY_COUNT: 0,            // No retries - fail fast
+  TIMEOUT: 10000, // 10 seconds max for model load
+  RETRY_COUNT: 0, // No retries - fail fast
   PROGRESS_UPDATE_INTERVAL: 100,
-  REQUIRED_MODELS: [
-    'face_expression_model',
-    'face_landmark_68_model',
-    'tiny_face_detector_model'
-  ]
+  REQUIRED_MODELS: ['face_expression_model', 'face_landmark_68_model', 'tiny_face_detector_model'],
 };
 
 // ===========================
 // Webcam Settings
 // ===========================
 export const WEBCAM_CONFIG = {
-  FAIL_FAST: true,           // Fail on first permission denial
+  FAIL_FAST: true, // Fail on first permission denial
   SHOW_PERMISSION_DENIED_UI: true,
   IDEAL_WIDTH: 640,
   IDEAL_HEIGHT: 480,
-  FACING_MODE: 'user'
+  FACING_MODE: 'user',
 };
 
 // ===========================
@@ -136,7 +132,7 @@ export const BRIGHTNESS_CHECK_INTERVAL = 500; // Check brightness every 500ms
 export const STORAGE_KEYS = {
   USERS: 'smirkle_users',
   CURRENT_USER: 'smirkle_currentUser',
-  USER_DATA: 'smirkle_user_data'
+  USER_DATA: 'smirkle_user_data',
 };
 
 // ===========================
@@ -153,7 +149,7 @@ export const MODEL_URL = '/models';
 export const GAME_SETTINGS = {
   maxSessionDuration: 300000, // 5 minutes max per session
   minBreakTime: 5000, // 5 seconds break between games
-  maxRetries: 3 // Max connection retries
+  maxRetries: 3, // Max connection retries
 };
 
 // ===========================
@@ -167,7 +163,7 @@ export const PIP_CONFIG = {
   MARGIN: '16px',
   BORDER: '2px solid rgba(139, 92, 246, 0.5)',
   BORDER_RADIUS: '8px',
-  SHADOW: '0 0 20px rgba(139, 92, 246, 0.4)'
+  SHADOW: '0 0 20px rgba(139, 92, 246, 0.4)',
 };
 
 // ===========================
@@ -247,12 +243,14 @@ export const MEDIAPIPE_USE_GPU = true;
 /**
  * CDN URL for MediaPipe WASM files
  */
-export const MEDIAPIPE_WASM_CDN = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm';
+export const MEDIAPIPE_WASM_CDN =
+  'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm';
 
 /**
  * CDN URL for MediaPipe face landmarker model
  */
-export const MEDIAPIPE_FACE_MODEL_URL = 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task';
+export const MEDIAPIPE_FACE_MODEL_URL =
+  'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task';
 
 // ===========================
 // Dynamic Resolution Settings
@@ -267,5 +265,5 @@ export const DYNAMIC_RESOLUTION = {
   LOW_QUALITY_SCALE: 0.5,
   HIGH_QUALITY_TARGET_FPS: 30,
   MEDIUM_QUALITY_TARGET_FPS: 25,
-  LOW_QUALITY_TARGET_FPS: 15
+  LOW_QUALITY_TARGET_FPS: 15,
 };

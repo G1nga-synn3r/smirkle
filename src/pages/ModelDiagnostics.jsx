@@ -18,7 +18,7 @@ export default function ModelDiagnostics() {
           } catch (e) {
             return `✗ ${e.message}`;
           }
-        }
+        },
       });
 
       // Check 2: Verify TinyFaceDetector manifest
@@ -33,7 +33,7 @@ export default function ModelDiagnostics() {
           } catch (e) {
             return `✗ ${e.message}`;
           }
-        }
+        },
       });
 
       // Check 3: Verify TinyFaceDetector shard files
@@ -48,7 +48,7 @@ export default function ModelDiagnostics() {
           } catch (e) {
             return `✗ ${e.message}`;
           }
-        }
+        },
       });
 
       // Check 4: Verify FaceExpressionNet manifest
@@ -63,7 +63,7 @@ export default function ModelDiagnostics() {
           } catch (e) {
             return `✗ ${e.message}`;
           }
-        }
+        },
       });
 
       // Check 5: Verify FaceExpressionNet shard files
@@ -78,7 +78,7 @@ export default function ModelDiagnostics() {
           } catch (e) {
             return `✗ ${e.message}`;
           }
-        }
+        },
       });
 
       // Check 6: Try loading face-api.js library itself
@@ -91,7 +91,7 @@ export default function ModelDiagnostics() {
           } catch (e) {
             return `✗ ${e.message}`;
           }
-        }
+        },
       });
 
       // Run all checks
@@ -142,7 +142,10 @@ export default function ModelDiagnostics() {
           <h2 className="text-white font-semibold mb-2">Troubleshooting</h2>
           <ul className="text-gray-300 text-sm space-y-1">
             <li>• If shard files show 0 KB, the build may not have included them</li>
-            <li>• Check that <code className="bg-slate-900 px-1">/public/models/</code> directory exists</li>
+            <li>
+              • Check that <code className="bg-slate-900 px-1">/public/models/</code> directory
+              exists
+            </li>
             <li>• On production, ensure models are deployed with your app</li>
             <li>• Red marks mean files are missing or inaccessible</li>
           </ul>

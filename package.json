@@ -25,6 +25,8 @@
     "build:android": "npm run build && npx cap copy android"
   },
   "devDependencies": {
+    "@babel/preset-env": "^7.29.0",
+    "@babel/preset-react": "^7.28.5",
     "@capacitor/cli": "^5.0.0",
     "@testing-library/jest-dom": "^6.1.5",
     "@testing-library/react": "^14.1.2",

@@ -17,7 +17,8 @@ function CameraView({ onStream }) {
   // Detect mobile device
   useEffect(() => {
     const checkMobile = () => {
-      const mobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || 
+      const mobile =
+        /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ||
         (window.innerWidth <= 428 && window.innerHeight <= 926);
       setIsMobile(mobile);
     };
@@ -30,39 +31,43 @@ function CameraView({ onStream }) {
   const requestCameraPermission = useCallback(async () => {
     try {
       setPermissionError(null);
-      
+
       // Check if getUserMedia is available
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         throw new Error('Camera access not supported in this browser');
       }
-      
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { 
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
           facingMode: 'user',
           width: { ideal: 640 },
-          height: { ideal: 480 }
-        } 
+          height: { ideal: 480 },
+        },
       });
-      
+
       setPermissionGranted(true);
       setPermissionError(null);
-      
+
       // Pass the stream to parent
       if (onStream) {
         onStream(stream);
       }
     } catch (err) {
       console.error('Camera permission error:', err);
-      
+
       // Provide more helpful error messages
       if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-        setPermissionError('Camera permission denied. Please allow camera access in your browser settings.');
+        setPermissionError(
+          'Camera permission denied. Please allow camera access in your browser settings.'
+        );
       } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
         setPermissionError('No camera found. Please connect a camera and try again.');
       } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
         setPermissionError('Camera is already in use by another app.');
       } else if (!window.isSecureContext) {
-        setPermissionError('Camera access requires HTTPS. Please use localhost or deploy with HTTPS.');
+        setPermissionError(
+          'Camera access requires HTTPS. Please use localhost or deploy with HTTPS.'
+        );
       } else {
         setPermissionError(`Camera error: ${err.message || 'Unknown error'}`);
       }
@@ -74,7 +79,7 @@ function CameraView({ onStream }) {
     const handleOrientationChange = () => {
       setFacingMode('user');
     };
-    
+
     window.addEventListener('orientationchange', handleOrientationChange);
     return () => window.removeEventListener('orientationchange', handleOrientationChange);
   }, []);
@@ -83,7 +88,7 @@ function CameraView({ onStream }) {
   const videoConstraints = {
     width: { ideal: 640 },
     height: { ideal: 480 },
-    facingMode: facingMode
+    facingMode: facingMode,
   };
 
   const handleUserMedia = (stream) => {
@@ -101,22 +106,20 @@ function CameraView({ onStream }) {
 
   // Mobile-responsive container styles
   const containerStyles = isMobile
-    ? "w-full aspect-[9/19.5] max-h-[60vh] rounded-2xl overflow-hidden"
-    : "w-full h-full";
+    ? 'w-full aspect-[9/19.5] max-h-[60vh] rounded-2xl overflow-hidden'
+    : 'w-full h-full';
 
   return (
     <div className={containerStyles}>
       {!isSecureContext && !permissionGranted && (
         <div className="w-full h-full flex flex-col items-center justify-center bg-gray-900/80 rounded-3xl p-4">
-          <p className="text-yellow-400 mb-4 text-center">
-            ⚠️ Camera requires HTTPS or localhost
-          </p>
+          <p className="text-yellow-400 mb-4 text-center">⚠️ Camera requires HTTPS or localhost</p>
           <p className="text-gray-400 text-sm text-center mb-4">
             Current: {window.location.protocol}//{window.location.host}
           </p>
         </div>
       )}
-      
+
       {!permissionGranted && !permissionError && isSecureContext && (
         <div className="w-full h-full flex flex-col items-center justify-center bg-gray-900/80 rounded-3xl p-4">
           <p className="text-gray-400 mb-4 text-center">Camera access required</p>
@@ -128,7 +131,7 @@ function CameraView({ onStream }) {
           </button>
         </div>
       )}
-      
+
       {permissionError && (
         <div className="w-full h-full flex flex-col items-center justify-center bg-gray-900/80 rounded-3xl p-4">
           <p className="text-red-400 mb-4 text-center">{permissionError}</p>
@@ -140,7 +143,7 @@ function CameraView({ onStream }) {
           </button>
         </div>
       )}
-      
+
       {(permissionGranted || (!permissionError && isSecureContext)) && (
         <Webcam
           ref={webcamRef}

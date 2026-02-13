@@ -28,12 +28,15 @@ export default function SubmitVideoForm() {
     return new Promise((resolve) => {
       // Combine URL and title for scanning
       const contentToScan = `${url} ${title}`;
-      
+
       // Simulate AI scanning delay
-      setTimeout(() => {
-        const result = checkContentModeration(contentToScan);
-        resolve(result);
-      }, 1000 + Math.random() * 1000); // Random delay between 1-2 seconds
+      setTimeout(
+        () => {
+          const result = checkContentModeration(contentToScan);
+          resolve(result);
+        },
+        1000 + Math.random() * 1000
+      ); // Random delay between 1-2 seconds
     });
   };
 
@@ -59,11 +62,9 @@ export default function SubmitVideoForm() {
     try {
       const scanResult = await performAIContentCheck(videoUrl, videoTitle);
       setAiScanResult(scanResult);
-      
+
       if (!scanResult.passed) {
-        const flaggedWords = scanResult.flaggedKeywords
-          .map(f => f.keyword)
-          .join(', ');
+        const flaggedWords = scanResult.flaggedKeywords.map((f) => f.keyword).join(', ');
         setError(`AI Content Check Failed: Content contains banned keywords: ${flaggedWords}`);
         setIsSubmitting(false);
         setIsAISCanning(false);
@@ -79,8 +80,8 @@ export default function SubmitVideoForm() {
 
     // Step 2: Submit to API
     try {
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+
       // Save submission to localStorage for demo
       const submissions = JSON.parse(localStorage.getItem('smirkle-submissions') || '[]');
       const newSubmission = {
@@ -89,7 +90,7 @@ export default function SubmitVideoForm() {
         title: videoTitle,
         status: 'pending',
         aiScanResult: aiScanResult,
-        submittedAt: new Date().toISOString()
+        submittedAt: new Date().toISOString(),
       };
       submissions.push(newSubmission);
       localStorage.setItem('smirkle-submissions', JSON.stringify(submissions));
@@ -122,9 +123,10 @@ export default function SubmitVideoForm() {
             Submission Successful!
           </h2>
           <p className="text-gray-300 mb-6 max-w-md mx-auto">
-            Your video is pending approval. Our admin team will review it shortly and you'll be notified once it's live on the leaderboard.
+            Your video is pending approval. Our admin team will review it shortly and you'll be
+            notified once it's live on the leaderboard.
           </p>
-          
+
           {/* Submission Details */}
           <div className="bg-white/5 rounded-xl p-4 mb-6 max-w-md mx-auto border border-white/10">
             <div className="flex items-center gap-3 text-sm">
@@ -223,21 +225,29 @@ export default function SubmitVideoForm() {
 
         {/* AI Content Check Status */}
         {aiScanResult && (
-          <div className={`p-4 rounded-xl border ${
-            aiScanResult.passed 
-              ? 'bg-green-500/10 border-green-500/30' 
-              : 'bg-red-500/10 border-red-500/30'
-          }`}>
+          <div
+            className={`p-4 rounded-xl border ${
+              aiScanResult.passed
+                ? 'bg-green-500/10 border-green-500/30'
+                : 'bg-red-500/10 border-red-500/30'
+            }`}
+          >
             <div className="flex items-center gap-2 mb-2">
               {aiScanResult.passed ? (
-                <><CheckCircle className="w-5 h-5 text-green-400" /><span className="text-green-400 font-medium">AI Content Check Passed</span></>
+                <>
+                  <CheckCircle className="w-5 h-5 text-green-400" />
+                  <span className="text-green-400 font-medium">AI Content Check Passed</span>
+                </>
               ) : (
-                <><AlertCircle className="w-5 h-5 text-red-400" /><span className="text-red-400 font-medium">AI Content Check Failed</span></>
+                <>
+                  <AlertCircle className="w-5 h-5 text-red-400" />
+                  <span className="text-red-400 font-medium">AI Content Check Failed</span>
+                </>
               )}
             </div>
             {!aiScanResult.passed && (
               <p className="text-sm text-red-300">
-                Flagged keywords: {aiScanResult.flaggedKeywords.map(f => f.keyword).join(', ')}
+                Flagged keywords: {aiScanResult.flaggedKeywords.map((f) => f.keyword).join(', ')}
               </p>
             )}
           </div>

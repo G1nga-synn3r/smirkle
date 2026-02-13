@@ -4,7 +4,7 @@ import { Camera, EyeOff, Play, Clock, Zap } from 'lucide-react';
 /**
  * TutorialOverlay - A semi-transparent 'How to Play' guide that appears
  * only the very first time a user opens the camera.
- * 
+ *
  * Uses LocalStorage to track hasSeenTutorial to ensure one-time display.
  */
 export const TutorialOverlay = ({ onComplete }) => {
@@ -42,7 +42,7 @@ export const TutorialOverlay = ({ onComplete }) => {
   }, [handleStartChallenge]);
 
   return (
-    <div 
+    <div
       className="fixed inset-0 z-[100] flex items-center justify-center p-4 overflow-y-auto"
       role="dialog"
       aria-modal="true"
@@ -50,9 +50,9 @@ export const TutorialOverlay = ({ onComplete }) => {
     >
       {/* Semi-transparent backdrop with blur */}
       <div className="absolute inset-0 bg-black/60 backdrop-blur-md" />
-      
+
       {/* Tutorial content card */}
-      <div 
+      <div
         className="relative bg-gray-900/95 backdrop-blur-xl rounded-2xl shadow-[0_0_60px_rgba(139,92,246,0.4)] 
                    border border-purple-500/30 max-w-lg w-full p-4 md:p-6
                    transform transition-all animate-fade-in
@@ -63,10 +63,7 @@ export const TutorialOverlay = ({ onComplete }) => {
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 mb-4 shadow-lg shadow-purple-500/50">
             <Camera className="w-8 h-8 text-white" />
           </div>
-          <h2 
-            id="tutorial-title" 
-            className="text-2xl md:text-3xl font-bold text-white mb-2"
-          >
+          <h2 id="tutorial-title" className="text-2xl md:text-3xl font-bold text-white mb-2">
             How to Play Smirkle
           </h2>
           <p className="text-gray-400 text-sm md:text-base">
@@ -81,13 +78,15 @@ export const TutorialOverlay = ({ onComplete }) => {
               <EyeOff className="w-5 h-5 text-red-400" />
             </div>
             <div>
-              <h3 className="font-semibold text-white text-lg">Keep a straight face while the video plays!</h3>
+              <h3 className="font-semibold text-white text-lg">
+                Keep a straight face while the video plays!
+              </h3>
               <p className="text-gray-400 text-sm mt-1">
                 Your webcam will monitor your facial expressions in real-time.
               </p>
             </div>
           </div>
-          
+
           <div className="flex items-start gap-4 p-4 bg-gradient-to-r from-red-900/50 to-red-800/30 rounded-xl border border-red-500/20">
             <div className="flex-shrink-0 w-10 h-10 rounded-full bg-orange-500/20 flex items-center justify-center">
               <span className="text-xl">😮</span>
@@ -99,7 +98,7 @@ export const TutorialOverlay = ({ onComplete }) => {
               </p>
             </div>
           </div>
-          
+
           <div className="flex items-start gap-4 p-4 bg-gradient-to-r from-green-900/50 to-green-800/30 rounded-xl border border-green-500/20">
             <div className="flex-shrink-0 w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center">
               <Clock className="w-5 h-5 text-green-400" />
@@ -143,7 +142,7 @@ export const TutorialOverlay = ({ onComplete }) => {
         >
           {/* Animated glow effect */}
           <span className="absolute inset-0 rounded-xl shadow-[0_0_30px_rgba(139,92,246,0.6)] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-          
+
           {/* Button content */}
           <span className="relative flex items-center justify-center gap-2">
             <Play className="w-5 h-5" />

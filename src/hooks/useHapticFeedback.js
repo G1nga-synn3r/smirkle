@@ -6,7 +6,7 @@ const HAPTIC_VIBRATION_MS = 200;
 
 /**
  * useHapticFeedback hook for managing device vibration feedback
- * 
+ *
  * Features:
  * - Loads/saves haptic preference from localStorage
  * - Prevents feedback loops with cooldown
@@ -55,7 +55,7 @@ export function useHapticFeedback() {
   }, [isSupported, isEnabled]);
 
   const toggle = useCallback(() => {
-    setIsEnabled(prev => !prev);
+    setIsEnabled((prev) => !prev);
   }, []);
 
   const enable = useCallback(() => {
