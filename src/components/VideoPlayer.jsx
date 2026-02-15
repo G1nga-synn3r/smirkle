@@ -1,57 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Maximize, Minimize } from 'lucide-react';
-import { VIDEO_DATABASE } from '../data/videoLibrary.js';
-
-// Module-level tracking for recently played videos (last 3 rounds)
-// Uses a WeakMap for HMR-safe module state without import.meta.hot
-const recentVideosModule = {
-  history: [],
-  maxHistory: 3,
-
-  add(videoId) {
-    this.history = [...this.history, videoId].slice(-this.maxHistory);
-  },
-
-  isRecentlyPlayed(videoId) {
-    return this.history.includes(videoId);
-  },
-
-  clear() {
-    this.history = [];
-  },
-
-  getHistory() {
-    return [...this.history];
-  },
-};
-
-/**
- * Select a random video that hasn't been played in the last 3 rounds
- * Supports 'Shuffled Queue' anti-repeat logic
- * @param {Array} excludeIds - Video IDs to exclude from selection
- * @returns {Object} Selected video object
- */
-function getNextVideo(excludeIds = []) {
-  // Filter out recently played videos (last 3 rounds)
-  const availableVideos = VIDEO_DATABASE.filter(
-    (video) => !recentVideosModule.isRecentlyPlayed(video.id) && !excludeIds.includes(video.id)
-  );
-
-  // If all videos were played recently, fallback to full database
-  const pool = availableVideos.length > 0 ? availableVideos : VIDEO_DATABASE;
-
-  if (pool.length === 0) {
-    return VIDEO_DATABASE[0]; // Fallback to first video
-  }
-
-  const randomIndex = Math.floor(Math.random() * pool.length);
-  const selectedVideo = pool[randomIndex];
-
-  // Update recent videos (keep last 3)
-  recentVideosModule.add(selectedVideo.id);
-
-  return selectedVideo;
-}
 
 /**
  * VideoPlayer Component
@@ -90,16 +38,6 @@ function VideoPlayer({
   // Store handleCanPlayThrough in a ref to avoid scope issues
   const handleCanPlayThroughRef = useRef(null);
 
-  /**
-   * Get session statistics for debugging
-   */
-  const getSessionStats = useCallback(() => {
-    return {
-      recentVideos: recentVideosModule.getHistory(),
-      totalInDatabase: VIDEO_DATABASE.length,
-    };
-  }, []);
-
   // Handle video source changes with fade effect
   useEffect(() => {
     if (!currentVideo) return;
@@ -131,7 +69,7 @@ function VideoPlayer({
         setIsVideoLoaded(true);
         setFadeState('fade-in');
         if (onVideoChange) {
-          onVideoChange(currentVideo, getSessionStats());
+          onVideoChange(currentVideo);
         }
         video.removeEventListener('canplaythrough', handleCanPlayThroughRef.current);
       };
@@ -148,7 +86,7 @@ function VideoPlayer({
         video.removeEventListener('canplaythrough', handleCanPlayThroughRef.current);
       }
     };
-  }, [currentVideo, onResetHappiness, onVideoChange, getSessionStats]);
+  }, [currentVideo, onResetHappiness, onVideoChange]);
 
   // Handle smile detection pause with haptic feedback
   useEffect(() => {
@@ -176,14 +114,7 @@ function VideoPlayer({
     }
   }, [isSmiling, isEyesOpen, isVideoLoaded]);
 
-  // Sync external fullscreen state with internal state
-  useEffect(() => {
-    if (isFullscreenActive && !isFullscreen) {
-      handleFullscreenClick();
-    }
-  }, [isFullscreenActive, isFullscreen, handleFullscreenClick]);
-
-  // Handle fullscreen button click
+  // Handle fullscreen button click (defined before useEffect that uses it)
   const handleFullscreenClick = useCallback(async () => {
     const container = fullscreenContainerRef.current;
     if (!container) return;
@@ -222,9 +153,18 @@ function VideoPlayer({
         setIsFullscreen(false);
       }
     } catch (error) {
-      console.error('Fullscreen error:', error);
+      if (import.meta.env.DEV) {
+        console.error('Fullscreen error:', error);
+      }
     }
   }, [isFullscreen]);
+
+  // Sync external fullscreen state with internal state
+  useEffect(() => {
+    if (isFullscreenActive && !isFullscreen) {
+      handleFullscreenClick();
+    }
+  }, [isFullscreenActive, isFullscreen, handleFullscreenClick]);
 
   // Listen for fullscreen changes (in case exited by ESC key)
   useEffect(() => {
@@ -377,8 +317,5 @@ function VideoPlayer({
     </div>
   );
 }
-
-// Export the getNextVideo function for external use
-export { getNextVideo };
 
 export default VideoPlayer;

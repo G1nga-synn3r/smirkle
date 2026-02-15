@@ -6,7 +6,8 @@ All ML tasks (face/emotion/smile detection) are now handled client-side.
 """
 
 import logging
-from datetime import datetime
+import uuid
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -46,15 +47,15 @@ class VersionInfo(BaseModel):
 async def health_check():
     """
     Health check endpoint to verify API status.
-    
+
     Returns:
         HealthResponse with service status
     """
     return {
         "status": "healthy",
         "version": "1.0.0",
-        "timestamp": datetime.utcnow().isoformat() + "Z",
-        "service": "smirkle-backend"
+        "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "service": "smirkle-backend",
     }
 
 
@@ -106,21 +107,19 @@ class SessionCreateResponse(BaseModel):
 async def create_session(request: SessionCreateRequest):
     """
     Create a new game session.
-    
+
     Args:
         request: Session creation request with user_id and game_type
-        
+
     Returns:
         SessionCreateResponse with session_id and status
     """
-    import uuid
-    
     session_id = str(uuid.uuid4())
-    
+
     return {
         "session_id": session_id,
-        "created_at": datetime.utcnow().isoformat() + "Z",
-        "status": "active"
+        "created_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "status": "active",
     }
 
 
@@ -133,15 +132,13 @@ async def create_session(request: SessionCreateRequest):
 async def get_session_status(session_id: str):
     """
     Get the current status of a game session.
-    
+
     Args:
         session_id: Game session identifier
-        
+
     Returns:
         Session status information
     """
-    import uuid
-    
     try:
         uuid.UUID(session_id)
     except ValueError:
@@ -149,14 +146,14 @@ async def get_session_status(session_id: str):
             status_code=400,
             detail={
                 "error": "INVALID_SESSION_ID",
-                "message": "Invalid session ID format"
-            }
+                "message": "Invalid session ID format",
+            },
         )
-    
+
     return {
         "session_id": session_id,
         "status": "active",
-        "message": "Session is active. ML detection is handled client-side."
+        "message": "Session is active. ML detection is handled client-side.",
     }
 
 
@@ -169,15 +166,13 @@ async def get_session_status(session_id: str):
 async def end_session(session_id: str):
     """
     End a game session.
-    
+
     Args:
         session_id: Game session identifier
-        
+
     Returns:
         Confirmation of session end
     """
-    import uuid
-    
     try:
         uuid.UUID(session_id)
     except ValueError:
@@ -185,12 +180,12 @@ async def end_session(session_id: str):
             status_code=400,
             detail={
                 "error": "INVALID_SESSION_ID",
-                "message": "Invalid session ID format"
-            }
+                "message": "Invalid session ID format",
+            },
         )
-    
+
     return {
         "session_id": session_id,
         "status": "ended",
-        "message": "Session has been ended successfully"
+        "message": "Session has been ended successfully",
     }

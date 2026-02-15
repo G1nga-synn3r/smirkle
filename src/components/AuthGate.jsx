@@ -157,11 +157,12 @@ export default function AuthGate({ children }) {
     // Guest sessions are temporary and scores are NOT saved to leaderboards
     const guestUser = {
       id: 'guest_' + Date.now(), // Unique guest ID with timestamp
-      username: 'Guest',         // Default display name
+      username: 'Guest', // Default display name
       email: 'guest@smirkle.app', // Placeholder email for guest accounts
-      isGuest: true,             // Flag to distinguish guest from registered users
+      isGuest: true, // Flag to distinguish guest from registered users
       createdAt: new Date().toISOString(), // Session creation timestamp
-      stats: {                   // Initialize empty stats object for guest
+      stats: {
+        // Initialize empty stats object for guest
         totalGames: 0,
         totalSmirksDetected: 0,
         totalSmilesDetected: 0,
@@ -197,7 +198,7 @@ export default function AuthGate({ children }) {
     { label: 'One uppercase letter', test: (p) => /[A-Z]/.test(p) },
     { label: 'One lowercase letter', test: (p) => /[a-z]/.test(p) },
     { label: 'One number', test: (p) => /\d/.test(p) },
-    { label: 'One symbol', test: (p) => /[!@#$%^&*()_+\-=\[\]{};:'"|,.<>\/?]/.test(p) },
+    { label: 'One symbol', test: (p) => /[!@#$%^&*()_+\-=[\]{};:'"|,.<>/?]/.test(p) },
   ];
 
   const isPasswordValid = () => {
@@ -380,7 +381,7 @@ export default function AuthGate({ children }) {
 
           {/* Guest disclaimer */}
           <p className="mt-8 text-center text-sm text-gray-500">
-            Guest scores won't be saved to leaderboards
+            Guest scores won&apos;t be saved to leaderboards
           </p>
         </div>
       ) : (

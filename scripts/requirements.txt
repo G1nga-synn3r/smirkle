@@ -1,4 +1,20 @@
+# Smirkle Scripts Dependencies
+# Required for YouTube ingestor and facial detection scripts
+
+# OpenCV for image processing and webcam access
 opencv-python==4.8.1.78
+
+# DeepFace for emotion detection (used in facial_expression_detector.py)
 deepface==0.0.75
+
+# TensorFlow backend for DeepFace
 tensorflow>=2.10.0
+
+# Numerical computing
 numpy>=1.21.0
+
+# YouTube Data API client (for youtube_ingestor.py)
+google-api-python-client>=2.100.0
+
+# Environment variable management
+python-dotenv>=1.0.0

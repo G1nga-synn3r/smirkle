@@ -1,15 +1,18 @@
 """
 Backend API tests for the FastAPI backend.
 """
-import pytest
-import sys
+
 import os
+import sys
+import uuid
+
+import pytest
+from fastapi.testclient import TestClient
 
 # Add backend directory to path for imports
-backend_path = os.path.join(os.path.dirname(__file__), '..', 'backend')
+backend_path = os.path.join(os.path.dirname(__file__), "..", "backend")
 sys.path.insert(0, backend_path)
 
-from fastapi.testclient import TestClient
 from app.main import app
 
 client = TestClient(app)
@@ -54,7 +57,6 @@ def test_session_creation():
 
 def test_session_status():
     """Test getting session status with valid UUID."""
-    import uuid
     session_id = str(uuid.uuid4())
     response = client.get(f"/api/v1/session/{session_id}/status")
     assert response.status_code == 200
@@ -71,7 +73,6 @@ def test_session_status_invalid_uuid():
 
 def test_end_session():
     """Test ending a session."""
-    import uuid
     session_id = str(uuid.uuid4())
     response = client.delete(f"/api/v1/session/{session_id}/end")
     assert response.status_code == 200

@@ -9,18 +9,9 @@
  * - Unique Player ID generation
  */
 
-import { hashPassword, verifyPassword, hashPasswordSync } from './passwordHash';
+import { hashPassword, verifyPassword } from './passwordHash';
 import { db, isFirebaseInitialized } from '../services/firebaseConfig';
-import {
-  doc,
-  setDoc,
-  getDoc,
-  collection,
-  query,
-  where,
-  getDocs,
-  serverTimestamp,
-} from 'firebase/firestore';
+import { doc, setDoc, collection, query, where, getDocs } from 'firebase/firestore';
 
 // Storage keys for offline fallback
 const STORAGE_KEYS = {

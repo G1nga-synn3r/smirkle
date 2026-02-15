@@ -6,7 +6,7 @@ we use query parameters or handle path parsing manually.
 """
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 # In-memory session storage for serverless environment
 # Note: This will reset on each function invocation in serverless context

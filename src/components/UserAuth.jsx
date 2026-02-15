@@ -5,7 +5,6 @@ import {
   authenticateUser,
   getCurrentUser,
   logoutUser,
-  isUsernameAvailable,
   isEmailAvailable,
 } from '../utils/auth';
 
@@ -36,7 +35,7 @@ export default function UserAuth({ isOpen, onClose, onAuthChange }) {
     { regex: /[A-Z]/, label: 'One uppercase letter (A-Z)' },
     { regex: /[a-z]/, label: 'One lowercase letter (a-z)' },
     { regex: /\d/, label: 'One number (0-9)' },
-    { regex: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/, label: 'One symbol (!@#$%^&*...)' },
+    { regex: /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/, label: 'One symbol (!@#$%^&*...)' },
   ];
 
   useEffect(() => {
@@ -89,7 +88,7 @@ export default function UserAuth({ isOpen, onClose, onAuthChange }) {
       newErrors.password = 'Password is required';
     } else {
       const passwordRegex =
-        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{8,}$/;
+        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,}$/;
       if (!passwordRegex.test(formData.password)) {
         newErrors.password = 'Password does not meet complexity requirements';
       }
@@ -267,7 +266,7 @@ export default function UserAuth({ isOpen, onClose, onAuthChange }) {
                 </div>
 
                 {currentUser.bio && (
-                  <p className="text-gray-300 mb-4 italic">"{currentUser.bio}"</p>
+                  <p className="text-gray-300 mb-4 italic">&quot;{currentUser.bio}&quot;</p>
                 )}
 
                 {currentUser.motto && (

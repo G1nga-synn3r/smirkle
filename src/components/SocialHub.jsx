@@ -393,7 +393,7 @@ export default function SocialHub() {
                   ))}
                 {!isSearching && searchQuery.trim().length > 0 && searchResults.length === 0 && (
                   <p className="text-center text-gray-400 py-8">
-                    No users found for "{searchQuery}"
+                    No users found for &quot;{searchQuery}&quot;
                   </p>
                 )}
                 {searchQuery.trim().length === 0 && (

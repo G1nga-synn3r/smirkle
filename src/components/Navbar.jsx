@@ -26,6 +26,7 @@ export default function Navbar({ activeTab, setActiveTab, user }) {
     { id: 'game', label: 'Home', icon: Home },
     { id: 'leaderboard', label: 'Trophy', icon: Trophy },
     { id: 'social', label: 'Friends', icon: Users },
+    { id: 'teams', label: 'Teams', icon: Users },
     { id: 'submit', label: 'Upload', icon: Upload },
     { id: 'settings', label: 'Settings', icon: Settings },
     { id: 'profile', label: 'User', icon: User },
@@ -102,11 +103,15 @@ export default function Navbar({ activeTab, setActiveTab, user }) {
                   transition-all duration-200 ease-out
                   ${isActive ? 'scale-110' : 'scale-100'}
                 `}
-                style={isActive ? {
-                  backgroundColor: color.bg,
-                  border: '3px solid #000000',
-                  boxShadow: '2px 2px 0 0 #000000',
-                } : {}}
+                style={
+                  isActive
+                    ? {
+                        backgroundColor: color.bg,
+                        border: '3px solid #000000',
+                        boxShadow: '2px 2px 0 0 #000000',
+                      }
+                    : {}
+                }
               >
                 <Icon
                   className="w-6 h-6 transition-all duration-200"

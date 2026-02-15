@@ -338,7 +338,6 @@ import {
   Trophy,
   Flame,
   Eye,
-  EyeOff,
   Lock,
 } from 'lucide-react';
 import { getCurrentUser } from '../utils/auth';
@@ -470,7 +469,9 @@ function RecentScores({ scores }) {
                 {getScoreIcon(score.survival_time)}
               </div>
               <div>
-                <p className="text-sm font-medium text-white">{getScoreTitle(score.survival_time)}</p>
+                <p className="text-sm font-medium text-white">
+                  {getScoreTitle(score.survival_time)}
+                </p>
                 <p className="text-xs text-gray-400">
                   {score.survival_time.toFixed(1)}s • {score.date}
                 </p>
@@ -549,7 +550,11 @@ export default function ProfilePage() {
         setAllScores(scores);
         setProfile((prev) => ({
           ...prev,
-          stats: { ...prev.stats, highestScore: best?.score_value || 0, totalScoresSubmitted: scores.length },
+          stats: {
+            ...prev.stats,
+            highestScore: best?.score_value || 0,
+            totalScoresSubmitted: scores.length,
+          },
         }));
       }
 
@@ -560,7 +565,9 @@ export default function ProfilePage() {
       setEarnedBadges(getEarnedBadges(levelInfo.level));
       setNextBadge(getNextBadge(levelInfo.level));
     } catch (error) {
-      console.error('Error loading user scores:', error);
+      if (import.meta.env.DEV) {
+        console.error('Error loading user scores:', error);
+      }
     } finally {
       setIsLoadingScores(false);
     }
@@ -606,7 +613,11 @@ export default function ProfilePage() {
   };
 
   const handleSave = () => {
-    const updatedProfile = { ...editForm, avatar: croppedImage || profile.avatar, stats: profile.stats };
+    const updatedProfile = {
+      ...editForm,
+      avatar: croppedImage || profile.avatar,
+      stats: profile.stats,
+    };
     setProfile(updatedProfile);
     setEditForm(updatedProfile);
     setCroppedImage(null);
@@ -626,7 +637,10 @@ export default function ProfilePage() {
   const togglePrivacy = (field) => {
     setEditForm((prev) => ({
       ...prev,
-      privacy: { ...prev.privacy, [field]: prev.privacy?.[field] === 'public' ? 'private' : 'public' },
+      privacy: {
+        ...prev.privacy,
+        [field]: prev.privacy?.[field] === 'public' ? 'private' : 'public',
+      },
     }));
   };
 
@@ -666,21 +680,33 @@ export default function ProfilePage() {
           <Award className="text-amber-400" size={20} />
           {isLoadingScores ? 'Loading Stats...' : 'Game Stats'}
         </h2>
-        {isEditing && <PrivacyToggle field="stats" value={editForm.privacy?.stats} onToggle={() => togglePrivacy('stats')} />}
-        {!isEditing && profile.privacy?.stats === 'private' && <Lock size={14} className="text-amber-400" title="This field is private" />}
+        {isEditing && (
+          <PrivacyToggle
+            field="stats"
+            value={editForm.privacy?.stats}
+            onToggle={() => togglePrivacy('stats')}
+          />
+        )}
+        {!isEditing && profile.privacy?.stats === 'private' && (
+          <Lock size={14} className="text-amber-400" title="This field is private" />
+        )}
       </div>
       <div className="grid grid-cols-3 gap-4">
         <div className="text-center">
           <div className="flex items-center justify-center gap-1 text-yellow-400 mb-1">
             <Trophy size={24} />
-            <span className="text-2xl font-bold">{bestScore ? Math.floor(bestScore.score_value) : 0}</span>
+            <span className="text-2xl font-bold">
+              {bestScore ? Math.floor(bestScore.score_value) : 0}
+            </span>
           </div>
           <p className="text-sm text-gray-300">Best Score</p>
         </div>
         <div className="text-center">
           <div className="flex items-center justify-center gap-1 text-purple-400 mb-1">
             <Flame size={24} />
-            <span className="text-2xl font-bold">{bestScore ? bestScore.survival_time.toFixed(1) : '0'}s</span>
+            <span className="text-2xl font-bold">
+              {bestScore ? bestScore.survival_time.toFixed(1) : '0'}s
+            </span>
           </div>
           <p className="text-sm text-gray-300">Best Time</p>
         </div>
@@ -736,7 +762,9 @@ export default function ProfilePage() {
 
         {isMaxLevel && (
           <div className="text-center mb-6">
-            <p className="text-lg font-bold text-yellow-400">🏆 You've Reached Maximum Level! 🏆</p>
+            <p className="text-lg font-bold text-yellow-400">
+              🏆 You&apos;ve Reached Maximum Level! 🏆
+            </p>
           </div>
         )}
       </div>
@@ -796,7 +824,13 @@ export default function ProfilePage() {
     <div>
       <div className="flex items-center justify-between mb-2">
         <label className="block text-sm font-medium text-gray-300">Bio</label>
-        {isEditing && <PrivacyToggle field="bio" value={editForm.privacy?.bio} onToggle={() => togglePrivacy('bio')} />}
+        {isEditing && (
+          <PrivacyToggle
+            field="bio"
+            value={editForm.privacy?.bio}
+            onToggle={() => togglePrivacy('bio')}
+          />
+        )}
       </div>
       {isEditing ? (
         <textarea
@@ -818,7 +852,13 @@ export default function ProfilePage() {
         <label className="block text-sm font-medium text-gray-300 flex items-center gap-1">
           <MapPin size={14} /> Location
         </label>
-        {isEditing && <PrivacyToggle field="location" value={editForm.privacy?.location} onToggle={() => togglePrivacy('location')} />}
+        {isEditing && (
+          <PrivacyToggle
+            field="location"
+            value={editForm.privacy?.location}
+            onToggle={() => togglePrivacy('location')}
+          />
+        )}
       </div>
       {isEditing ? (
         <input
@@ -829,7 +869,9 @@ export default function ProfilePage() {
           placeholder="Where are you from?"
         />
       ) : (
-        <p className="text-gray-200 flex items-center gap-1">{profile.location || 'Location not set'}</p>
+        <p className="text-gray-200 flex items-center gap-1">
+          {profile.location || 'Location not set'}
+        </p>
       )}
     </div>
   );
@@ -841,7 +883,11 @@ export default function ProfilePage() {
           <LinkIcon size={14} /> Social Links
         </label>
         {isEditing && (
-          <PrivacyToggle field="socialLinks" value={editForm.privacy?.socialLinks} onToggle={() => togglePrivacy('socialLinks')} />
+          <PrivacyToggle
+            field="socialLinks"
+            value={editForm.privacy?.socialLinks}
+            onToggle={() => togglePrivacy('socialLinks')}
+          />
         )}
       </div>
       {isEditing ? (
@@ -861,7 +907,7 @@ export default function ProfilePage() {
     </div>
   );
 
-  const renderPrivacyNotice = () => (
+  const renderPrivacyNotice = () =>
     isEditing && (
       <div className="bg-cyan-500/10 border border-cyan-500/30 rounded-2xl p-4 mb-6">
         <p className="text-sm text-cyan-300 flex items-start gap-2">
@@ -872,8 +918,7 @@ export default function ProfilePage() {
           </span>
         </p>
       </div>
-    )
-  );
+    );
 
   const renderCropper = () => {
     if (!showCropper || !originalImage) return null;

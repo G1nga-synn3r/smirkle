@@ -14,9 +14,19 @@ export const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8000';
 // ===========================
 /**
  * Happiness/smile detection threshold (legacy)
- * @deprecated Use SMIRK_THRESHOLD_MEDIAPIPE instead
+ * @deprecated Use SMIRK_ENTER_THRESHOLD and SMIRK_EXIT_THRESHOLD instead
+ * @description This constant is deprecated and will be removed in a future version.
+ *              Use SMIRK_ENTER_THRESHOLD (0.3) for entering smirk state and
+ *              SMIRK_EXIT_THRESHOLD (0.2) for exiting smirk state.
  */
 export const SMILE_THRESHOLD = 0.3;
+
+// Log deprecation warning in development mode
+if (import.meta.env.DEV) {
+  console.warn(
+    '[Smirkle] SMILE_THRESHOLD is deprecated. Use SMIRK_ENTER_THRESHOLD and SMIRK_EXIT_THRESHOLD instead.'
+  );
+}
 
 /**
  * Consecutive frames required before triggering game over
@@ -140,8 +150,15 @@ export const STORAGE_KEYS = {
 // ===========================
 /**
  * @deprecated Face API model URL - no longer used with MediaPipe
+ * @description This constant is deprecated and will be removed in a future version.
+ *              MediaPipe models are loaded from the CDN instead.
  */
 export const MODEL_URL = '/models';
+
+// Log deprecation warning in development mode
+if (import.meta.env.DEV) {
+  console.warn('[Smirkle] MODEL_URL is deprecated. MediaPipe models are loaded from CDN.');
+}
 
 // ===========================
 // Game Settings
@@ -175,21 +192,31 @@ export const PIP_CONFIG = {
  * Value between 0 and 1
  * Derived from mouthHappy + mouthSmile blendshapes
  * @deprecated Use SMIRK_ENTER_THRESHOLD and SMIRK_EXIT_THRESHOLD for hysteresis
+ * @description This constant is deprecated and will be removed in a future version.
+ *              Use SMIRK_ENTER_THRESHOLD (0.3) for entering smirk state and
+ *              SMIRK_EXIT_THRESHOLD (0.2) for exiting smirk state.
  */
 export const SMIRK_THRESHOLD_MEDIAPIPE = 0.3;
+
+// Log deprecation warning in development mode
+if (import.meta.env.DEV) {
+  console.warn(
+    '[Smirkle] SMIRK_THRESHOLD_MEDIAPIPE is deprecated. Use SMIRK_ENTER_THRESHOLD and SMIRK_EXIT_THRESHOLD for hysteresis.'
+  );
+}
 
 /**
  * Threshold to enter smirking state
  * When happiness score >= this value, user is considered smirking
  */
-export const SMIRK_ENTER_THRESHOLD = 0.30;
+export const SMIRK_ENTER_THRESHOLD = 0.3;
 
 /**
  * Threshold to exit smirking state (lower = more stable)
  * When currently smirking and happiness score < this value, user exits smirking state
  * Lower than ENTER threshold to prevent flickering on borderline expressions
  */
-export const SMIRK_EXIT_THRESHOLD = 0.20;
+export const SMIRK_EXIT_THRESHOLD = 0.2;
 
 /**
  * Grace frames before resetting smirk counter
@@ -420,7 +447,7 @@ export const MIN_IRIS_LANDMARKS_COUNT = 10;
  */
 export const LEFT_EYE_LANDMARK_START_INDEX = 0;
 export const LEFT_EYE_LANDMARK_END_INDEX = 6;
-export const RIGHT_EYE_LANDMARK_START_INDEX = 6;  // Same as LEFT_EYE_LANDMARK_END_INDEX
+export const RIGHT_EYE_LANDMARK_START_INDEX = 6; // Same as LEFT_EYE_LANDMARK_END_INDEX
 export const RIGHT_EYE_LANDMARK_END_INDEX = 12;
 
 /**

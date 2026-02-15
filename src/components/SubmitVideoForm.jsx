@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Video, Upload, CheckCircle, AlertCircle, Link, Loader2, Shield, Scan } from 'lucide-react';
-import { checkContentModeration, findBannedKeywords } from '../data/bannedWords.js';
+import { Video, CheckCircle, AlertCircle, Link, Loader2, Shield, Scan } from 'lucide-react';
+import { checkContentModeration } from '../data/bannedWords.js';
 
 export default function SubmitVideoForm() {
   const [videoUrl, setVideoUrl] = useState('');
@@ -13,7 +13,7 @@ export default function SubmitVideoForm() {
 
   const validateUrl = (url) => {
     // Basic URL validation
-    const urlPattern = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/;
+    const urlPattern = /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/;
     return urlPattern.test(url);
   };
 
@@ -123,8 +123,8 @@ export default function SubmitVideoForm() {
             Submission Successful!
           </h2>
           <p className="text-gray-300 mb-6 max-w-md mx-auto">
-            Your video is pending approval. Our admin team will review it shortly and you'll be
-            notified once it's live on the leaderboard.
+            Your video is pending approval. Our admin team will review it shortly and you&apos;ll be
+            notified once it&apos;s live on the leaderboard.
           </p>
 
           {/* Submission Details */}

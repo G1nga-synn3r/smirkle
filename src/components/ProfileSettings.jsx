@@ -4,8 +4,6 @@ import {
   Calendar,
   FileText,
   Quote,
-  Eye,
-  EyeOff,
   Save,
   X,
   Vibrate,

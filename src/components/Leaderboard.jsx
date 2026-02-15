@@ -125,16 +125,17 @@ export default function Leaderboard() {
     if (rank === 1) return <Crown className="w-6 h-6" style={{ color: '#FFFF00' }} />;
     if (rank === 2) return <Medal className="w-6 h-6" style={{ color: '#00AAFF' }} />;
     if (rank === 3) return <Medal className="w-6 h-6" style={{ color: '#FF69B4' }} />;
-    return <span className="text-lg font-bold w-8" style={{ color: '#000000' }}>#{rank}</span>;
+    return (
+      <span className="text-lg font-bold w-8" style={{ color: '#000000' }}>
+        #{rank}
+      </span>
+    );
   };
 
   const getRankCardStyle = (rank) => {
-    if (rank === 1)
-      return 'bg-yellow-100 border-3 border-black';
-    if (rank === 2)
-      return 'bg-blue-100 border-3 border-black';
-    if (rank === 3)
-      return 'bg-pink-100 border-3 border-black';
+    if (rank === 1) return 'bg-yellow-100 border-3 border-black';
+    if (rank === 2) return 'bg-blue-100 border-3 border-black';
+    if (rank === 3) return 'bg-pink-100 border-3 border-black';
     return 'bg-white border-2 border-black hover:bg-gray-50';
   };
 

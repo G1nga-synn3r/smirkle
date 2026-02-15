@@ -11,11 +11,8 @@ import {
   updateDoc,
   arrayUnion,
   arrayRemove,
-  serverTimestamp,
   getDoc,
   collection,
-  query,
-  where,
   getDocs,
 } from 'firebase/firestore';
 import { db } from './firebaseConfig.js';

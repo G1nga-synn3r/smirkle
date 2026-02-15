@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { Video, Mic } from 'lucide-react';
+import { Video } from 'lucide-react';
 
 /**
  * CameraPiP Component

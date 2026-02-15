@@ -211,7 +211,9 @@ function FaceTrackerMediaPipe({
               return;
             }
           } catch (permErr) {
-            console.warn('[FaceTracker] Capacitor permission request failed:', permErr);
+            if (import.meta.env.DEV) {
+              console.warn('[FaceTracker] Capacitor permission request failed:', permErr);
+            }
             trackWebcamError(permErr);
             setCameraStatus('error');
             setCameraReady(false, 'Failed to request camera permission');
@@ -277,7 +279,9 @@ function FaceTrackerMediaPipe({
           };
         }
       } catch (err) {
-        console.error('[FaceTracker] Error accessing webcam:', err);
+        if (import.meta.env.DEV) {
+          console.error('[FaceTracker] Error accessing webcam:', err);
+        }
         trackWebcamError(err);
 
         // Condition 3: Handle errors
@@ -351,7 +355,9 @@ function FaceTrackerMediaPipe({
             detect(bitmap);
           })
           .catch((err) => {
-            console.error('[FaceTracker] Error creating ImageBitmap:', err);
+            if (import.meta.env.DEV) {
+              console.error('[FaceTracker] Error creating ImageBitmap:', err);
+            }
           });
       }
 
@@ -432,7 +438,9 @@ function FaceTrackerMediaPipe({
   // ===========================
 
   function handleDetectionError(errorMessage) {
-    console.error('[FaceTracker] Detection error:', errorMessage);
+    if (import.meta.env.DEV) {
+      console.error('[FaceTracker] Detection error:', errorMessage);
+    }
     trackDetectionError(new Error(errorMessage), { phase: 'detection' });
 
     if (onConnectionError) {

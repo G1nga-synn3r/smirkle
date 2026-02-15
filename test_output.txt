@@ -1,0 +1,7 @@
+Test 1 - Valid session: PASSED
+  Status: success
+  Emotion: N/A
+  Face detected: N/A
+
+Test 2 - Invalid session: PASSED
+  Error: INVALID_SESSION_ID

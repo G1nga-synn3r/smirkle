@@ -1,10 +1,10 @@
 /**
  * SystemCheckOverlay Component
- * 
+ *
  * Displays system checks during startup.
  * Uses unified cameraReady state from parent (FaceTrackerMediaPipe).
  * Shows CPU fallback badge when compatibility mode is active.
- * 
+ *
  * Key behavior:
  * - modelsLoaded becomes true ONLY when worker sends 'modelsLoaded' message
  * - cameraReady becomes true ONLY when stream.active AND first frame received
@@ -12,7 +12,16 @@
  */
 
 import { useEffect, useState } from 'react';
-import { Wifi, Camera, CheckCircle, AlertCircle, Loader, Brain, Cpu, ArrowRight } from 'lucide-react';
+import {
+  Wifi,
+  Camera,
+  CheckCircle,
+  AlertCircle,
+  Loader,
+  Brain,
+  Cpu,
+  ArrowRight,
+} from 'lucide-react';
 
 export interface SystemCheckCompleteData {
   cameraReady: boolean;
@@ -23,11 +32,11 @@ export interface SystemCheckCompleteData {
 
 export interface SystemCheckOverlayProps {
   onCheckComplete: (result: SystemCheckCompleteData) => void;
-  
+
   // Unified camera state from parent (FaceTrackerMediaPipe)
   cameraReady: boolean;
   cameraError?: string | null;
-  
+
   // Model loading state from parent (useMediaPipe hook)
   modelsLoaded: boolean;
   loadingProgress?: number;
@@ -44,49 +53,47 @@ const DEFAULT_PROPS: Required<SystemCheckOverlayProps> = {
   loadingProgress: 0,
   cpuFallback: false,
   modelError: null,
-  loadingStage: 'initializing'
+  loadingStage: 'initializing',
 };
 
 // Stage display names for user feedback
 const STAGE_NAMES: Record<string, string> = {
-  'initializing': 'Initializing...',
-  'wasm_loading': 'Loading WASM modules...',
-  'wasm_loaded': 'WASM modules loaded',
-  'model_loading': 'Loading face detection models...',
-  'model_loaded': 'Face detection models loaded',
-  'gpu_initializing': 'Initializing GPU acceleration...',
-  'gpu_initialized': 'GPU initialized',
-  'complete': 'All models loaded',
-  'error': 'Error loading models'
+  initializing: 'Initializing...',
+  wasm_loading: 'Loading WASM modules...',
+  wasm_loaded: 'WASM modules loaded',
+  model_loading: 'Loading face detection models...',
+  model_loaded: 'Face detection models loaded',
+  gpu_initializing: 'Initializing GPU acceleration...',
+  gpu_initialized: 'GPU initialized',
+  complete: 'All models loaded',
+  error: 'Error loading models',
 };
 
 export default function SystemCheckOverlay(props: SystemCheckOverlayProps) {
   const p = { ...DEFAULT_PROPS, ...props };
-  
+
   const [checkComplete, setCheckComplete] = useState(false);
   const [showReadyMessage, setShowReadyMessage] = useState(false);
-  
+
   // Determine checkmark states from unified props
-  const cameraStatus = p.cameraReady ? 'success' : 
-                       p.cameraError ? 'failed' : 'checking';
-  
-  const modelsStatus = p.modelsLoaded ? 'success' :
-                      p.modelError ? 'failed' : 'checking';
-  
+  const cameraStatus = p.cameraReady ? 'success' : p.cameraError ? 'failed' : 'checking';
+
+  const modelsStatus = p.modelsLoaded ? 'success' : p.modelError ? 'failed' : 'checking';
+
   // Check completion - wait for BOTH cameraReady AND modelsLoaded
   useEffect(() => {
     if (checkComplete) return;
-    
+
     if (p.cameraReady && p.modelsLoaded) {
       console.log('[SystemCheck] All checks passed:', {
         cameraReady: p.cameraReady,
         modelsLoaded: p.modelsLoaded,
-        cpuFallback: p.cpuFallback
+        cpuFallback: p.cpuFallback,
       });
-      
+
       // Show ready message briefly
       setShowReadyMessage(true);
-      
+
       // Delay for visual satisfaction
       const timer = setTimeout(() => {
         setCheckComplete(true);
@@ -94,14 +101,21 @@ export default function SystemCheckOverlay(props: SystemCheckOverlayProps) {
           cameraReady: true,
           modelsLoaded: true,
           cpuFallback: p.cpuFallback || false,
-          loadingStage: p.loadingStage || 'complete'
+          loadingStage: p.loadingStage || 'complete',
         });
       }, 800);
-      
+
       return () => clearTimeout(timer);
     }
-  }, [p.cameraReady, p.modelsLoaded, p.cpuFallback, p.loadingStage, p.onCheckComplete, checkComplete]);
-  
+  }, [
+    p.cameraReady,
+    p.modelsLoaded,
+    p.cpuFallback,
+    p.loadingStage,
+    p.onCheckComplete,
+    checkComplete,
+  ]);
+
   /**
    * Get models message based on stage
    */
@@ -111,7 +125,7 @@ export default function SystemCheckOverlay(props: SystemCheckOverlayProps) {
     if (modelsStatus === 'failed') return 'Model loading failed';
     return STAGE_NAMES[p.loadingStage] || 'Loading AI models...';
   };
-  
+
   /**
    * Get camera message
    */
@@ -121,19 +135,25 @@ export default function SystemCheckOverlay(props: SystemCheckOverlayProps) {
     if (cameraStatus === 'failed') return 'Camera check failed';
     return 'Waiting for camera...';
   };
-  
+
   return (
-    <div className={`fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm transition-opacity duration-500 ${checkComplete ? 'opacity-0' : 'opacity-100'}`}>
-      <div className={`bg-gradient-to-br from-slate-800 to-slate-900 rounded-3xl p-8 max-w-md w-full border border-cyan-500/20 shadow-2xl transition-all duration-500 ${checkComplete ? 'scale-95 opacity-0' : 'scale-100 opacity-100'}`}>
+    <div
+      className={`fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm transition-opacity duration-500 ${checkComplete ? 'opacity-0' : 'opacity-100'}`}
+    >
+      <div
+        className={`bg-gradient-to-br from-slate-800 to-slate-900 rounded-3xl p-8 max-w-md w-full border border-cyan-500/20 shadow-2xl transition-all duration-500 ${checkComplete ? 'scale-95 opacity-0' : 'scale-100 opacity-100'}`}
+      >
         <div className="text-center mb-8">
           <h2 className="text-3xl font-bold bg-gradient-to-r from-cyan-400 to-purple-600 bg-clip-text text-transparent mb-2">
             System Check
           </h2>
           <p className="text-gray-400 text-sm">Verifying your setup before we begin</p>
         </div>
-        
+
         {/* Models Check */}
-        <div className={`mb-4 p-4 bg-slate-700/30 rounded-xl border border-slate-600/50 transition-all duration-300 ${modelsStatus === 'success' ? 'border-green-500/30 bg-green-500/5' : ''}`}>
+        <div
+          className={`mb-4 p-4 bg-slate-700/30 rounded-xl border border-slate-600/50 transition-all duration-300 ${modelsStatus === 'success' ? 'border-green-500/30 bg-green-500/5' : ''}`}
+        >
           <div className="flex items-start gap-3 mb-2">
             {modelsStatus === 'checking' && (
               <Loader className="w-5 h-5 text-yellow-400 animate-spin flex-shrink-0 mt-0.5" />
@@ -146,11 +166,16 @@ export default function SystemCheckOverlay(props: SystemCheckOverlayProps) {
             )}
             <div className="flex-1">
               <div className="flex items-center gap-2">
-                <Brain size={16} className={
-                  modelsStatus === 'success' ? 'text-green-400' : 
-                  modelsStatus === 'failed' ? 'text-red-400' : 
-                  'text-yellow-400'
-                } />
+                <Brain
+                  size={16}
+                  className={
+                    modelsStatus === 'success'
+                      ? 'text-green-400'
+                      : modelsStatus === 'failed'
+                        ? 'text-red-400'
+                        : 'text-yellow-400'
+                  }
+                />
                 <p className="font-semibold text-white">AI Models</p>
                 {/* CPU fallback badge */}
                 {p.cpuFallback && modelsStatus === 'success' && (
@@ -160,18 +185,23 @@ export default function SystemCheckOverlay(props: SystemCheckOverlayProps) {
                   </span>
                 )}
               </div>
-              <p className={`text-sm mt-1 transition-colors duration-300 ${
-                modelsStatus === 'success' ? 'text-green-300' :
-                modelsStatus === 'failed' ? 'text-red-300' :
-                modelsStatus === 'checking' ? 'text-yellow-300' :
-                'text-gray-400'
-              }`}>
+              <p
+                className={`text-sm mt-1 transition-colors duration-300 ${
+                  modelsStatus === 'success'
+                    ? 'text-green-300'
+                    : modelsStatus === 'failed'
+                      ? 'text-red-300'
+                      : modelsStatus === 'checking'
+                        ? 'text-yellow-300'
+                        : 'text-gray-400'
+                }`}
+              >
                 {getModelsMessage()}
               </p>
               {/* Progress bar */}
               {modelsStatus === 'checking' && (
                 <div className="w-full h-1 bg-slate-600 rounded-full mt-2 overflow-hidden">
-                  <div 
+                  <div
                     className="h-full bg-gradient-to-r from-yellow-400 to-orange-500 transition-all duration-100"
                     style={{ width: `${p.loadingProgress}%` }}
                   />
@@ -180,9 +210,11 @@ export default function SystemCheckOverlay(props: SystemCheckOverlayProps) {
             </div>
           </div>
         </div>
-        
+
         {/* Camera Check */}
-        <div className={`mb-4 p-4 bg-slate-700/30 rounded-xl border border-slate-600/50 transition-all duration-300 ${cameraStatus === 'success' ? 'border-green-500/30 bg-green-500/5' : ''}`}>
+        <div
+          className={`mb-4 p-4 bg-slate-700/30 rounded-xl border border-slate-600/50 transition-all duration-300 ${cameraStatus === 'success' ? 'border-green-500/30 bg-green-500/5' : ''}`}
+        >
           <div className="flex items-start gap-3 mb-2">
             {cameraStatus === 'checking' && (
               <Loader className="w-5 h-5 text-cyan-400 animate-spin flex-shrink-0 mt-0.5" />
@@ -195,24 +227,33 @@ export default function SystemCheckOverlay(props: SystemCheckOverlayProps) {
             )}
             <div>
               <div className="flex items-center gap-2">
-                <Camera size={16} className={
-                  cameraStatus === 'success' ? 'text-green-400' : 
-                  cameraStatus === 'failed' ? 'text-red-400' : 
-                  'text-cyan-400'
-                } />
+                <Camera
+                  size={16}
+                  className={
+                    cameraStatus === 'success'
+                      ? 'text-green-400'
+                      : cameraStatus === 'failed'
+                        ? 'text-red-400'
+                        : 'text-cyan-400'
+                  }
+                />
                 <p className="font-semibold text-white">Camera</p>
               </div>
-              <p className={`text-sm mt-1 transition-colors duration-300 ${
-                cameraStatus === 'success' ? 'text-green-300' :
-                cameraStatus === 'failed' ? 'text-red-300' :
-                'text-gray-400'
-              }`}>
+              <p
+                className={`text-sm mt-1 transition-colors duration-300 ${
+                  cameraStatus === 'success'
+                    ? 'text-green-300'
+                    : cameraStatus === 'failed'
+                      ? 'text-red-300'
+                      : 'text-gray-400'
+                }`}
+              >
                 {getCameraMessage()}
               </p>
             </div>
           </div>
         </div>
-        
+
         {/* Internet Check */}
         <div className="mb-6 p-4 bg-slate-700/30 rounded-xl border border-slate-600/50">
           <div className="flex items-start gap-3 mb-2">
@@ -221,13 +262,11 @@ export default function SystemCheckOverlay(props: SystemCheckOverlayProps) {
               <p className="font-semibold text-white">Internet Connection</p>
             </div>
             <div className="flex-1">
-              <p className="text-sm mt-1 text-green-300">
-                Required for initial model download
-              </p>
+              <p className="text-sm mt-1 text-green-300">Required for initial model download</p>
             </div>
           </div>
         </div>
-        
+
         {/* Error Message */}
         {cameraStatus === 'failed' && (
           <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 mb-6">
@@ -236,7 +275,7 @@ export default function SystemCheckOverlay(props: SystemCheckOverlayProps) {
             </p>
           </div>
         )}
-        
+
         {/* All Ready Message */}
         {showReadyMessage && (
           <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4 mb-6 animate-fade-in">
@@ -247,16 +286,20 @@ export default function SystemCheckOverlay(props: SystemCheckOverlayProps) {
             </p>
           </div>
         )}
-        
+
         {/* Loading Indicator */}
         <div className="flex justify-center">
           <div className="flex gap-2">
-            <div className={`w-2 h-2 rounded-full transition-all duration-300 ${p.modelsLoaded ? 'bg-green-400 scale-125' : 'bg-yellow-400 animate-pulse'}`} />
-            <div className={`w-2 h-2 rounded-full transition-all duration-300 ${cameraStatus === 'success' ? 'bg-green-400 scale-125' : 'bg-cyan-400 animate-pulse'}`} />
+            <div
+              className={`w-2 h-2 rounded-full transition-all duration-300 ${p.modelsLoaded ? 'bg-green-400 scale-125' : 'bg-yellow-400 animate-pulse'}`}
+            />
+            <div
+              className={`w-2 h-2 rounded-full transition-all duration-300 ${cameraStatus === 'success' ? 'bg-green-400 scale-125' : 'bg-cyan-400 animate-pulse'}`}
+            />
             <div className="w-2 h-2 rounded-full bg-green-400" />
           </div>
         </div>
-        
+
         {/* Continue Button */}
         <div className="mt-6 flex justify-center">
           <button

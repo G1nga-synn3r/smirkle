@@ -115,7 +115,7 @@ function CameraView({ onStream }) {
         <div className="w-full h-full flex flex-col items-center justify-center bg-gray-900/80 rounded-3xl p-4">
           <p className="text-yellow-400 mb-4 text-center">⚠️ Camera requires HTTPS or localhost</p>
           <p className="text-gray-400 text-sm text-center mb-4">
-            Current: {window.location.protocol}//{window.location.host}
+            Current: {`${window.location.protocol}//${window.location.host}`}
           </p>
         </div>
       )}

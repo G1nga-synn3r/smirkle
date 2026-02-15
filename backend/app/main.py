@@ -12,13 +12,13 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from .config import settings
 from .api.routes import router as api_router
+from .config import settings
 
 # Configure logging
 logging.basicConfig(
     level=logging.DEBUG if settings.debug else logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
 
@@ -32,9 +32,9 @@ async def lifespan(app: FastAPI):
     # Startup
     logger.info("Starting Smirkle Backend API...")
     logger.info("ML detection is handled client-side")
-    
+
     yield
-    
+
     # Shutdown
     logger.info("Shutting down Smirkle Backend API...")
 
@@ -45,32 +45,32 @@ app = FastAPI(
     version=settings.app_version,
     description="""
     Smirkle Backend API - Minimal Backend for Smirkle "Try Not to Laugh" Game
-    
+
     ## Overview
-    
+
     This is a minimal backend API that supports the Smirkle game.
     All ML tasks (face/emotion/smile detection) are now handled client-side
     using TensorFlow.js in the browser for Vercel Python 3.14 compatibility.
-    
+
     ## Features
-    
+
     - **Health Checks**: Verify API status
     - **Session Management**: Create and manage game sessions
     - **CORS Support**: Enable cross-origin requests for frontend
-    
+
     ## Architecture
-    
+
     - Frontend: React + TensorFlow.js (client-side ML)
     - Backend: FastAPI on Vercel (non-ML operations)
-    
+
     ## Integration
-    
+
     See the frontend repository for React component examples.
     """,
     lifespan=lifespan,
     docs_url="/docs",
     redoc_url="/redoc",
-    openapi_url="/openapi.json"
+    openapi_url="/openapi.json",
 )
 
 # Configure CORS
@@ -82,6 +82,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 # Global exception handler
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):
@@ -92,8 +93,8 @@ async def global_exception_handler(request, exc):
         content={
             "error": "INTERNAL_SERVER_ERROR",
             "message": "An unexpected error occurred",
-            "detail": str(exc) if settings.debug else None
-        }
+            "detail": str(exc) if settings.debug else None,
+        },
     )
 
 
@@ -106,7 +107,7 @@ app.include_router(api_router, prefix="/api/v1")
     "/",
     tags=["Root"],
     summary="API Root",
-    description="API root endpoint with basic information."
+    description="API root endpoint with basic information.",
 )
 async def root():
     """Return basic API information."""
@@ -116,15 +117,16 @@ async def root():
         "status": "running",
         "docs": "/docs",
         "health": "/api/v1/health",
-        "note": "ML detection is handled client-side"
+        "note": "ML detection is handled client-side",
     }
 
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(
         "main:app",
         host=settings.host,
         port=settings.port,
-        reload=settings.debug
+        reload=settings.debug,
     )

@@ -1,6 +1,6 @@
 /**
  * Dynamic Resolution Manager
- * 
+ *
  * Adjusts camera resolution based on real-time performance metrics.
  * Ensures smooth operation across different device capabilities.
  */
@@ -33,7 +33,7 @@ export class DynamicResolutionManager {
   private latencyHistory: number[];
   private readonly MAX_HISTORY = 30;
   private readonly MIN_SAMPLES = 10;
-  
+
   constructor(
     initialWidth: number = 640,
     initialHeight: number = 480,
@@ -45,49 +45,48 @@ export class DynamicResolutionManager {
       scale: 1,
       targetFPS: 30,
       currentFPS: 30,
-      quality: 'high'
+      quality: 'high',
     };
-    
+
     this.thresholds = {
       highQualityFPS: 45,
       mediumQualityFPS: 30,
       minAcceptableFPS: 20,
-      ...thresholds
+      ...thresholds,
     };
-    
+
     this.fpsHistory = [];
     this.latencyHistory = [];
-    
   }
-  
+
   /**
    * Record performance metrics from latest detection
    */
   recordPerformance(fps: number, latency: number): void {
     this.fpsHistory.push(fps);
     this.latencyHistory.push(latency);
-    
+
     // Keep only the last MAX_HISTORY samples
     if (this.fpsHistory.length > this.MAX_HISTORY) {
       this.fpsHistory.shift();
       this.latencyHistory.shift();
     }
-    
+
     // Evaluate performance if we have enough samples
     if (this.fpsHistory.length >= this.MIN_SAMPLES) {
       this.evaluatePerformance();
     }
-    
+
     this.state.currentFPS = fps;
   }
-  
+
   /**
    * Evaluate performance and adjust resolution if needed
    */
   private evaluatePerformance(): void {
     const avgFPS = this.getAverage(this.fpsHistory);
     const avgLatency = this.getAverage(this.latencyHistory);
-    
+
     // Check if FPS is stable and good enough for upgrade
     if (avgFPS >= this.thresholds.highQualityFPS && avgLatency < 20) {
       this.upgradeQuality();
@@ -100,14 +99,14 @@ export class DynamicResolutionManager {
     else if (avgFPS < this.thresholds.minAcceptableFPS) {
       this.emergencyDowngrade();
     }
-    
+
     console.log(
       `[DynamicResolutionManager] FPS: ${avgFPS.toFixed(1)}, ` +
-      `Latency: ${avgLatency.toFixed(1)}ms, ` +
-      `Quality: ${this.state.quality}`
+        `Latency: ${avgLatency.toFixed(1)}ms, ` +
+        `Quality: ${this.state.quality}`
     );
   }
-  
+
   /**
    * Upgrade quality level
    */
@@ -119,7 +118,7 @@ export class DynamicResolutionManager {
     }
     // Already at high, no action needed
   }
-  
+
   /**
    * Downgrade quality level
    */
@@ -131,7 +130,7 @@ export class DynamicResolutionManager {
     }
     // Already at low, no action needed
   }
-  
+
   /**
    * Emergency downgrade for critically low performance
    */
@@ -142,7 +141,7 @@ export class DynamicResolutionManager {
       this.state.targetFPS = 15;
     }
   }
-  
+
   /**
    * Set quality level and adjust resolution accordingly
    */
@@ -150,34 +149,34 @@ export class DynamicResolutionManager {
     const qualityScales: Record<'high' | 'medium' | 'low', number> = {
       high: 1.0,
       medium: 0.75,
-      low: 0.5
+      low: 0.5,
     };
-    
+
     const qualityTargetFPS: Record<'high' | 'medium' | 'low', number> = {
       high: 30,
       medium: 25,
-      low: 15
+      low: 15,
     };
-    
+
     this.state.quality = quality;
     this.state.scale = qualityScales[quality];
     this.state.targetFPS = qualityTargetFPS[quality];
-    
+
     // Calculate new resolution
     const baseWidth = 640;
     const baseHeight = 480;
-    
+
     this.state.width = Math.floor(baseWidth * this.state.scale);
     this.state.height = Math.floor(baseHeight * this.state.scale);
-    
+
     console.log(
       `[DynamicResolutionManager] Quality: ${quality}, ` +
-      `Scale: ${(this.state.scale * 100).toFixed(0)}%, ` +
-      `Resolution: ${this.state.width}x${this.state.height}, ` +
-      `Target FPS: ${this.state.targetFPS}`
+        `Scale: ${(this.state.scale * 100).toFixed(0)}%, ` +
+        `Resolution: ${this.state.width}x${this.state.height}, ` +
+        `Target FPS: ${this.state.targetFPS}`
     );
   }
-  
+
   /**
    * Calculate average of numeric array
    */
@@ -185,7 +184,7 @@ export class DynamicResolutionManager {
     if (arr.length === 0) return 0;
     return arr.reduce((a, b) => a + b, 0) / arr.length;
   }
-  
+
   /**
    * Get current resolution settings
    */
@@ -193,17 +192,17 @@ export class DynamicResolutionManager {
     return {
       width: this.state.width,
       height: this.state.height,
-      scale: this.state.scale
+      scale: this.state.scale,
     };
   }
-  
+
   /**
    * Get current quality level
    */
   getQuality(): string {
     return this.state.quality;
   }
-  
+
   /**
    * Get performance statistics
    */
@@ -211,24 +210,24 @@ export class DynamicResolutionManager {
     return {
       avgFPS: this.getAverage(this.fpsHistory),
       avgLatency: this.getAverage(this.latencyHistory),
-      quality: this.state.quality
+      quality: this.state.quality,
     };
   }
-  
+
   /**
    * Get target FPS
    */
   getTargetFPS(): number {
     return this.state.targetFPS;
   }
-  
+
   /**
    * Get current FPS
    */
   getCurrentFPS(): number {
     return this.state.currentFPS;
   }
-  
+
   /**
    * Reset to initial high-quality state
    */
@@ -240,23 +239,22 @@ export class DynamicResolutionManager {
     this.state.targetFPS = 30;
     this.fpsHistory = [];
     this.latencyHistory = [];
-    
   }
-  
+
   /**
    * Force a specific quality level
    */
   setForcedQuality(quality: 'high' | 'medium' | 'low'): void {
     this.setQuality(quality);
   }
-  
+
   /**
    * Check if quality upgrade is available
    */
   canUpgrade(): boolean {
     return this.state.quality === 'medium' || this.state.quality === 'low';
   }
-  
+
   /**
    * Check if resolution has been downgraded
    */

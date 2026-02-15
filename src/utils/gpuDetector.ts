@@ -1,6 +1,6 @@
 /**
  * GPU Detection Utility
- * 
+ *
  * Detects GPU capabilities and determines appropriate fallback strategy
  */
 
@@ -28,7 +28,7 @@ const PROBLEMATIC_GPUS = [
   'mesa llvmpipe',
   'softpipe',
   'mesasw',
-  'swiftshader'
+  'swiftshader',
 ];
 
 // Known weak GPUs (integrated or older mobile)
@@ -43,7 +43,7 @@ const WEAK_GPUS = [
   'adreno 308',
   'mali-400',
   'mali-450',
-  'powervr'
+  'powervr',
 ];
 
 /**
@@ -53,66 +53,62 @@ export async function detectGPUCapability(): Promise<GPUInfo> {
   // Check if WebGL is available
   const canvas = document.createElement('canvas');
   const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
-  
+
   if (!gl) {
     return {
       supported: false,
       renderer: 'unknown',
       vendor: 'unknown',
-      fallbackReason: 'WebGL not supported'
+      fallbackReason: 'WebGL not supported',
     };
   }
-  
+
   // Try to get WebGL 2 context first
   if (gl instanceof WebGL2RenderingContext) {
   } else {
   }
-  
+
   // Try to get debug renderer info
   const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
-  
+
   let renderer = 'unknown';
   let vendor = 'unknown';
-  
+
   if (debugInfo) {
     renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
     vendor = gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL);
   } else {
   }
-  
+
   // Check for software renderers
-  const isSoftwareRenderer = PROBLEMATIC_GPUS.some(
-    gpu => renderer.toLowerCase().includes(gpu)
-  );
-  
+  const isSoftwareRenderer = PROBLEMATIC_GPUS.some((gpu) => renderer.toLowerCase().includes(gpu));
+
   if (isSoftwareRenderer) {
     return {
       supported: false,
       renderer,
       vendor,
-      fallbackReason: 'Software renderer detected (no GPU acceleration)'
+      fallbackReason: 'Software renderer detected (no GPU acceleration)',
     };
   }
-  
+
   // Check for weak GPUs
-  const isWeakGPU = WEAK_GPUS.some(
-    gpu => renderer.toLowerCase().includes(gpu)
-  );
-  
+  const isWeakGPU = WEAK_GPUS.some((gpu) => renderer.toLowerCase().includes(gpu));
+
   if (isWeakGPU) {
     return {
       supported: true,
       renderer,
       vendor,
-      fallbackReason: 'Weak GPU detected (reduced performance expected)'
+      fallbackReason: 'Weak GPU detected (reduced performance expected)',
     };
   }
-  
+
   // Good GPU detected
   return {
     supported: true,
     renderer,
-    vendor
+    vendor,
   };
 }
 
@@ -125,22 +121,22 @@ export const FALLBACK_CONFIG: Record<FallbackStrategy, FallbackConfig> = {
     reduceDetectionFrequency: true,
     targetFPS: 20,
     resolutionScale: 0.75,
-    enableFrameSkipping: true
+    enableFrameSkipping: true,
   },
   WEAK_GPU: {
     useCPU: false,
     reduceDetectionFrequency: false,
     targetFPS: 30,
     resolutionScale: 0.875,
-    enableFrameSkipping: true
+    enableFrameSkipping: true,
   },
   CPU_ONLY: {
     useCPU: true,
     reduceDetectionFrequency: true,
     targetFPS: 15,
     resolutionScale: 0.5,
-    enableFrameSkipping: true
-  }
+    enableFrameSkipping: true,
+  },
 };
 
 /**
@@ -150,11 +146,11 @@ export function selectFallbackStrategy(gpuInfo: GPUInfo): FallbackStrategy {
   if (!gpuInfo.supported) {
     return 'GPU_FAILURE';
   }
-  
+
   if (gpuInfo.fallbackReason?.includes('Weak')) {
     return 'WEAK_GPU';
   }
-  
+
   // Default to CPU-only for unknown situations
   return 'CPU_ONLY';
 }
@@ -177,17 +173,17 @@ export function checkDeviceCapabilities(): {
 } {
   const canvas = document.createElement('canvas');
   const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
-  
+
   return {
     webglSupported: !!gl,
-    webglVersion: gl instanceof WebGL2RenderingContext ? 2 : gl instanceof WebGLRenderingContext ? 1 : 0,
+    webglVersion:
+      gl instanceof WebGL2RenderingContext ? 2 : gl instanceof WebGLRenderingContext ? 1 : 0,
     workerSupported: typeof Worker !== 'undefined',
-    canRunMediaPipe: !!gl && typeof Worker !== 'undefined'
+    canRunMediaPipe: !!gl && typeof Worker !== 'undefined',
   };
 }
 
 /**
  * Log device capabilities to console
  */
-export function logDeviceCapabilities(): void {
-}
+export function logDeviceCapabilities(): void {}

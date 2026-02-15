@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { Calendar, CheckCircle, AlertCircle, Loader2, Wifi, WifiOff } from 'lucide-react';
 import { registerUser, RegistrationStatus, onRegistrationStateChange } from '../utils/auth';
 
@@ -49,7 +49,7 @@ function RegistrationForm() {
     { label: 'One uppercase letter', test: (p) => /[A-Z]/.test(p) },
     { label: 'One lowercase letter', test: (p) => /[a-z]/.test(p) },
     { label: 'One number', test: (p) => /\d/.test(p) },
-    { label: 'One symbol', test: (p) => /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(p) },
+    { label: 'One symbol', test: (p) => /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(p) },
   ];
 
   const validateField = (name, value) => {
@@ -380,7 +380,7 @@ function RegistrationForm() {
             <div className="p-3 rounded-lg bg-yellow-500/20 border border-yellow-500/50 flex items-center gap-2">
               <WifiOff className="w-4 h-4 text-yellow-500" />
               <span className="text-sm text-yellow-400">
-                You're offline. Profile will sync when online.
+                You&apos;re offline. Profile will sync when online.
               </span>
             </div>
           )}

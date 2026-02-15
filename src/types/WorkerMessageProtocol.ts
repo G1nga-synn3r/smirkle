@@ -1,12 +1,12 @@
 /**
  * Worker Message Protocol Type Definitions
- * 
+ *
  * Type-safe message definitions for MediaPipe Worker communication
  * Updated with unified loading sequence for competition-ready startup flow
  */
 
 // Loading progress stages for unified model loading
-export type LoadingStage = 
+export type LoadingStage =
   | 'initializing'
   | 'wasm_loading'
   | 'wasm_loaded'
@@ -24,7 +24,7 @@ export interface WorkerInitMessage {
   type: 'INIT';
   data: {
     enableGPU?: boolean; // Default: true
-    retryCount?: number;  // For internal retry tracking
+    retryCount?: number; // For internal retry tracking
   };
 }
 
@@ -47,10 +47,10 @@ export interface WorkerGetPerformanceMessage {
   type: 'GET_PERFORMANCE';
 }
 
-export type WorkerMessage = 
-  | WorkerInitMessage 
-  | WorkerDetectMessage 
-  | WorkerSetGPUMessage 
+export type WorkerMessage =
+  | WorkerInitMessage
+  | WorkerDetectMessage
+  | WorkerSetGPUMessage
   | WorkerGetPerformanceMessage;
 
 // Worker → Main Thread Messages
@@ -160,7 +160,7 @@ export interface WorkerErrorMessage {
   };
 }
 
-export type WorkerResponse = 
+export type WorkerResponse =
   | WorkerInitSuccessMessage
   | WorkerInitErrorMessage
   | WorkerModelsLoadedMessage
@@ -200,7 +200,7 @@ export function isWorkerResponseType(value: string): value is WorkerResponse['ty
     'DETECT_RESULT',
     'DETECT_ERROR',
     'PERFORMANCE_METRICS',
-    'ERROR'
+    'ERROR',
   ].includes(value);
 }
 
@@ -249,16 +249,15 @@ export interface MediaPipeState {
   gpuEnabled: boolean;
   cpuFallback: boolean;
   error: string | null;
-  
+
   // Camera readiness state (unified signal)
   cameraReady: boolean;
   cameraStatus: CameraStatus;
   cameraError: string | null;
   firstFrameReceived: boolean;
-  
+
   // Detection state
   detectionReady: boolean;
   lastResult: DetectionResult | null;
   performance: PerformanceMetrics | null;
 }
-

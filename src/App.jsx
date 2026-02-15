@@ -208,10 +208,7 @@ const LoadingFallback = () => (
   </div>
 );
 import { getCurrentUser, isGuest, setCurrentUser } from './utils/auth.js';
-import {
-  VIDEO_DATABASE,
-  videoQueueManager,
-} from './data/videoLibrary.js';
+import { VIDEO_DATABASE, videoQueueManager } from './data/videoLibrary.js';
 import { saveScore, updateUserLifetimeScore } from './services/scoreService.js';
 import {
   SMILE_FAIL_THRESHOLD,
@@ -444,7 +441,9 @@ function App() {
           birthdate: parsedData.birthdate?.value || '',
         });
       } catch (e) {
-        console.error('Failed to load user data:', e);
+        if (import.meta.env.DEV) {
+          console.error('Failed to load user data:', e);
+        }
         setCurrentUserState(user);
       }
     } else {
@@ -491,9 +490,11 @@ function App() {
         newCheckpointBonus += checkpoint.bonus;
         // Play notification sound
         playDing();
-        console.log(
-          `🎯 Checkpoint reached! ${(checkpoint.time / 60).toFixed(1)} minutes - +${checkpoint.bonus} bonus`
-        );
+        if (import.meta.env.DEV) {
+          console.log(
+            `🎯 Checkpoint reached! ${(checkpoint.time / 60).toFixed(1)} minutes - +${checkpoint.bonus} bonus`
+          );
+        }
       }
     });
 
@@ -531,7 +532,9 @@ function App() {
       // Update user's lifetime score
       updateUserLifetimeScore(user.id, scoreValue);
     } catch (error) {
-      console.error('Error saving score to Firestore:', error);
+      if (import.meta.env.DEV) {
+        console.error('Error saving score to Firestore:', error);
+      }
     }
 
     // Also save to localStorage as fallback
@@ -662,7 +665,11 @@ function App() {
 
     if (videoRef.current) {
       videoRef.current.currentTime = 0; // Reset video to start
-      videoRef.current.play().catch((err) => console.warn('Auto-play error on resume:', err));
+      videoRef.current.play().catch((err) => {
+        if (import.meta.env.DEV) {
+          console.warn('Auto-play error on resume:', err);
+        }
+      });
     }
   };
 
@@ -782,278 +789,296 @@ function App() {
         <div
           className={`min-h-screen pop-art-bg halftone-overlay ${gameOver ? 'grayscale-game-over' : ''} ${isSmiling && currentView === 'game' ? 'smile-detected' : ''}`}
         >
-        {/* FAIL Overlay - Two-Stage Detection Fail Phase */}
-        {isFailPhase && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-pop-red animate-pulse" style={{ backgroundColor: '#FF0000' }}>
-            <div className="text-center pop-card p-8" style={{ backgroundColor: '#FFFF00' }}>
-              <h2 className="text-6xl md:text-8xl font-bold text-pop-black mb-8 tracking-wider animate-bounce" style={{ color: '#000000', textShadow: '4px 4px 0 #FF0000' }}>
-                FAIL!
-              </h2>
-              <p className="text-xl font-bold mb-4" style={{ color: '#000000' }}>You smiled! </p>
-            </div>
-          </div>
-        )}
-
-        {/* Game Over Overlay */}
-        {gameOver && !isFailPhase && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0, 0, 0, 0.9)' }}>
-            <div className="wasted-modal">
-              <div className="text-center">
-                <h2 className="wasted-text text-6xl md:text-8xl font-bold mb-8 tracking-wider" style={{ color: '#FF0000', textShadow: '4px 4px 0 #000000' }}>
-                  WASTED
-                </h2>
-                <div className="survival-time mb-8">
-                  <p className="text-lg mb-2 font-bold" style={{ color: '#000000' }}>You survived for</p>
-                  <p className="text-4xl md:text-5xl font-bold" style={{ color: '#000000' }}>
-                    {survivalTime.toFixed(2)} seconds
-                  </p>
-                </div>
-                <button
-                  onClick={handleResume}
-                  className="try-again-btn font-bold py-4 px-12 transition-all duration-200"
-                  style={{ 
-                    backgroundColor: '#FF0000', 
-                    color: '#FFFFFF', 
-                    border: '3px solid #000000',
-                    boxShadow: '4px 4px 0 #000000',
-                    textTransform: 'uppercase'
-                  }}
+          {/* FAIL Overlay - Two-Stage Detection Fail Phase */}
+          {isFailPhase && (
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center bg-pop-red animate-pulse"
+              style={{ backgroundColor: '#FF0000' }}
+            >
+              <div className="text-center pop-card p-8" style={{ backgroundColor: '#FFFF00' }}>
+                <h2
+                  className="text-6xl md:text-8xl font-bold text-pop-black mb-8 tracking-wider animate-bounce"
+                  style={{ color: '#000000', textShadow: '4px 4px 0 #FF0000' }}
                 >
-                  TRY AGAIN
-                </button>
+                  FAIL!
+                </h2>
+                <p className="text-xl font-bold mb-4" style={{ color: '#000000' }}>
+                  You smiled!{' '}
+                </p>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Navigation */}
-        <Navbar activeTab={currentView} setActiveTab={setCurrentView} user={currentUser} />
-
-        {/* System Check Overlay - Shows on first load before anything else */}
-        {/* Waits for BOTH cameraReady AND modelsLoaded before completing */}
-        {showSystemCheck && currentView === 'game' && (
-          <SystemCheckOverlay
-            onCheckComplete={handleSystemCheckComplete}
-            cameraReady={cameraReady}
-            cameraError={cameraError}
-            modelsLoaded={modelsLoaded}
-            loadingProgress={loadingProgress}
-            cpuFallback={cpuFallback}
-            modelError={modelError}
-            loadingStage={loadingStage}
-          />
-        )}
-
-        {/* FaceTrackerMediaPipe - Mounted alongside SystemCheckOverlay to load models */}
-        {showSystemCheck && currentView === 'game' && (
-          <div style={{ display: 'none' }}>
-            <FaceTrackerMediaPipe
-              onCameraReady={handleCameraReady}
-              onModelStatusChange={handleModelStatusChange}
-              onCalibrationUpdate={handleCalibrationUpdate}
-              onCalibrationComplete={handleCalibrationComplete}
-              isCalibrating={false}
-              calibrationComplete={false}
-            />
-          </div>
-        )}
-
-        {/* Calibration Overlay - Shows when camera is ready but before tutorial/game */}
-        {isCalibrating && !calibrationComplete && !showTutorial && currentView === 'game' && (
-          <Suspense fallback={<LoadingFallback />}>
-            <CalibrationOverlay status={calibrationStatus} progress={calibrationProgress} />
-          </Suspense>
-        )}
-
-        {/* Camera PiP - Shows in top-right corner after calibrationComplete */}
-        {showCameraPiP && (
-          <Suspense fallback={null}>
-            <CameraPiP videoRef={cameraCanvasRef} config={PIP_CONFIG} />
-          </Suspense>
-        )}
-
-        {/* Tutorial Overlay - Shows once on top of everything */}
-        {showTutorial && (
-          <Suspense fallback={<LoadingFallback />}>
-            <TutorialOverlay onComplete={handleTutorialComplete} />
-          </Suspense>
-        )}
-
-        {/* Main Content */}
-        <div className="pt-6 pb-24 px-4">
-          <div className="max-w-7xl mx-auto">
-            {/* Game View */}
-            {currentView === 'game' && (
-              <>
-                <div className="text-center mb-12">
-                  <h1 className="text-5xl md:text-6xl font-bold mb-4 bg-gradient-to-r from-blue-400 via-purple-500 via-pink-500 to-blue-400 bg-clip-text text-transparent bg-[length:300%_auto] animate-gradient">
-                    Smirkle
-                  </h1>
-                  <p className="text-xl text-gray-400">Smile Detection Challenge</p>
-
-                  {/* Game Readiness Status Indicator */}
-                  <div className="mt-4 flex items-center justify-center gap-2">
-                    <div
-                      className={`w-3 h-3 rounded-full ${isGameReady ? 'bg-green-500 animate-pulse' : 'bg-yellow-500 animate-pulse'}`}
-                    ></div>
-                    <span
-                      className={`text-sm font-medium ${isGameReady ? 'text-green-400' : 'text-yellow-400'}`}
-                    >
-                      {isGameReady
-                        ? '🎮 GAME READY - Timer Active'
-                        : '⏳ Setting up camera and calibration...'}
-                    </span>
-                  </div>
-
-                  {/* Readiness Details */}
-                  {!isGameReady && (
-                    <div className="mt-2 flex items-center justify-center gap-4 text-xs text-gray-500">
-                      <span className={cameraReady ? 'text-green-400' : 'text-yellow-400'}>
-                        {cameraReady ? '✅' : '⏳'} Camera
-                      </span>
-                      <span className={calibrationComplete ? 'text-green-400' : 'text-yellow-400'}>
-                        {calibrationComplete ? '✅' : '⏳'} Calibration
-                      </span>
-                      <span className={isFaceDetected ? 'text-green-400' : 'text-yellow-400'}>
-                        {isFaceDetected ? '✅' : '⏳'} Face
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-                  {/* Video Player - Glassmorphism Card */}
-                  <div className="lg:col-span-1">
-                    <div className="rounded-3xl overflow-hidden bg-white/10 backdrop-blur-xl border border-white/20 shadow-[0_0_30px_rgba(139,92,246,0.3)]">
-                      <VideoPlayer
-                        isSmiling={isSmiling}
-                        isEyesOpen={isEyesOpen}
-                        videoRef={videoRef}
-                        currentVideo={currentVideo}
-                        survivalTime={survivalTime}
-                        cameraRef={cameraCanvasRef}
-                        isFullscreenActive={isVideoFullscreen}
-                        onToggleFullscreen={() => setIsVideoFullscreen(!isVideoFullscreen)}
-                        warningActive={warningActive}
-                        failPhase={isFailPhase}
-                      />
-                      {isSmiling && (
-                        <div className="absolute inset-0 bg-gradient-to-r from-purple-600/90 to-pink-600/90 backdrop-blur-md flex items-center justify-center">
-                          <div className="text-center">
-                            <h2 className="text-4xl md:text-5xl font-bold mb-4 text-white">
-                              SMILE DETECTED!
-                            </h2>
-                            <p className="text-lg text-purple-100 mb-6">
-                              You're rocking this challenge!
-                            </p>
-                            <button
-                              onClick={handleResume}
-                              className="bg-white text-purple-900 font-bold py-3 px-8 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
-                            >
-                              Try Again
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Face Tracker - Glassmorphism Card */}
-                  <div className="lg:col-span-1">
-                    <div className="rounded-3xl overflow-hidden bg-white/10 backdrop-blur-xl border border-white/20 shadow-[0_0_30px_rgba(139,92,246,0.3)] relative">
-                      <FaceTrackerMediaPipe
-                        onSmirkDetected={handleSmirkDetected}
-                        onCameraReady={handleCameraReady}
-                        onCalibrationUpdate={handleCalibrationUpdate}
-                        onCalibrationComplete={handleCalibrationComplete}
-                        onFaceCenteredUpdate={handleFaceCenteredUpdate}
-                        onLowLightWarning={handleLowLightWarning}
-                        onEyesOpenChange={setIsEyesOpen}
-                        onModelStatusChange={handleModelStatusChange}
-                        isCalibrating={isCalibrating}
-                        calibrationComplete={calibrationComplete}
-                        cameraCanvasRef={cameraCanvasRef}
-                      />
-                      {/* Guardian Logic Warning Boxes */}
-                      <WarningBox
-                        type="faceNotCentered"
-                        visible={!isFaceCentered && isFaceDetected}
-                      />
-                      <WarningBox type="lowLight" visible={isLowLight} />
-                      {/* Two-Stage Smile Detection Warning */}
-                      <WarningBox type="smiling" visible={warningActive && !isFailPhase} />
-                    </div>
-                  </div>
-                </div>
-
-                {!isVideoFullscreen && (
-                  <div className="text-center">
-                    <button
-                      onClick={handleResume}
-                      className="bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 text-white font-bold py-4 px-12 rounded-full shadow-2xl hover:shadow-xl transition-all duration-200 transform hover:scale-105 hover:rotate-1"
-                    >
-                      {gameOver ? '🔄 Try Again' : 'Start Game'}
-                    </button>
-                    <p className="mt-4 text-gray-400 text-sm">
-                      Keep a poker face! Smile = Game Over 😮
+          {/* Game Over Overlay */}
+          {gameOver && !isFailPhase && (
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center"
+              style={{ backgroundColor: 'rgba(0, 0, 0, 0.9)' }}
+            >
+              <div className="wasted-modal">
+                <div className="text-center">
+                  <h2
+                    className="wasted-text text-6xl md:text-8xl font-bold mb-8 tracking-wider"
+                    style={{ color: '#FF0000', textShadow: '4px 4px 0 #000000' }}
+                  >
+                    WASTED
+                  </h2>
+                  <div className="survival-time mb-8">
+                    <p className="text-lg mb-2 font-bold" style={{ color: '#000000' }}>
+                      You survived for
+                    </p>
+                    <p className="text-4xl md:text-5xl font-bold" style={{ color: '#000000' }}>
+                      {survivalTime.toFixed(2)} seconds
                     </p>
                   </div>
-                )}
-              </>
-            )}
-
-            {/* Leaderboard View */}
-            {currentView === 'leaderboard' && (
-              <div className="rounded-3xl shadow-[0_0_20px_rgba(59,130,246,0.5)] overflow-hidden bg-[#111827]/80">
-                <Suspense fallback={<LoadingFallback />}>
-                  <Leaderboard />
-                </Suspense>
-              </div>
-            )}
-
-            {/* Social Hub View */}
-            {currentView === 'social' && (
-              <Suspense fallback={<LoadingFallback />}>
-                <SocialHub />
-              </Suspense>
-            )}
-
-            {/* Submit View */}
-            {currentView === 'submit' && (
-              <div className="max-w-2xl mx-auto">
-                <div className="rounded-3xl shadow-[0_0_20px_rgba(59,130,246,0.5)] overflow-hidden bg-[#111827]/80">
-                  <Suspense fallback={<LoadingFallback />}>
-                    <SubmitVideoForm />
-                  </Suspense>
+                  <button
+                    onClick={handleResume}
+                    className="try-again-btn font-bold py-4 px-12 transition-all duration-200"
+                    style={{
+                      backgroundColor: '#FF0000',
+                      color: '#FFFFFF',
+                      border: '3px solid #000000',
+                      boxShadow: '4px 4px 0 #000000',
+                      textTransform: 'uppercase',
+                    }}
+                  >
+                    TRY AGAIN
+                  </button>
                 </div>
               </div>
-            )}
+            </div>
+          )}
 
-            {/* Settings View */}
-            {currentView === 'settings' && (
-              <Suspense fallback={<LoadingFallback />}>
-                <ProfileSettings />
-              </Suspense>
-            )}
+          {/* Navigation */}
+          <Navbar activeTab={currentView} setActiveTab={setCurrentView} user={currentUser} />
 
-            {/* Teams/Squads View */}
-            {currentView === 'teams' && (
-              <Suspense fallback={<LoadingFallback />}>
-                <Teams />
-              </Suspense>
-            )}
+          {/* System Check Overlay - Shows on first load before anything else */}
+          {/* Waits for BOTH cameraReady AND modelsLoaded before completing */}
+          {showSystemCheck && currentView === 'game' && (
+            <SystemCheckOverlay
+              onCheckComplete={handleSystemCheckComplete}
+              cameraReady={cameraReady}
+              cameraError={cameraError}
+              modelsLoaded={modelsLoaded}
+              loadingProgress={loadingProgress}
+              cpuFallback={cpuFallback}
+              modelError={modelError}
+              loadingStage={loadingStage}
+            />
+          )}
 
-            {/* Profile View */}
-            {currentView === 'profile' && (
-              <div className="rounded-3xl shadow-[0_0_20px_rgba(59,130,246,0.5)] overflow-hidden bg-[#111827]/80">
+          {/* FaceTrackerMediaPipe - Mounted alongside SystemCheckOverlay to load models */}
+          {showSystemCheck && currentView === 'game' && (
+            <div style={{ display: 'none' }}>
+              <FaceTrackerMediaPipe
+                onCameraReady={handleCameraReady}
+                onModelStatusChange={handleModelStatusChange}
+                onCalibrationUpdate={handleCalibrationUpdate}
+                onCalibrationComplete={handleCalibrationComplete}
+                isCalibrating={false}
+                calibrationComplete={false}
+              />
+            </div>
+          )}
+
+          {/* Calibration Overlay - Shows when camera is ready but before tutorial/game */}
+          {isCalibrating && !calibrationComplete && !showTutorial && currentView === 'game' && (
+            <Suspense fallback={<LoadingFallback />}>
+              <CalibrationOverlay status={calibrationStatus} progress={calibrationProgress} />
+            </Suspense>
+          )}
+
+          {/* Camera PiP - Shows in top-right corner after calibrationComplete */}
+          {showCameraPiP && (
+            <Suspense fallback={null}>
+              <CameraPiP videoRef={cameraCanvasRef} config={PIP_CONFIG} />
+            </Suspense>
+          )}
+
+          {/* Tutorial Overlay - Shows once on top of everything */}
+          {showTutorial && (
+            <Suspense fallback={<LoadingFallback />}>
+              <TutorialOverlay onComplete={handleTutorialComplete} />
+            </Suspense>
+          )}
+
+          {/* Main Content */}
+          <div className="pt-6 pb-24 px-4">
+            <div className="max-w-7xl mx-auto">
+              {/* Game View */}
+              {currentView === 'game' && (
+                <>
+                  <div className="text-center mb-12">
+                    <h1 className="text-5xl md:text-6xl font-bold mb-4 bg-gradient-to-r from-blue-400 via-purple-500 via-pink-500 to-blue-400 bg-clip-text text-transparent bg-[length:300%_auto] animate-gradient">
+                      Smirkle
+                    </h1>
+                    <p className="text-xl text-gray-400">Smile Detection Challenge</p>
+
+                    {/* Game Readiness Status Indicator */}
+                    <div className="mt-4 flex items-center justify-center gap-2">
+                      <div
+                        className={`w-3 h-3 rounded-full ${isGameReady ? 'bg-green-500 animate-pulse' : 'bg-yellow-500 animate-pulse'}`}
+                      ></div>
+                      <span
+                        className={`text-sm font-medium ${isGameReady ? 'text-green-400' : 'text-yellow-400'}`}
+                      >
+                        {isGameReady
+                          ? '🎮 GAME READY - Timer Active'
+                          : '⏳ Setting up camera and calibration...'}
+                      </span>
+                    </div>
+
+                    {/* Readiness Details */}
+                    {!isGameReady && (
+                      <div className="mt-2 flex items-center justify-center gap-4 text-xs text-gray-500">
+                        <span className={cameraReady ? 'text-green-400' : 'text-yellow-400'}>
+                          {cameraReady ? '✅' : '⏳'} Camera
+                        </span>
+                        <span
+                          className={calibrationComplete ? 'text-green-400' : 'text-yellow-400'}
+                        >
+                          {calibrationComplete ? '✅' : '⏳'} Calibration
+                        </span>
+                        <span className={isFaceDetected ? 'text-green-400' : 'text-yellow-400'}>
+                          {isFaceDetected ? '✅' : '⏳'} Face
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+                    {/* Video Player - Glassmorphism Card */}
+                    <div className="lg:col-span-1">
+                      <div className="rounded-3xl overflow-hidden bg-white/10 backdrop-blur-xl border border-white/20 shadow-[0_0_30px_rgba(139,92,246,0.3)]">
+                        <VideoPlayer
+                          isSmiling={isSmiling}
+                          isEyesOpen={isEyesOpen}
+                          videoRef={videoRef}
+                          currentVideo={currentVideo}
+                          survivalTime={survivalTime}
+                          cameraRef={cameraCanvasRef}
+                          isFullscreenActive={isVideoFullscreen}
+                          onToggleFullscreen={() => setIsVideoFullscreen(!isVideoFullscreen)}
+                          warningActive={warningActive}
+                          failPhase={isFailPhase}
+                        />
+                        {isSmiling && (
+                          <div className="absolute inset-0 bg-gradient-to-r from-purple-600/90 to-pink-600/90 backdrop-blur-md flex items-center justify-center">
+                            <div className="text-center">
+                              <h2 className="text-4xl md:text-5xl font-bold mb-4 text-white">
+                                SMILE DETECTED!
+                              </h2>
+                              <p className="text-lg text-purple-100 mb-6">
+                                You&apos;re rocking this challenge!
+                              </p>
+                              <button
+                                onClick={handleResume}
+                                className="bg-white text-purple-900 font-bold py-3 px-8 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
+                              >
+                                Try Again
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Face Tracker - Glassmorphism Card */}
+                    <div className="lg:col-span-1">
+                      <div className="rounded-3xl overflow-hidden bg-white/10 backdrop-blur-xl border border-white/20 shadow-[0_0_30px_rgba(139,92,246,0.3)] relative">
+                        <FaceTrackerMediaPipe
+                          onSmirkDetected={handleSmirkDetected}
+                          onCameraReady={handleCameraReady}
+                          onCalibrationUpdate={handleCalibrationUpdate}
+                          onCalibrationComplete={handleCalibrationComplete}
+                          onFaceCenteredUpdate={handleFaceCenteredUpdate}
+                          onLowLightWarning={handleLowLightWarning}
+                          onEyesOpenChange={setIsEyesOpen}
+                          onModelStatusChange={handleModelStatusChange}
+                          isCalibrating={isCalibrating}
+                          calibrationComplete={calibrationComplete}
+                          cameraCanvasRef={cameraCanvasRef}
+                        />
+                        {/* Guardian Logic Warning Boxes */}
+                        <WarningBox
+                          type="faceNotCentered"
+                          visible={!isFaceCentered && isFaceDetected}
+                        />
+                        <WarningBox type="lowLight" visible={isLowLight} />
+                        {/* Two-Stage Smile Detection Warning */}
+                        <WarningBox type="smiling" visible={warningActive && !isFailPhase} />
+                      </div>
+                    </div>
+                  </div>
+
+                  {!isVideoFullscreen && (
+                    <div className="text-center">
+                      <button
+                        onClick={handleResume}
+                        className="bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 text-white font-bold py-4 px-12 rounded-full shadow-2xl hover:shadow-xl transition-all duration-200 transform hover:scale-105 hover:rotate-1"
+                      >
+                        {gameOver ? '🔄 Try Again' : 'Start Game'}
+                      </button>
+                      <p className="mt-4 text-gray-400 text-sm">
+                        Keep a poker face! Smile = Game Over 😮
+                      </p>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* Leaderboard View */}
+              {currentView === 'leaderboard' && (
+                <div className="rounded-3xl shadow-[0_0_20px_rgba(59,130,246,0.5)] overflow-hidden bg-[#111827]/80">
+                  <Suspense fallback={<LoadingFallback />}>
+                    <Leaderboard />
+                  </Suspense>
+                </div>
+              )}
+
+              {/* Social Hub View */}
+              {currentView === 'social' && (
                 <Suspense fallback={<LoadingFallback />}>
-                  <ProfilePage />
+                  <SocialHub />
                 </Suspense>
-              </div>
-            )}
+              )}
+
+              {/* Submit View */}
+              {currentView === 'submit' && (
+                <div className="max-w-2xl mx-auto">
+                  <div className="rounded-3xl shadow-[0_0_20px_rgba(59,130,246,0.5)] overflow-hidden bg-[#111827]/80">
+                    <Suspense fallback={<LoadingFallback />}>
+                      <SubmitVideoForm />
+                    </Suspense>
+                  </div>
+                </div>
+              )}
+
+              {/* Settings View */}
+              {currentView === 'settings' && (
+                <Suspense fallback={<LoadingFallback />}>
+                  <ProfileSettings />
+                </Suspense>
+              )}
+
+              {/* Teams/Squads View */}
+              {currentView === 'teams' && (
+                <Suspense fallback={<LoadingFallback />}>
+                  <Teams />
+                </Suspense>
+              )}
+
+              {/* Profile View */}
+              {currentView === 'profile' && (
+                <div className="rounded-3xl shadow-[0_0_20px_rgba(59,130,246,0.5)] overflow-hidden bg-[#111827]/80">
+                  <Suspense fallback={<LoadingFallback />}>
+                    <ProfilePage />
+                  </Suspense>
+                </div>
+              )}
+            </div>
           </div>
         </div>
-      </div>
       </AuthGate>
     </Suspense>
   );

@@ -44,7 +44,7 @@ import {
   LEFT_EYE_POSE_LANDMARK_INDEX,
   RIGHT_EYE_POSE_LANDMARK_INDEX,
   HEAD_POSE_SCALE_FACTOR,
-  MS_PER_SECOND
+  MS_PER_SECOND,
 } from '@/utils/constants';
 
 // CDN for WASM files
@@ -53,13 +53,13 @@ const VISION_CDN = MEDIAPIPE_WASM_CDN;
 // Quality levels based on GPU/CPU mode
 const QUALITY_HIGH = 'high';
 const QUALITY_MEDIUM = 'medium';
-const QUALITY_LOW = 'low';
+// const QUALITY_LOW = 'low'; // Reserved for future use
 
 // Worker state
 let faceLandmarker = null;
 let isInitialized = false;
 let useGPU = true;
-let performanceMetrics = {
+const performanceMetrics = {
   totalFrames: 0,
   totalLatency: 0,
   avgLatency: 0,
@@ -349,7 +349,8 @@ function processDetectionResult(result) {
   const headPose = calculateHeadPose(face);
 
   // Get face confidence - use a reasonable default if not available
-  const faceConfidence = result.faceLandmarks?.[0]?.length > 0 ? DEFAULT_FACE_CONFIDENCE : DEFAULT_NO_FACE_CONFIDENCE;
+  const faceConfidence =
+    result.faceLandmarks?.[0]?.length > 0 ? DEFAULT_FACE_CONFIDENCE : DEFAULT_NO_FACE_CONFIDENCE;
 
   // Determine if eyes are open based on threshold
   const eyesOpenThreshold = EYE_OPENNESS_THRESHOLD_MEDIAPIPE;
@@ -454,6 +455,15 @@ self.onmessage = function (event) {
       payload: { error: `Unknown message type: ${type}` },
     });
   }
+};
+
+// Worker API object for module export (used in tests or direct imports)
+const MediaPipeWorker = {
+  messageHandlers,
+  handleInit,
+  handleDetect,
+  handleSetGPU,
+  handleGetPerformance,
 };
 
 export default MediaPipeWorker;

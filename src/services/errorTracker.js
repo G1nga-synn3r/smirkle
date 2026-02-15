@@ -152,6 +152,7 @@ export function trackError(category, reason, metadata = {}) {
 
   console.group(`[FaceDetection Error] ${category}/${reason}`);
   if (errorEntry.errorMessage) {
+    // Error details logged in group for debugging
   }
   console.groupEnd();
 
