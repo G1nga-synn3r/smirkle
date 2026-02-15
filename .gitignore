@@ -48,3 +48,5 @@ android/*
 *.jks
 
 .vercel
+
+.env.local
