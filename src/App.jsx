@@ -178,6 +178,7 @@ import React, { useState, useEffect, useRef, useCallback, lazy, Suspense } from 
 import './style.css';
 import { useSoundEffects } from './hooks/useSoundEffects.js';
 import { useHapticFeedback } from './hooks/useHapticFeedback.js';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 
 // Core game components - eager load (critical path)
 import CameraView from './components/CameraView.jsx';
@@ -1054,6 +1055,7 @@ function App() {
           </div>
         </div>
       </div>
+      <SpeedInsights />
       </AuthGate>
     </Suspense>
   );
