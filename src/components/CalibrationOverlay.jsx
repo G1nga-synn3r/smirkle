@@ -1,6 +1,6 @@
 import React from 'react';
 import { Eye, CheckCircle, AlertCircle, EyeOff, Frown, Loader, User } from 'lucide-react';
-import { CALIBRATION_STATUS } from '../utils/constants';
+import { CALIBRATION_STATUS } from '../utils/calibrationLogic';
 
 /**
  * CalibrationOverlay - A centered overlay that guides the user to

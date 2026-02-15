@@ -14,8 +14,41 @@
 
 import { FaceLandmarker, FilesetResolver } from '@mediapipe/tasks-vision';
 
+import {
+  // Existing constants that should be used
+  MEDIAPIPE_WASM_CDN,
+  SMIRK_ENTER_THRESHOLD,
+  NEUTRAL_EXPRESSION_THRESHOLD_MEDIAPIPE,
+  EYE_OPENNESS_THRESHOLD_MEDIAPIPE,
+  FACE_CENTERED_TOLERANCE_MEDIAPIPE,
+
+  // New constants to add
+  MEDIAPIPE_INIT_MAX_RETRIES,
+  MEDIAPIPE_UI_UPDATE_DELAY_MS,
+  MEDIAPIPE_FACE_LANDMARKER_MODEL_SHORT_RANGE,
+  MEDIAPIPE_NUM_FACES,
+  DEFAULT_EYE_OPENNESS,
+  DEFAULT_FACE_CONFIDENCE,
+  DEFAULT_NO_FACE_CONFIDENCE,
+  BLENDSHAPE_WEIGHT_MOUTH_HAPPY,
+  BLENDSHAPE_WEIGHT_MOUTH_SMILE,
+  BLENDSHAPE_WEIGHT_MOUTH_OPEN,
+  MIN_IRIS_LANDMARKS_COUNT,
+  LEFT_EYE_LANDMARK_START_INDEX,
+  LEFT_EYE_LANDMARK_END_INDEX,
+  RIGHT_EYE_LANDMARK_START_INDEX,
+  RIGHT_EYE_LANDMARK_END_INDEX,
+  EYE_HEIGHT_MULTIPLIER,
+  NOSE_TIP_LANDMARK_INDEX,
+  CHIN_LANDMARK_INDEX,
+  LEFT_EYE_POSE_LANDMARK_INDEX,
+  RIGHT_EYE_POSE_LANDMARK_INDEX,
+  HEAD_POSE_SCALE_FACTOR,
+  MS_PER_SECOND
+} from '@/utils/constants';
+
 // CDN for WASM files
-const VISION_CDN = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm';
+const VISION_CDN = MEDIAPIPE_WASM_CDN;
 
 // Quality levels based on GPU/CPU mode
 const QUALITY_HIGH = 'high';
@@ -93,7 +126,7 @@ function getUserFriendlyError(error, stage) {
  */
 async function handleInit(data) {
   const { enableGPU = true, retryCount = 0 } = data;
-  const MAX_RETRIES = 1;
+  const MAX_RETRIES = MEDIAPIPE_INIT_MAX_RETRIES;
 
   useGPU = enableGPU;
   let cpuFallback = false;
@@ -108,7 +141,7 @@ async function handleInit(data) {
       sendLoadingProgress('wasm_loading', 10);
 
       // Small delay to allow UI to update
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, MEDIAPIPE_UI_UPDATE_DELAY_MS));
 
       const vision = await FilesetResolver.forVisionTasks(VISION_CDN);
 
@@ -156,9 +189,9 @@ async function handleInit(data) {
       {
         outputFaceBlendshapes: true,
         outputIrisLandmarks: true,
-        faceLandmarkerModelSelection: 0, // 0 = short-range, 1 = full-range
+        faceLandmarkerModelSelection: MEDIAPIPE_FACE_LANDMARKER_MODEL_SHORT_RANGE, // 0 = short-range, 1 = full-range
         runningMode: 'VIDEO',
-        numFaces: 1,
+        numFaces: MEDIAPIPE_NUM_FACES,
         delegate: delegate,
       }
     );
@@ -247,7 +280,7 @@ async function handleDetect(data) {
         ...detectionResult,
         performance: {
           latency,
-          fps: 1000 / latency,
+          fps: MS_PER_SECOND / latency,
           avgLatency: performanceMetrics.avgLatency,
           gpuEnabled: performanceMetrics.gpuEnabled,
           cpuFallback: performanceMetrics.cpuFallback,
@@ -291,12 +324,12 @@ function processDetectionResult(result) {
     return {
       faceDetected: false,
       happinessScore: 0,
-      eyesOpen: { left: 1, right: 1 }, // Default to open to prevent false "eyes closed"
-      faceConfidence: 0,
+      eyesOpen: { left: DEFAULT_EYE_OPENNESS, right: DEFAULT_EYE_OPENNESS }, // Default to open to prevent false "eyes closed"
+      faceConfidence: DEFAULT_NO_FACE_CONFIDENCE,
       isSmirking: false,
       neutralExpression: true,
-      leftEyeOpenness: 1,
-      rightEyeOpenness: 1,
+      leftEyeOpenness: DEFAULT_EYE_OPENNESS,
+      rightEyeOpenness: DEFAULT_EYE_OPENNESS,
       headPose: { pitch: 0, yaw: 0, roll: 0 },
       faceCentered: false,
       boundingBox: null,
@@ -316,18 +349,18 @@ function processDetectionResult(result) {
   const headPose = calculateHeadPose(face);
 
   // Get face confidence - use a reasonable default if not available
-  const faceConfidence = result.faceLandmarks?.[0]?.length > 0 ? 0.95 : 0;
+  const faceConfidence = result.faceLandmarks?.[0]?.length > 0 ? DEFAULT_FACE_CONFIDENCE : DEFAULT_NO_FACE_CONFIDENCE;
 
   // Determine if eyes are open based on threshold
-  const eyesOpenThreshold = 0.5;
+  const eyesOpenThreshold = EYE_OPENNESS_THRESHOLD_MEDIAPIPE;
   const bothEyesOpen = eyesOpen.left >= eyesOpenThreshold && eyesOpen.right >= eyesOpenThreshold;
 
   return {
     faceDetected: true,
     faceConfidence,
     happinessScore,
-    isSmirking: happinessScore >= 0.3,
-    neutralExpression: happinessScore < 0.15,
+    isSmirking: happinessScore >= SMIRK_ENTER_THRESHOLD,
+    neutralExpression: happinessScore < NEUTRAL_EXPRESSION_THRESHOLD_MEDIAPIPE,
     eyesOpen: bothEyesOpen, // Boolean for backward compatibility
     leftEyeOpenness: eyesOpen.left,
     rightEyeOpenness: eyesOpen.right,

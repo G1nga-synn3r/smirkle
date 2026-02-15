@@ -1,8 +1,62 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
+import path from 'path';
 
 export default defineConfig({
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src')
+    }
+  },
+  build: {
+    // Increase chunk size warning limit to 600KB for large vendor chunks
+    chunkSizeWarningLimit: 600,
+    rollupOptions: {
+      output: {
+        // Manual chunk splitting for vendor libraries
+        manualChunks: (id) => {
+          // React core - always needed, keep small
+          if (id.includes('node_modules/react/') || 
+              id.includes('node_modules/react-dom/') ||
+              id.includes('node_modules/scheduler/')) {
+            return 'react-vendor';
+          }
+          
+          // Firebase - authentication and database (lazy loaded via dynamic imports)
+          if (id.includes('node_modules/@firebase/') ||
+              id.includes('node_modules/firebase/')) {
+            return 'firebase-vendor';
+          }
+          
+          // MediaPipe - heavy ML library (~2MB), loaded on-demand
+          if (id.includes('node_modules/@mediapipe/')) {
+            return 'mediapipe-vendor';
+          }
+          
+          // Face-API - alternative ML library (~500KB)
+          if (id.includes('node_modules/@vladmandic/face-api')) {
+            return 'face-api-vendor';
+          }
+          
+          // UI libraries - lucide-react icons
+          if (id.includes('node_modules/lucide-react')) {
+            return 'ui-vendor';
+          }
+          
+          // Camera utilities
+          if (id.includes('node_modules/react-webcam')) {
+            return 'camera-vendor';
+          }
+          
+          // Capacitor - mobile native bridge
+          if (id.includes('node_modules/@capacitor/')) {
+            return 'capacitor-vendor';
+          }
+        },
+      },
+    },
+  },
   plugins: [
     react(),
     VitePWA({

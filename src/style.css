@@ -1,277 +1,507 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Animated Radial Gradient Background - Navy to Deep Purple */
-.animated-radial-gradient {
-  background: radial-gradient(ellipse at center, #1e1b4b 0%, #0f0a2e 40%, #050314 100%);
+/* ================================================
+   EXPLOSIVE EMOJI CHAOS POP ART THEME
+   ================================================ */
+
+/* CSS Variables for Pop Art Theme */
+:root {
+  --pop-red: #FF0000;
+  --pop-yellow: #FFFF00;
+  --pop-blue: #00AAFF;
+  --pop-pink: #FF69B4;
+  --pop-lime: #00FF7F;
+  --pop-purple: #9B59B6;
+  --pop-black: #000000;
+  --pop-white: #FFFFFF;
+  --pop-gray: #FAFAFA;
+}
+
+/* Base Styles */
+* {
+  font-family: 'Poppins', system-ui, -apple-system, sans-serif;
+}
+
+body {
+  background-color: var(--pop-gray);
+  color: var(--pop-black);
+  font-weight: 600;
+}
+
+/* ================================================
+   HALFTONE DOT PATTERN OVERLAY
+   ================================================ */
+
+.halftone-overlay {
   position: relative;
-  overflow: hidden;
 }
 
-.animated-radial-gradient::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 200%;
-  height: 200%;
-  transform: translate(-50%, -50%);
-  background: radial-gradient(circle at center, rgba(88, 28, 135, 0.15) 0%, transparent 50%);
-  animation: radial-pulse 8s ease-in-out infinite;
-  pointer-events: none;
-}
-
-.animated-radial-gradient::after {
+.halftone-overlay::before {
   content: '';
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background:
-    radial-gradient(ellipse at 20% 80%, rgba(30, 27, 75, 0.5) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 20%, rgba(88, 28, 135, 0.3) 0%, transparent 50%);
-  animation: radial-shift 12s ease-in-out infinite alternate;
+  background-image: radial-gradient(circle, rgba(0, 0, 0, 0.08) 1px, transparent 1px);
+  background-size: 8px 8px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.halftone-dense::before {
+  background-size: 4px 4px;
+}
+
+.halftone-sparse::before {
+  background-size: 16px 16px;
+}
+
+/* ================================================
+   POP ART BACKGROUND STYLES
+   ================================================ */
+
+.pop-art-bg {
+  background-color: var(--pop-gray);
+  position: relative;
+  overflow: hidden;
+}
+
+.pop-art-bg::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    radial-gradient(circle at 20% 80%, rgba(255, 0, 0, 0.05) 0%, transparent 30%),
+    radial-gradient(circle at 80% 20%, rgba(0, 170, 255, 0.05) 0%, transparent 30%),
+    radial-gradient(circle at 50% 50%, rgba(255, 105, 180, 0.03) 0%, transparent 40%);
   pointer-events: none;
 }
 
-@keyframes radial-pulse {
-  0%,
-  100% {
-    opacity: 0.8;
-    transform: translate(-50%, -50%) scale(1);
-  }
-  50% {
-    opacity: 1;
-    transform: translate(-50%, -50%) scale(1.1);
-  }
+/* ================================================
+   POP ART BUTTON STYLES
+   ================================================ */
+
+.pop-btn {
+  background-color: var(--pop-white);
+  border: 3px solid var(--pop-black);
+  box-shadow: 4px 4px 0px 0px var(--pop-black);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: all 0.15s ease;
+  position: relative;
+  overflow: hidden;
 }
 
-@keyframes radial-shift {
-  0% {
-    background-position: 0% 0%;
-  }
-  100% {
-    background-position: 100% 100%;
-  }
+.pop-btn:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0px 0px var(--pop-black);
 }
 
-/* Text color for content */
-.animated-radial-gradient,
-.animated-radial-gradient * {
-  color: white;
+.pop-btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0px 0px var(--pop-black);
 }
 
-/* Custom scrollbar */
+/* Button Color Variants */
+.pop-btn-red {
+  background-color: var(--pop-red);
+  color: var(--pop-white);
+}
+
+.pop-btn-yellow {
+  background-color: var(--pop-yellow);
+  color: var(--pop-black);
+}
+
+.pop-btn-blue {
+  background-color: var(--pop-blue);
+  color: var(--pop-white);
+}
+
+.pop-btn-pink {
+  background-color: var(--pop-pink);
+  color: var(--pop-black);
+}
+
+.pop-btn-lime {
+  background-color: var(--pop-lime);
+  color: var(--pop-black);
+}
+
+.pop-btn-purple {
+  background-color: var(--pop-purple);
+  color: var(--pop-white);
+}
+
+/* ================================================
+   POP ART CARD STYLES
+   ================================================ */
+
+.pop-card {
+  background-color: var(--pop-white);
+  border: 3px solid var(--pop-black);
+  box-shadow: 4px 4px 0px 0px var(--pop-black);
+  position: relative;
+  overflow: hidden;
+}
+
+.pop-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, 
+    var(--pop-red) 0%, 
+    var(--pop-yellow) 20%, 
+    var(--pop-lime) 40%, 
+    var(--pop-blue) 60%, 
+    var(--pop-pink) 80%, 
+    var(--pop-purple) 100%
+  );
+}
+
+.pop-card-hover:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0px 0px var(--pop-black);
+}
+
+/* ================================================
+   POP ART INPUT STYLES
+   ================================================ */
+
+.pop-input {
+  background-color: var(--pop-white);
+  border: 3px solid var(--pop-black);
+  font-weight: 600;
+  transition: all 0.15s ease;
+}
+
+.pop-input:focus {
+  outline: none;
+  box-shadow: 4px 4px 0px 0px var(--pop-black);
+}
+
+.pop-input::placeholder {
+  color: rgba(0, 0, 0, 0.4);
+  font-weight: 500;
+}
+
+/* ================================================
+   POP ART TEXT STYLES
+   ================================================ */
+
+.pop-text {
+  font-weight: 700;
+  color: var(--pop-black);
+}
+
+.pop-text-red { color: var(--pop-red); }
+.pop-text-yellow { color: var(--pop-yellow); text-shadow: 1px 1px 0 var(--pop-black); }
+.pop-text-blue { color: var(--pop-blue); }
+.pop-text-pink { color: var(--pop-pink); }
+.pop-text-lime { color: var(--pop-lime); text-shadow: 1px 1px 0 var(--pop-black); }
+.pop-text-purple { color: var(--pop-purple); }
+
+.pop-title {
+  font-size: 2.5rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  text-shadow: 3px 3px 0 var(--pop-black);
+}
+
+.pop-subtitle {
+  font-size: 1.25rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* ================================================
+   POP ART BADGE STYLES
+   ================================================ */
+
+.pop-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border: 2px solid var(--pop-black);
+  font-weight: 700;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+}
+
+.pop-badge-red { background-color: var(--pop-red); color: var(--pop-white); }
+.pop-badge-yellow { background-color: var(--pop-yellow); color: var(--pop-black); }
+.pop-badge-blue { background-color: var(--pop-blue); color: var(--pop-white); }
+.pop-badge-pink { background-color: var(--pop-pink); color: var(--pop-black); }
+.pop-badge-lime { background-color: var(--pop-lime); color: var(--pop-black); }
+.pop-badge-purple { background-color: var(--pop-purple); color: var(--pop-white); }
+
+/* ================================================
+   POP ART NAVBAR STYLES
+   ================================================ */
+
+.pop-navbar {
+  background-color: var(--pop-white);
+  border-bottom: 4px solid var(--pop-black);
+  box-shadow: 0 4px 0 0 var(--pop-black);
+}
+
+.pop-nav-link {
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--pop-black);
+  border: 2px solid transparent;
+  padding: 8px 16px;
+  transition: all 0.15s ease;
+}
+
+.pop-nav-link:hover {
+  background-color: var(--pop-yellow);
+  border-color: var(--pop-black);
+  box-shadow: 2px 2px 0 0 var(--pop-black);
+}
+
+.pop-nav-link-active {
+  background-color: var(--pop-red);
+  color: var(--pop-white);
+  border-color: var(--pop-black);
+  box-shadow: 2px 2px 0 0 var(--pop-black);
+}
+
+/* ================================================
+   POP ART MODAL STYLES
+   ================================================ */
+
+.pop-modal {
+  background-color: var(--pop-white);
+  border: 4px solid var(--pop-black);
+  box-shadow: 8px 8px 0 0 var(--pop-black);
+  position: relative;
+}
+
+.pop-modal::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 6px;
+  background: linear-gradient(90deg, 
+    var(--pop-red) 0%, 
+    var(--pop-yellow) 16.66%, 
+    var(--pop-lime) 33.33%, 
+    var(--pop-blue) 50%, 
+    var(--pop-pink) 66.66%, 
+    var(--pop-purple) 83.33%,
+    var(--pop-red) 100%
+  );
+}
+
+.pop-modal-header {
+  background-color: var(--pop-black);
+  color: var(--pop-white);
+  font-weight: 800;
+  text-transform: uppercase;
+  padding: 16px 24px;
+  border-bottom: 3px solid var(--pop-black);
+}
+
+/* ================================================
+   POP ART DIVIDER
+   ================================================ */
+
+.pop-divider {
+  height: 4px;
+  background: linear-gradient(90deg, 
+    var(--pop-red) 0%, 
+    var(--pop-yellow) 16.66%, 
+    var(--pop-lime) 33.33%, 
+    var(--pop-blue) 50%, 
+    var(--pop-pink) 66.66%, 
+    var(--pop-purple) 83.33%,
+    var(--pop-red) 100%
+  );
+  border: none;
+}
+
+/* ================================================
+   POP ART AVATAR
+   ================================================ */
+
+.pop-avatar {
+  border: 3px solid var(--pop-black);
+  box-shadow: 3px 3px 0 0 var(--pop-black);
+}
+
+.pop-avatar-ring {
+  border: 4px solid var(--pop-yellow);
+  box-shadow: 4px 4px 0 0 var(--pop-black);
+}
+
+/* ================================================
+   ANIMATIONS
+   ================================================ */
+
+@keyframes pop-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.02); }
+}
+
+@keyframes comic-burst {
+  0% { transform: scale(0) rotate(0deg); opacity: 1; }
+  100% { transform: scale(1.5) rotate(180deg); opacity: 0; }
+}
+
+@keyframes rainbow-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.animate-pop-pulse {
+  animation: pop-pulse 2s ease-in-out infinite;
+}
+
+.animate-rainbow {
+  background-size: 200% 200%;
+  animation: rainbow-shift 3s ease infinite;
+}
+
+/* ================================================
+   CUSTOM SCROLLBAR - POP ART STYLE
+   ================================================ */
+
 ::-webkit-scrollbar {
-  width: 8px;
+  width: 12px;
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--pop-gray);
+  border-left: 2px solid var(--pop-black);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 4px;
+  background: var(--pop-yellow);
+  border: 2px solid var(--pop-black);
+  border-radius: 0;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background: var(--pop-pink);
 }
 
-/* Smooth transitions */
-* {
-  transition-property: background-color, border-color, color, fill, stroke;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  transition-duration: 150ms;
-}
+/* ================================================
+   GAME OVER / WASTED MODAL - POP ART STYLE
+   ================================================ */
 
-/* Glassmorphism utilities */
-.glass {
-  background: rgba(17, 24, 39, 0.6);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-/* Gradient text animation */
-@keyframes gradient-shift {
-  0% {
-    background-position: 0% center;
-  }
-  50% {
-    background-position: 100% center;
-  }
-  100% {
-    background-position: 0% center;
-  }
-}
-
-.animate-gradient {
-  background-size: 300% auto;
-  animation: gradient-shift 4s ease infinite;
-}
-
-/* Grayscale game over effect */
-.grayscale-game-over {
-  filter: grayscale(100%);
-  transition: filter 0.5s ease-in-out;
-}
-
-/* Wasted modal styles */
 .wasted-modal {
-  background: linear-gradient(135deg, rgba(0, 0, 0, 0.95) 0%, rgba(50, 0, 0, 0.95) 100%);
-  border: 2px solid rgba(255, 0, 0, 0.5);
-  border-radius: 20px;
+  background: var(--pop-white);
+  border: 4px solid var(--pop-black);
+  box-shadow: 8px 8px 0 0 var(--pop-black);
+  border-radius: 0;
   padding: 3rem 4rem;
-  box-shadow:
-    0 0 60px rgba(255, 0, 0, 0.4),
-    inset 0 0 60px rgba(0, 0, 0, 0.8);
   animation: wasted-pop 0.5s ease-out forwards;
 }
 
-@keyframes wasted-pop {
-  0% {
-    transform: scale(0.5);
-    opacity: 0;
-  }
-  50% {
-    transform: scale(1.1);
-  }
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
 .wasted-text {
-  text-shadow:
-    0 0 20px rgba(255, 0, 0, 0.8),
-    0 0 40px rgba(255, 0, 0, 0.6);
+  color: var(--pop-red);
+  text-shadow: 4px 4px 0 var(--pop-black);
   animation: wasted-pulse 1s ease-in-out infinite;
-}
-
-@keyframes wasted-pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.7;
-  }
-}
-
-.survival-time {
-  animation: fade-in-up 0.5s ease-out 0.3s forwards;
-  opacity: 0;
-}
-
-@keyframes fade-in-up {
-  0% {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
 }
 
 .try-again-btn {
   animation: fade-in-up 0.5s ease-out 0.5s forwards;
   opacity: 0;
-  box-shadow: 0 0 20px rgba(255, 0, 0, 0.5);
+  background-color: var(--pop-red);
+  color: var(--pop-white);
+  border: 3px solid var(--pop-black);
+  box-shadow: 4px 4px 0 0 var(--pop-black);
 }
 
 .try-again-btn:hover {
-  box-shadow:
-    0 0 40px rgba(255, 0, 0, 0.8),
-    0 0 60px rgba(255, 0, 0, 0.6);
+  background-color: var(--pop-pink);
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 0 var(--pop-black);
 }
 
-/* Toast animation */
-@keyframes slide-up {
-  0% {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
+/* ================================================
+   SMILE DETECTED - POP ART FLASH
+   ================================================ */
 
-.animate-slide-up {
-  animation: slide-up 0.3s ease-out forwards;
-}
-
-/* Smile Detected - Flash and Shake Effects */
 @keyframes screen-flash {
-  0% {
-    box-shadow: inset 0 0 0 9999px rgba(255, 0, 0, 0);
-  }
-  10% {
-    box-shadow: inset 0 0 0 9999px rgba(255, 0, 0, 0.7);
-  }
-  20% {
-    box-shadow: inset 0 0 0 9999px rgba(255, 0, 0, 0.5);
-  }
-  30% {
-    box-shadow: inset 0 0 0 9999px rgba(255, 0, 0, 0.3);
-  }
-  40% {
-    box-shadow: inset 0 0 0 9999px rgba(255, 0, 0, 0.2);
-  }
-  100% {
-    box-shadow: inset 0 0 0 9999px rgba(255, 0, 0, 0);
-  }
+  0% { box-shadow: inset 0 0 0 9999px transparent; }
+  10% { box-shadow: inset 0 0 0 9999px rgba(255, 255, 0, 0.8); }
+  20% { box-shadow: inset 0 0 0 9999px rgba(0, 255, 127, 0.6); }
+  30% { box-shadow: inset 0 0 0 9999px rgba(255, 105, 180, 0.4); }
+  100% { box-shadow: inset 0 0 0 9999px transparent; }
 }
 
 @keyframes screen-shake {
-  0% {
-    transform: translate(0, 0) rotate(0deg);
-  }
-  10% {
-    transform: translate(-8px, -8px) rotate(-0.5deg);
-  }
-  20% {
-    transform: translate(8px, 8px) rotate(0.5deg);
-  }
-  30% {
-    transform: translate(-8px, 8px) rotate(-0.5deg);
-  }
-  40% {
-    transform: translate(8px, -8px) rotate(0.5deg);
-  }
-  50% {
-    transform: translate(-6px, -6px) rotate(-0.3deg);
-  }
-  60% {
-    transform: translate(6px, 6px) rotate(0.3deg);
-  }
-  70% {
-    transform: translate(-4px, -4px) rotate(-0.2deg);
-  }
-  80% {
-    transform: translate(4px, 4px) rotate(0.2deg);
-  }
-  90% {
-    transform: translate(-2px, -2px) rotate(-0.1deg);
-  }
-  100% {
-    transform: translate(0, 0) rotate(0deg);
-  }
+  0% { transform: translate(0, 0) rotate(0deg); }
+  10% { transform: translate(-8px, -8px) rotate(-1deg); }
+  20% { transform: translate(8px, 8px) rotate(1deg); }
+  30% { transform: translate(-8px, 8px) rotate(-1deg); }
+  40% { transform: translate(8px, -8px) rotate(1deg); }
+  50% { transform: translate(-6px, -6px) rotate(-0.5deg); }
+  60% { transform: translate(6px, 6px) rotate(0.5deg); }
+  70% { transform: translate(-4px, -4px) rotate(-0.3deg); }
+  80% { transform: translate(4px, 4px) rotate(0.3deg); }
+  90% { transform: translate(-2px, -2px) rotate(-0.1deg); }
+  100% { transform: translate(0, 0) rotate(0deg); }
 }
 
 .smile-detected {
-  animation:
-    screen-flash 0.6s ease-out,
-    screen-shake 0.6s ease-out;
+  animation: screen-flash 0.6s ease-out, screen-shake 0.6s ease-out;
 }
 
-/* CPU Fallback Notification Styles */
+/* ================================================
+   FADE ANIMATIONS
+   ================================================ */
+
+@keyframes fade-in {
+  0% { opacity: 0; transform: scale(0.95); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes fade-in-up {
+  0% { opacity: 0; transform: translateY(20px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-out-up {
+  0% { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-20px) scale(0.95); }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out forwards;
+}
+
+.animate-slide-up {
+  animation: fade-in-up 0.3s ease-out forwards;
+}
+
+.fade-out-up {
+  animation: fade-out-up 0.5s ease-out forwards;
+}
+
+/* ================================================
+   CPU FALLBACK NOTIFICATION - POP ART STYLE
+   ================================================ */
+
 .cpu-fallback-notification {
   position: fixed;
   bottom: 20px;
@@ -280,43 +510,21 @@
   align-items: center;
   gap: 10px;
   padding: 12px 18px;
-  background: rgba(255, 193, 7, 0.95);
-  color: #1f2937;
-  border-radius: 12px;
+  background: var(--pop-yellow);
+  color: var(--pop-black);
+  border: 3px solid var(--pop-black);
+  box-shadow: 4px 4px 0 0 var(--pop-black);
+  border-radius: 0;
   font-size: 13px;
-  font-weight: 500;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  font-weight: 700;
   z-index: 9999;
   animation: cpu-slide-in 0.4s ease-out;
   cursor: pointer;
 }
 
-.cpu-fallback-icon {
-  display: flex;
-  align-items: center;
-  color: #d97706;
-}
-
-.cpu-fallback-message {
-  flex: 1;
-}
-
-.cpu-fallback-dismiss {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 4px;
-  background: transparent;
-  border: none;
-  color: #6b7280;
-  cursor: pointer;
-  border-radius: 4px;
-  transition: background-color 0.2s;
-}
-
-.cpu-fallback-dismiss:hover {
-  background: rgba(0, 0, 0, 0.1);
-  color: #374151;
+.cpu-fallback-notification:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 0 var(--pop-black);
 }
 
 .cpu-fallback-badge {
@@ -327,161 +535,191 @@
   align-items: center;
   gap: 6px;
   padding: 8px 14px;
-  background: rgba(255, 193, 7, 0.9);
-  color: #1f2937;
-  border-radius: 20px;
+  background: var(--pop-yellow);
+  color: var(--pop-black);
+  border: 2px solid var(--pop-black);
+  box-shadow: 3px 3px 0 0 var(--pop-black);
+  border-radius: 0;
   font-size: 11px;
-  font-weight: 600;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+  font-weight: 700;
   z-index: 9999;
 }
 
-.cpu-badge-icon {
-  font-size: 14px;
-}
-
 @keyframes cpu-slide-in {
-  from {
-    transform: translateY(20px);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
 }
 
-/* ================================
-   System Check Overlay Animations
-   ================================ */
+/* ================================================
+   SYSTEM CHECK OVERLAY - POP ART STYLE
+   ================================================ */
 
-/* Checkmark Success Animation - Pop effect */
 @keyframes checkmarkPop {
-  0% {
-    transform: scale(1);
-    opacity: 1;
-  }
-  50% {
-    transform: scale(1.3);
-    opacity: 0.9;
-  }
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.3); opacity: 0.9; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes checkmarkShake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+
+@keyframes checkmarkPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }
 
 .checkmark-success {
   animation: checkmarkPop 0.3s ease-out;
-  color: #4ade80;
-}
-
-/* Checkmark Error Animation - Shake effect */
-@keyframes checkmarkShake {
-  0%,
-  100% {
-    transform: translateX(0);
-  }
-  25% {
-    transform: translateX(-5px);
-  }
-  75% {
-    transform: translateX(5px);
-  }
+  color: var(--pop-lime);
 }
 
 .checkmark-failed {
   animation: checkmarkShake 0.4s ease-in-out;
-  color: #ef4444;
-}
-
-/* Checkmark Pending Animation - Pulse */
-@keyframes checkmarkPulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
+  color: var(--pop-red);
 }
 
 .checkmark-checking {
   animation: checkmarkPulse 1s ease-in-out infinite;
 }
 
-/* Overlay Fade Out Animation - Slide up and fade */
-@keyframes fadeOutUp {
-  0% {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-  100% {
-    opacity: 0;
-    transform: translateY(-20px) scale(0.95);
-  }
+/* ================================================
+   OVERLAY TRANSITIONS
+   ================================================ */
+
+.overlay-fade-transition {
+  transition: opacity 0.5s ease-out;
 }
 
-.fade-out-up {
-  animation: fadeOutUp 0.5s ease-out forwards;
-}
-
-/* Fade In Animation */
-@keyframes fadeIn {
-  0% {
-    opacity: 0;
-  }
-  100% {
-    opacity: 1;
-  }
-}
-
-.animate-fade-in {
-  animation: fadeIn 0.3s ease-out forwards;
-}
-
-/* Scale and Fade Animation for overlay completion */
-@keyframes scaleFadeOut {
-  0% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  100% {
-    opacity: 0;
-    transform: scale(0.95);
-  }
+.overlay-scale-transition {
+  transition: transform 0.5s ease-out, opacity 0.5s ease-out;
 }
 
 .scale-fade-out {
   animation: scaleFadeOut 0.5s ease-out forwards;
 }
 
-/* Smooth opacity transition for overlay */
-.overlay-fade-transition {
-  transition: opacity 0.5s ease-out;
+@keyframes scaleFadeOut {
+  0% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(0.95); }
 }
 
-.overlay-fade-transition.opacity-0 {
-  opacity: 0;
+/* ================================================
+   GRAYSCALE GAME OVER EFFECT
+   ================================================ */
+
+.grayscale-game-over {
+  filter: grayscale(100%);
+  transition: filter 0.5s ease-in-out;
 }
 
-.overlay-fade-transition.opacity-100 {
-  opacity: 1;
+/* ================================================
+   POP ART PROGRESS BAR
+   ================================================ */
+
+.pop-progress {
+  height: 12px;
+  background-color: var(--pop-gray);
+  border: 2px solid var(--pop-black);
+  overflow: hidden;
 }
 
-/* Smooth scale transition for overlay */
-.overlay-scale-transition {
-  transition:
-    transform 0.5s ease-out,
-    opacity 0.5s ease-out;
+.pop-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--pop-red), var(--pop-yellow), var(--pop-lime));
+  transition: width 0.3s ease;
 }
 
-.overlay-scale-transition.scale-100 {
-  transform: scale(1);
-  opacity: 1;
+/* ================================================
+   POP ART TOOLTIP
+   ================================================ */
+
+.pop-tooltip {
+  background-color: var(--pop-black);
+  color: var(--pop-white);
+  border: 2px solid var(--pop-white);
+  font-weight: 600;
+  padding: 8px 12px;
+  font-size: 0.75rem;
 }
 
-.overlay-scale-transition.scale-95 {
-  transform: scale(0.95);
-  opacity: 0;
+/* ================================================
+   GLASSMORPHISM REPLACEMENT - POP ART STYLE
+   ================================================ */
+
+.glass {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: none;
+  border: 3px solid var(--pop-black);
+  box-shadow: 4px 4px 0 0 var(--pop-black);
 }
+
+/* ================================================
+   GRADIENT TEXT ANIMATION
+   ================================================ */
+
+@keyframes gradient-shift {
+  0% { background-position: 0% center; }
+  50% { background-position: 100% center; }
+  100% { background-position: 0% center; }
+}
+
+.animate-gradient {
+  background-size: 300% auto;
+  animation: gradient-shift 4s ease infinite;
+}
+
+/* ================================================
+   RAINBOW BORDER ANIMATION
+   ================================================ */
+
+.rainbow-border {
+  position: relative;
+  border: 4px solid var(--pop-black);
+}
+
+.rainbow-border::before {
+  content: '';
+  position: absolute;
+  top: -4px;
+  left: -4px;
+  right: -4px;
+  bottom: -4px;
+  background: linear-gradient(90deg, 
+    var(--pop-red), 
+    var(--pop-yellow), 
+    var(--pop-lime), 
+    var(--pop-blue), 
+    var(--pop-pink), 
+    var(--pop-purple),
+    var(--pop-red)
+  );
+  background-size: 200% 100%;
+  animation: rainbow-shift 2s linear infinite;
+  z-index: -1;
+  border-radius: inherit;
+}
+
+/* ================================================
+   EMOJI CHAOS DECORATIONS
+   ================================================ */
+
+.emoji-burst::after {
+  content: ' boom! ';
+  position: absolute;
+  font-size: 1.5rem;
+  animation: comic-burst 0.5s ease-out forwards;
+}
+
+/* ================================================
+   UTILITY CLASSES
+   ================================================ */
+
+.border-pop { border-color: var(--pop-black); }
+.bg-pop-white { background-color: var(--pop-white); }
+.bg-pop-gray { background-color: var(--pop-gray); }
+.shadow-pop { box-shadow: 4px 4px 0 0 var(--pop-black); }
+.shadow-pop-sm { box-shadow: 2px 2px 0 0 var(--pop-black); }
+.shadow-pop-lg { box-shadow: 6px 6px 0 0 var(--pop-black); }

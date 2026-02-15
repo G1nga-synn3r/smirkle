@@ -122,20 +122,20 @@ export default function Leaderboard() {
   ];
 
   const getRankIcon = (rank) => {
-    if (rank === 1) return <Crown className="w-6 h-6 text-yellow-400" />;
-    if (rank === 2) return <Medal className="w-6 h-6 text-gray-300" />;
-    if (rank === 3) return <Medal className="w-6 h-6 text-amber-600" />;
-    return <span className="text-lg font-bold text-gray-500 w-8">#{rank}</span>;
+    if (rank === 1) return <Crown className="w-6 h-6" style={{ color: '#FFFF00' }} />;
+    if (rank === 2) return <Medal className="w-6 h-6" style={{ color: '#00AAFF' }} />;
+    if (rank === 3) return <Medal className="w-6 h-6" style={{ color: '#FF69B4' }} />;
+    return <span className="text-lg font-bold w-8" style={{ color: '#000000' }}>#{rank}</span>;
   };
 
   const getRankCardStyle = (rank) => {
     if (rank === 1)
-      return 'bg-gradient-to-r from-yellow-500/20 via-yellow-400/10 to-orange-500/20 border-yellow-500/30';
+      return 'bg-yellow-100 border-3 border-black';
     if (rank === 2)
-      return 'bg-gradient-to-r from-gray-400/10 via-gray-300/5 to-gray-400/10 border-gray-300/30';
+      return 'bg-blue-100 border-3 border-black';
     if (rank === 3)
-      return 'bg-gradient-to-r from-amber-600/20 via-amber-500/10 to-amber-600/20 border-amber-500/30';
-    return 'bg-white/5 border-white/10 hover:bg-white/10';
+      return 'bg-pink-100 border-3 border-black';
+    return 'bg-white border-2 border-black hover:bg-gray-50';
   };
 
   const formatTime = (seconds) => {

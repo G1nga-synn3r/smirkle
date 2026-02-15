@@ -174,25 +174,39 @@
  * @see {@link https://github.com/nicolesmirkle/smirkle/blob/main/docs/two-stage-smile-detection-architecture.md|Two-Stage Smile Detection Architecture}
  * @see {@link https://github.com/nicolesmirkle/smirkle/blob/main/docs/guardian-logic-architecture.md|Guardian Logic Architecture}
  */
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
 import './style.css';
 import { useSoundEffects } from './hooks/useSoundEffects.js';
 import { useHapticFeedback } from './hooks/useHapticFeedback.js';
+
+// Core game components - eager load (critical path)
 import CameraView from './components/CameraView.jsx';
 import WarningBox from './components/WarningBox.jsx';
 import Navbar from './components/Navbar.jsx';
-import Leaderboard from './components/Leaderboard.jsx';
-import SubmitVideoForm from './components/SubmitVideoForm.jsx';
-import ProfilePage from './components/ProfilePage.jsx';
-import ProfileSettings from './components/ProfileSettings.jsx';
-import SocialHub from './components/SocialHub.jsx';
-import AuthGate from './components/AuthGate.jsx';
-import Teams from './components/Teams.jsx';
-import TutorialOverlay from './components/TutorialOverlay.jsx';
-import CalibrationOverlay from './components/CalibrationOverlay.jsx';
 import SystemCheckOverlay from './components/SystemCheckOverlay.tsx';
-import CameraPiP from './components/CameraPiP.jsx';
 import FaceTrackerMediaPipe from './components/FaceTrackerMediaPipe.jsx';
+import VideoPlayer from './components/VideoPlayer.jsx';
+
+// Lazy-loaded views - loaded on-demand when user navigates
+const Leaderboard = lazy(() => import('./components/Leaderboard.jsx'));
+const SubmitVideoForm = lazy(() => import('./components/SubmitVideoForm.jsx'));
+const ProfilePage = lazy(() => import('./components/ProfilePage.jsx'));
+const ProfileSettings = lazy(() => import('./components/ProfileSettings.jsx'));
+const SocialHub = lazy(() => import('./components/SocialHub.jsx'));
+const Teams = lazy(() => import('./components/Teams.jsx'));
+const AuthGate = lazy(() => import('./components/AuthGate.jsx'));
+
+// Lazy-loaded overlays - shown conditionally
+const TutorialOverlay = lazy(() => import('./components/TutorialOverlay.jsx'));
+const CalibrationOverlay = lazy(() => import('./components/CalibrationOverlay.jsx'));
+const CameraPiP = lazy(() => import('./components/CameraPiP.jsx'));
+
+// Loading fallback component for Suspense
+const LoadingFallback = () => (
+  <div className="flex items-center justify-center min-h-[200px]">
+    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+  </div>
+);
 import { getCurrentUser, isGuest, setCurrentUser } from './utils/auth.js';
 import {
   VIDEO_DATABASE,
@@ -763,39 +777,47 @@ function App() {
   }, []);
 
   return (
-    <AuthGate>
-      <div
-        className={`min-h-screen animated-radial-gradient ${gameOver ? 'grayscale-game-over' : ''} ${isSmiling && currentView === 'game' ? 'smile-detected' : ''}`}
-      >
+    <Suspense fallback={<LoadingFallback />}>
+      <AuthGate>
+        <div
+          className={`min-h-screen pop-art-bg halftone-overlay ${gameOver ? 'grayscale-game-over' : ''} ${isSmiling && currentView === 'game' ? 'smile-detected' : ''}`}
+        >
         {/* FAIL Overlay - Two-Stage Detection Fail Phase */}
         {isFailPhase && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-red-600/90 animate-pulse">
-            <div className="text-center">
-              <h2 className="text-6xl md:text-8xl font-bold text-white mb-8 tracking-wider animate-bounce">
-                FAIL
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-pop-red animate-pulse" style={{ backgroundColor: '#FF0000' }}>
+            <div className="text-center pop-card p-8" style={{ backgroundColor: '#FFFF00' }}>
+              <h2 className="text-6xl md:text-8xl font-bold text-pop-black mb-8 tracking-wider animate-bounce" style={{ color: '#000000', textShadow: '4px 4px 0 #FF0000' }}>
+                FAIL!
               </h2>
-              <p className="text-xl text-red-100 mb-4">You smiled!</p>
+              <p className="text-xl font-bold mb-4" style={{ color: '#000000' }}>You smiled! </p>
             </div>
           </div>
         )}
 
         {/* Game Over Overlay */}
         {gameOver && !isFailPhase && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
+          <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0, 0, 0, 0.9)' }}>
             <div className="wasted-modal">
               <div className="text-center">
-                <h2 className="wasted-text text-6xl md:text-8xl font-bold text-red-500 mb-8 tracking-wider">
+                <h2 className="wasted-text text-6xl md:text-8xl font-bold mb-8 tracking-wider" style={{ color: '#FF0000', textShadow: '4px 4px 0 #000000' }}>
                   WASTED
                 </h2>
                 <div className="survival-time mb-8">
-                  <p className="text-gray-400 text-lg mb-2">You survived for</p>
-                  <p className="text-4xl md:text-5xl font-bold text-white">
+                  <p className="text-lg mb-2 font-bold" style={{ color: '#000000' }}>You survived for</p>
+                  <p className="text-4xl md:text-5xl font-bold" style={{ color: '#000000' }}>
                     {survivalTime.toFixed(2)} seconds
                   </p>
                 </div>
                 <button
                   onClick={handleResume}
-                  className="try-again-btn bg-red-600 hover:bg-red-500 text-white font-bold py-4 px-12 rounded-full shadow-2xl transition-all duration-200 transform hover:scale-110"
+                  className="try-again-btn font-bold py-4 px-12 transition-all duration-200"
+                  style={{ 
+                    backgroundColor: '#FF0000', 
+                    color: '#FFFFFF', 
+                    border: '3px solid #000000',
+                    boxShadow: '4px 4px 0 #000000',
+                    textTransform: 'uppercase'
+                  }}
                 >
                   TRY AGAIN
                 </button>
@@ -838,14 +860,24 @@ function App() {
 
         {/* Calibration Overlay - Shows when camera is ready but before tutorial/game */}
         {isCalibrating && !calibrationComplete && !showTutorial && currentView === 'game' && (
-          <CalibrationOverlay status={calibrationStatus} progress={calibrationProgress} />
+          <Suspense fallback={<LoadingFallback />}>
+            <CalibrationOverlay status={calibrationStatus} progress={calibrationProgress} />
+          </Suspense>
         )}
 
         {/* Camera PiP - Shows in top-right corner after calibrationComplete */}
-        {showCameraPiP && <CameraPiP videoRef={cameraCanvasRef} config={PIP_CONFIG} />}
+        {showCameraPiP && (
+          <Suspense fallback={null}>
+            <CameraPiP videoRef={cameraCanvasRef} config={PIP_CONFIG} />
+          </Suspense>
+        )}
 
         {/* Tutorial Overlay - Shows once on top of everything */}
-        {showTutorial && <TutorialOverlay onComplete={handleTutorialComplete} />}
+        {showTutorial && (
+          <Suspense fallback={<LoadingFallback />}>
+            <TutorialOverlay onComplete={handleTutorialComplete} />
+          </Suspense>
+        )}
 
         {/* Main Content */}
         <div className="pt-6 pb-24 px-4">
@@ -973,38 +1005,57 @@ function App() {
             {/* Leaderboard View */}
             {currentView === 'leaderboard' && (
               <div className="rounded-3xl shadow-[0_0_20px_rgba(59,130,246,0.5)] overflow-hidden bg-[#111827]/80">
-                <Leaderboard />
+                <Suspense fallback={<LoadingFallback />}>
+                  <Leaderboard />
+                </Suspense>
               </div>
             )}
 
             {/* Social Hub View */}
-            {currentView === 'social' && <SocialHub />}
+            {currentView === 'social' && (
+              <Suspense fallback={<LoadingFallback />}>
+                <SocialHub />
+              </Suspense>
+            )}
 
             {/* Submit View */}
             {currentView === 'submit' && (
               <div className="max-w-2xl mx-auto">
                 <div className="rounded-3xl shadow-[0_0_20px_rgba(59,130,246,0.5)] overflow-hidden bg-[#111827]/80">
-                  <SubmitVideoForm />
+                  <Suspense fallback={<LoadingFallback />}>
+                    <SubmitVideoForm />
+                  </Suspense>
                 </div>
               </div>
             )}
 
             {/* Settings View */}
-            {currentView === 'settings' && <ProfileSettings />}
+            {currentView === 'settings' && (
+              <Suspense fallback={<LoadingFallback />}>
+                <ProfileSettings />
+              </Suspense>
+            )}
 
             {/* Teams/Squads View */}
-            {currentView === 'teams' && <Teams />}
+            {currentView === 'teams' && (
+              <Suspense fallback={<LoadingFallback />}>
+                <Teams />
+              </Suspense>
+            )}
 
             {/* Profile View */}
             {currentView === 'profile' && (
               <div className="rounded-3xl shadow-[0_0_20px_rgba(59,130,246,0.5)] overflow-hidden bg-[#111827]/80">
-                <ProfilePage />
+                <Suspense fallback={<LoadingFallback />}>
+                  <ProfilePage />
+                </Suspense>
               </div>
             )}
           </div>
         </div>
       </div>
-    </AuthGate>
+      </AuthGate>
+    </Suspense>
   );
 }
 

@@ -14,73 +14,45 @@
 import { useState, useCallback, useRef } from 'react';
 import { DetectionResult } from '../types/WorkerMessageProtocol';
 
-// Threshold constants (should match constants.ts)
-export const SMIRK_THRESHOLD = 0.3;
-export const NEUTRAL_EXPRESSION_THRESHOLD = 0.15;
-export const EYE_OPENNESS_THRESHOLD = 0.5;
-export const FACE_CONFIDENCE_THRESHOLD = 0.7;
-export const CONSECUTIVE_FRAMES_REQUIRED = 3;
+// Import all constants from single source of truth
+import {
+  CONSECUTIVE_FRAMES_REQUIRED,
+  CALIBRATION_STABILITY_DURATION,
+  NEUTRAL_EXPRESSION_THRESHOLD,
+  SMIRK_ENTER_THRESHOLD,
+  SMIRK_EXIT_THRESHOLD,
+  SMIRK_RESET_GRACE_FRAMES,
+  FACE_DETECTED_DEBOUNCE_FRAMES,
+  FACE_LOST_DEBOUNCE_FRAMES,
+  EYES_CLOSED_DEBOUNCE_FRAMES,
+  CALIBRATION_GRACE_FRAMES,
+  HAPPINESS_SMOOTHING_FACTOR,
+  FACE_LOSS_TIMEOUT_FRAMES,
+  EYE_OPENNESS_THRESHOLD_MEDIAPIPE,
+  FACE_CONFIDENCE_THRESHOLD_MEDIAPIPE,
+} from '../utils/constants';
+
+// Re-export constants for backward compatibility
+export {
+  CONSECUTIVE_FRAMES_REQUIRED,
+  CALIBRATION_STABILITY_DURATION,
+  NEUTRAL_EXPRESSION_THRESHOLD,
+  SMIRK_ENTER_THRESHOLD,
+  SMIRK_EXIT_THRESHOLD,
+  SMIRK_RESET_GRACE_FRAMES,
+  FACE_DETECTED_DEBOUNCE_FRAMES,
+  FACE_LOST_DEBOUNCE_FRAMES,
+  EYES_CLOSED_DEBOUNCE_FRAMES,
+  CALIBRATION_GRACE_FRAMES,
+  HAPPINESS_SMOOTHING_FACTOR,
+  FACE_LOSS_TIMEOUT_FRAMES,
+};
+
+// Legacy aliases for backward compatibility
+export const SMIRK_THRESHOLD = SMIRK_ENTER_THRESHOLD;
+export const EYE_OPENNESS_THRESHOLD = EYE_OPENNESS_THRESHOLD_MEDIAPIPE;
+export const FACE_CONFIDENCE_THRESHOLD = FACE_CONFIDENCE_THRESHOLD_MEDIAPIPE;
 export const WARNING_ZONE_FRAMES = 10;
-export const CALIBRATION_STABILITY_DURATION = 1000;
-
-// ===========================
-// Hysteresis Thresholds for Smile Detection
-// ===========================
-
-/**
- * Threshold to enter smirking state
- * When happiness score >= this value, user is considered smirking
- */
-export const SMIRK_ENTER_THRESHOLD = 0.30;
-
-/**
- * Threshold to exit smirking state (lower = more stable)
- * When currently smirking and happiness score < this value, user exits smirking state
- * Lower than ENTER threshold to prevent flickering on borderline expressions
- */
-export const SMIRK_EXIT_THRESHOLD = 0.20;
-
-/**
- * Grace frames before resetting smirk counter
- * Number of consecutive frames below exit threshold before resetting smirk frame count
- * Prevents "gaming" the system by brief expression changes
- */
-export const SMIRK_RESET_GRACE_FRAMES = 2;
-
-// ===========================
-// Debounce and Stability Constants
-// ===========================
-
-/**
- * Number of consecutive frames required to confirm face detection
- * Prevents flicker from momentary detection drops
- */
-export const FACE_DETECTED_DEBOUNCE_FRAMES = 3;
-
-/**
- * Number of consecutive frames required to confirm face loss
- * Higher threshold prevents false "face not detected" from brief occlusions
- */
-export const FACE_LOST_DEBOUNCE_FRAMES = 10;
-
-/**
- * Number of consecutive frames required to confirm eyes closed
- * Prevents false positives from blinking
- */
-export const EYES_CLOSED_DEBOUNCE_FRAMES = 5;
-
-/**
- * Grace frames allowed during calibration before resetting progress
- * Prevents calibration reset from single-frame detection failures
- */
-export const CALIBRATION_GRACE_FRAMES = 3;
-
-/**
- * Smoothing factor for happiness score (0-1)
- * Higher = more responsive, Lower = more smooth
- * 0.3 provides good balance between responsiveness and stability
- */
-export const HAPPINESS_SMOOTHING_FACTOR = 0.3;
 
 export type GameState = 'IDLE' | 'CALIBRATING' | 'PLAYING' | 'GAME_OVER';
 
@@ -208,6 +180,10 @@ export function useGuardianLogic(callbacks: GuardianCallbacks = {}) {
     calibrationStartRef.current = performance.now();
     stableFramesRef.current = 0;
     
+    // Reset smirk hysteresis and grace period refs
+    smirkResetCounterRef.current = 0;
+    isCurrentlySmirkingRef.current = false;
+    
     // Reset debounce counters
     faceDetectedCountRef.current = 0;
     faceNotDetectedCountRef.current = 0;
@@ -318,6 +294,37 @@ export function useGuardianLogic(callbacks: GuardianCallbacks = {}) {
     const faceCentered = debouncedFaceDetected && result.faceCentered;
     
     // Handle game state transitions with debounced values
+    // Explicit handling for all states to prevent stale state issues
+    if (state.gameState === 'IDLE') {
+      // In IDLE state, no game logic processing needed
+      // Just update detection values for UI feedback
+      setState(prev => ({
+        ...prev,
+        faceDetected: debouncedFaceDetected,
+        eyesOpen: debouncedEyesOpen,
+        happinessScore: smoothedHappiness,
+        isSmirking,
+        neutralExpression,
+        faceCentered
+      }));
+      return;
+    }
+    
+    if (state.gameState === 'GAME_OVER') {
+      // In GAME_OVER state, no further game logic processing
+      // Just update detection values for UI feedback
+      setState(prev => ({
+        ...prev,
+        faceDetected: debouncedFaceDetected,
+        eyesOpen: debouncedEyesOpen,
+        happinessScore: smoothedHappiness,
+        isSmirking,
+        neutralExpression,
+        faceCentered
+      }));
+      return;
+    }
+    
     if (state.gameState === 'CALIBRATING') {
       handleCalibration(
         debouncedFaceDetected,
@@ -417,8 +424,20 @@ export function useGuardianLogic(callbacks: GuardianCallbacks = {}) {
       faceLostFramesRef.current++;
       
       if (faceLostFramesRef.current >= 30) {
-        // Face lost for 1 second
+        // Face lost for 1 second - trigger warning callback
         callbacks.onFaceNotDetected?.();
+      }
+      
+      // Extended face loss timeout - transition to GAME_OVER
+      // Prevents players from avoiding detection by covering camera
+      if (faceLostFramesRef.current >= FACE_LOSS_TIMEOUT_FRAMES) {
+        setState(prev => ({
+          ...prev,
+          gameState: 'GAME_OVER',
+          isGameOver: true,
+          gameOverReason: 'face_not_detected'
+        }));
+        callbacks.onGameOver?.('face_not_detected');
       }
       
       return;
@@ -507,6 +526,10 @@ export function useGuardianLogic(callbacks: GuardianCallbacks = {}) {
     faceLostFramesRef.current = 0;
     smirkFramesRef.current = 0;
     
+    // Reset smirk hysteresis and grace period refs
+    smirkResetCounterRef.current = 0;
+    isCurrentlySmirkingRef.current = false;
+    
     // Reset debounce refs
     faceDetectedCountRef.current = 0;
     faceNotDetectedCountRef.current = 0;
@@ -534,6 +557,10 @@ export function useGuardianLogic(callbacks: GuardianCallbacks = {}) {
     stableFramesRef.current = 0;
     faceLostFramesRef.current = 0;
     smirkFramesRef.current = 0;
+    
+    // Reset smirk hysteresis and grace period refs
+    smirkResetCounterRef.current = 0;
+    isCurrentlySmirkingRef.current = false;
     
     // Reset debounce refs for new game
     faceDetectedCountRef.current = 0;

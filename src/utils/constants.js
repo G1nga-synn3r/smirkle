@@ -323,3 +323,135 @@ export const CALIBRATION_GRACE_FRAMES = 3;
  * 0.3 provides good balance between responsiveness and stability
  */
 export const HAPPINESS_SMOOTHING_FACTOR = 0.3;
+
+/**
+ * Maximum frames allowed without face detection before game over
+ * At 30fps, 90 frames = 3 seconds of face loss before game ends
+ * This prevents players from avoiding detection by covering camera
+ */
+export const FACE_LOSS_TIMEOUT_FRAMES = 90;
+
+// ===========================
+// MediaPipe Worker Initialization
+// ===========================
+
+/**
+ * Maximum retry attempts for MediaPipe initialization
+ */
+export const MEDIAPIPE_INIT_MAX_RETRIES = 1;
+
+/**
+ * Delay before WASM loading to allow UI update (in milliseconds)
+ */
+export const MEDIAPIPE_UI_UPDATE_DELAY_MS = 100;
+
+// ===========================
+// MediaPipe Face Landmarker Configuration
+// ===========================
+
+/**
+ * Face landmarker model selection
+ * 0 = short-range (optimized for faces within 2 meters)
+ * 1 = full-range (for faces further away)
+ */
+export const MEDIAPIPE_FACE_LANDMARKER_MODEL_SHORT_RANGE = 0;
+export const MEDIAPIPE_FACE_LANDMARKER_MODEL_FULL_RANGE = 1;
+
+/**
+ * Number of faces to detect simultaneously
+ */
+export const MEDIAPIPE_NUM_FACES = 1;
+
+// ===========================
+// Default Detection Values
+// ===========================
+
+/**
+ * Default eye openness when detection unavailable
+ * 1 = fully open (prevents false "eyes closed" detection)
+ */
+export const DEFAULT_EYE_OPENNESS = 1;
+
+/**
+ * Default face confidence when face is detected
+ * High confidence assumed when landmarks are present
+ */
+export const DEFAULT_FACE_CONFIDENCE = 0.95;
+
+/**
+ * Default confidence when no face detected
+ */
+export const DEFAULT_NO_FACE_CONFIDENCE = 0;
+
+// ===========================
+// Blendshape Weights for Happiness Score
+// ===========================
+
+/**
+ * Weight for mouthHappy blendshape in happiness calculation
+ * Primary contributor to smirk detection
+ */
+export const BLENDSHAPE_WEIGHT_MOUTH_HAPPY = 0.7;
+
+/**
+ * Weight for mouthSmile blendshape in happiness calculation
+ * Secondary contributor for subtle smiles
+ */
+export const BLENDSHAPE_WEIGHT_MOUTH_SMILE = 0.25;
+
+/**
+ * Weight for mouthOpen blendshape in happiness calculation
+ * Minor contributor for laughing expressions
+ */
+export const BLENDSHAPE_WEIGHT_MOUTH_OPEN = 0.05;
+
+// ===========================
+// MediaPipe Iris Landmark Indices
+// ===========================
+
+/**
+ * Minimum iris landmarks required for eye openness calculation
+ */
+export const MIN_IRIS_LANDMARKS_COUNT = 10;
+
+/**
+ * Iris landmark indices for eye openness
+ * Left eye: indices 0-5, Right eye: indices 6-11
+ */
+export const LEFT_EYE_LANDMARK_START_INDEX = 0;
+export const LEFT_EYE_LANDMARK_END_INDEX = 6;
+export const RIGHT_EYE_LANDMARK_START_INDEX = 6;  // Same as LEFT_EYE_LANDMARK_END_INDEX
+export const RIGHT_EYE_LANDMARK_END_INDEX = 12;
+
+/**
+ * Multiplier for eye height to normalize openness
+ */
+export const EYE_HEIGHT_MULTIPLIER = 2;
+
+// ===========================
+// MediaPipe Facial Landmark Indices (for Head Pose)
+// ===========================
+
+/**
+ * Key facial landmark indices for head pose estimation
+ * Based on MediaPipe's 468-point face mesh
+ */
+export const NOSE_TIP_LANDMARK_INDEX = 1;
+export const CHIN_LANDMARK_INDEX = 152;
+export const LEFT_EYE_POSE_LANDMARK_INDEX = 33;
+export const RIGHT_EYE_POSE_LANDMARK_INDEX = 263;
+
+/**
+ * Scaling factor for head pose calculations
+ * Converts normalized coordinates to approximate degrees
+ */
+export const HEAD_POSE_SCALE_FACTOR = 50;
+
+// ===========================
+// Utility Constants
+// ===========================
+
+/**
+ * Milliseconds per second (for FPS calculations)
+ */
+export const MS_PER_SECOND = 1000;

@@ -39,24 +39,35 @@ export default function Navbar({ activeTab, setActiveTab, user }) {
     }
   };
 
+  // Pop art color rotation for nav items
+  const popArtColors = [
+    { bg: '#FF0000', text: '#FFFFFF' }, // red
+    { bg: '#FFFF00', text: '#000000' }, // yellow
+    { bg: '#00AAFF', text: '#000000' }, // blue
+    { bg: '#FF69B4', text: '#000000' }, // pink
+    { bg: '#00FF7F', text: '#000000' }, // lime
+    { bg: '#9B59B6', text: '#FFFFFF' }, // purple
+  ];
+
   return (
     <nav
       className="fixed bottom-0 left-0 right-0 z-50 
-                 bg-[#0a0e27]/95 backdrop-blur-xl 
-                 border-t border-blue-500/20 
+                 bg-white border-t-4 border-black
                  safe-area-pb"
       style={{
         paddingBottom: 'env(safe-area-inset-bottom, 20px)',
+        boxShadow: '0 -4px 0 0 #000000',
       }}
     >
       <div className="flex items-end justify-around h-16 px-2">
         {/* Username Display */}
         {username && (
-          <div className="absolute top-2 left-4 text-xs text-cyan-400 font-medium">{username}</div>
+          <div className="absolute top-2 left-4 text-xs font-bold text-black">{username}</div>
         )}
-        {navItems.map((item) => {
+        {navItems.map((item, index) => {
           const Icon = item.icon;
           const isActive = activeTabFallback === item.id;
+          const color = popArtColors[index % popArtColors.length];
 
           return (
             <button
@@ -66,67 +77,50 @@ export default function Navbar({ activeTab, setActiveTab, user }) {
                 flex flex-col items-center justify-center 
                 flex-1 h-full min-w-[64px] max-w-[100px]
                 relative overflow-hidden
-                transition-all duration-300 ease-out
-                ${isActive ? 'text-white' : 'text-gray-400 hover:text-gray-200'}
+                transition-all duration-200 ease-out
+                ${isActive ? 'text-black' : 'text-gray-600 hover:text-black'}
               `}
               aria-label={item.label}
               role="button"
               tabIndex={0}
             >
-              {/* Active indicator - glowing gradient bar at top */}
+              {/* Active indicator - solid color bar at top */}
               <div
                 className={`
                   absolute top-0 left-1/2 -translate-x-1/2 
-                  w-12 h-1 rounded-full
-                  transition-all duration-300 ease-out
-                  ${
-                    isActive
-                      ? 'bg-gradient-to-r from-purple-400 via-pink-500 to-red-500 shadow-lg shadow-purple-500/50'
-                      : 'opacity-0'
-                  }
+                  w-12 h-1
+                  transition-all duration-200 ease-out
+                  ${isActive ? 'opacity-100' : 'opacity-0'}
                 `}
+                style={{ backgroundColor: color.bg }}
               />
 
-              {/* Icon container with scale and glow effect */}
+              {/* Icon container with pop art style */}
               <div
                 className={`
-                  relative p-2 rounded-xl
-                  transition-all duration-300 ease-out
-                  ${
-                    isActive
-                      ? 'bg-gradient-to-br from-purple-500/20 to-pink-500/20 shadow-lg shadow-purple-500/25 scale-110'
-                      : 'hover:bg-white/5 scale-100'
-                  }
+                  relative p-2 rounded-lg
+                  transition-all duration-200 ease-out
+                  ${isActive ? 'scale-110' : 'scale-100'}
                 `}
+                style={isActive ? {
+                  backgroundColor: color.bg,
+                  border: '3px solid #000000',
+                  boxShadow: '2px 2px 0 0 #000000',
+                } : {}}
               >
                 <Icon
-                  className={`
-                    w-6 h-6 transition-all duration-300
-                    ${
-                      isActive
-                        ? 'text-transparent bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text'
-                        : ''
-                    }
-                  `}
-                  strokeWidth={isActive ? 2.5 : 2}
+                  className="w-6 h-6 transition-all duration-200"
+                  style={isActive ? { color: color.text } : {}}
+                  strokeWidth={isActive ? 3 : 2}
                 />
-
-                {/* Glow effect for active icon */}
-                {isActive && (
-                  <div className="absolute inset-0 rounded-xl blur-lg bg-gradient-to-r from-purple-500/30 to-pink-500/30 -z-10" />
-                )}
               </div>
 
-              {/* Label with fade transition */}
+              {/* Label with bold font */}
               <span
                 className={`
-                  text-[10px] font-medium mt-1
-                  transition-all duration-300 ease-out
-                  ${
-                    isActive
-                      ? 'text-white opacity-100 transform translate-y-0'
-                      : 'opacity-60 transform translate-y-1'
-                  }
+                  text-[10px] font-bold mt-1
+                  transition-all duration-200 ease-out
+                  ${isActive ? 'text-black' : 'text-gray-500'}
                 `}
               >
                 {item.label}
