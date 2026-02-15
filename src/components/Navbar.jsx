@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types';
 import { Home, Trophy, User, Upload, Users, Settings } from 'lucide-react';
 
 /**
@@ -11,7 +12,7 @@ import { Home, Trophy, User, Upload, Users, Settings } from 'lucide-react';
  * - Proper prop validation for activeTab and setActiveTab
  * - Displays current username if user is logged in
  */
-export default function Navbar({ activeTab, setActiveTab, user }) {
+function Navbar({ activeTab, setActiveTab, user }) {
   // Fallback to 'game' if activeTab is undefined
   const activeTabFallback = activeTab || 'game';
   // Validate props and provide defaults
@@ -137,3 +138,20 @@ export default function Navbar({ activeTab, setActiveTab, user }) {
     </nav>
   );
 }
+
+Navbar.propTypes = {
+  activeTab: PropTypes.string,
+  setActiveTab: PropTypes.func,
+  user: PropTypes.shape({
+    username: PropTypes.string,
+    name: PropTypes.string,
+  }),
+};
+
+Navbar.defaultProps = {
+  activeTab: 'game',
+  setActiveTab: null,
+  user: null,
+};
+
+export default Navbar;

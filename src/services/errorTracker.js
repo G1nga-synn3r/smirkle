@@ -6,6 +6,8 @@
  * Updated to support both local face-api.js and backend API modes.
  */
 
+/* eslint-disable no-console */
+
 // Error categories for face detection
 export const ErrorCategory = {
   MODEL_LOADING: 'MODEL_LOADING',

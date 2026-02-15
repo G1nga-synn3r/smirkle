@@ -342,7 +342,7 @@ function App() {
   );
 
   // Handle calibration completion
-  const handleCalibrationComplete = useCallback((success, reason) => {
+  const handleCalibrationComplete = useCallback((success, _reason) => {
     if (success) {
       setCalibrationComplete(true);
       setIsCalibrating(false);
@@ -383,8 +383,8 @@ function App() {
           onComplete: handleCalibrationComplete,
           onUpdate: (state) => {
             // Use functional updates to avoid stale state
-            setCalibrationStatus((prev) => state.status || prev);
-            setCalibrationProgress((prev) => state.progress ?? prev);
+            setCalibrationStatus((_prev) => state.status || _prev);
+            setCalibrationProgress((_prev) => state.progress ?? _prev);
           },
         });
 
@@ -607,7 +607,7 @@ function App() {
     } else if ((gameOver || isSmiling) && isVideoFullscreen) {
       setIsVideoFullscreen(false);
     }
-  }, [isGameReady, isSmiling, gameOver, currentView, isVideoFullscreen]);
+  }, [isGameReady, isEyesOpen, isSmiling, gameOver, currentView, isVideoFullscreen]);
 
   // Trigger haptic feedback and visual effects when smile is detected
   useEffect(() => {

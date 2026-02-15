@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Trophy, Medal, Crown, Timer, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
 import { getGlobalLeaderboard } from '../services/scoreService';
 
@@ -8,17 +8,7 @@ export default function Leaderboard() {
   const [showAll, setShowAll] = useState(false);
   const abortControllerRef = useRef(null);
 
-  useEffect(() => {
-    loadScores();
-
-    return () => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-    };
-  }, []);
-
-  const loadScores = async () => {
+  const loadScores = useCallback(async () => {
     // Cancel any ongoing request
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -55,7 +45,17 @@ export default function Leaderboard() {
       setScores(getDemoScores());
     }
     setIsLoading(false);
-  };
+  }, []);
+
+  useEffect(() => {
+    loadScores();
+
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, [loadScores]);
 
   // Demo scores for when Firestore is empty or not configured (top 100)
   const getDemoScores = () => [

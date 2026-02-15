@@ -408,10 +408,6 @@ function FaceTrackerMediaPipe({
         ? SMIRK_THRESHOLD * (1 - PUNCHLINE_THRESHOLD_REDUCTION)
         : SMIRK_THRESHOLD;
 
-      const adjustedHappiness = punchlineActive
-        ? result.happinessScore / (1 - PUNCHLINE_THRESHOLD_REDUCTION)
-        : result.happinessScore;
-
       onSmirkDetected(result.isSmirking, result.happinessScore, {
         consecutiveFrames: guardianState.consecutiveSmirkFrames,
         requiredFrames: 3,
@@ -464,7 +460,7 @@ function FaceTrackerMediaPipe({
     }
   }
 
-  function handleGameOver(reason) {
+  function handleGameOver(_reason) {
     if (hapticEnabled) {
       vibrate([100, 50, 100]);
     }

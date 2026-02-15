@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import PropTypes from 'prop-types';
 import { Maximize, Minimize } from 'lucide-react';
 
 /**
@@ -86,7 +87,7 @@ function VideoPlayer({
         video.removeEventListener('canplaythrough', handleCanPlayThroughRef.current);
       }
     };
-  }, [currentVideo, onResetHappiness, onVideoChange]);
+  }, [currentVideo, onResetHappiness, onVideoChange, videoElement]);
 
   // Handle smile detection pause with haptic feedback
   useEffect(() => {
@@ -317,5 +318,39 @@ function VideoPlayer({
     </div>
   );
 }
+
+VideoPlayer.propTypes = {
+  isSmiling: PropTypes.bool,
+  isEyesOpen: PropTypes.bool,
+  videoRef: PropTypes.object,
+  currentVideo: PropTypes.shape({
+    url: PropTypes.string.isRequired,
+    title: PropTypes.string,
+    punchlineTimestamp: PropTypes.number,
+  }),
+  onVideoChange: PropTypes.func,
+  onResetHappiness: PropTypes.func,
+  survivalTime: PropTypes.number,
+  cameraRef: PropTypes.object,
+  isFullscreenActive: PropTypes.bool,
+  onToggleFullscreen: PropTypes.func,
+  warningActive: PropTypes.bool,
+  failPhase: PropTypes.bool,
+};
+
+VideoPlayer.defaultProps = {
+  isSmiling: false,
+  isEyesOpen: false,
+  videoRef: null,
+  currentVideo: null,
+  onVideoChange: null,
+  onResetHappiness: null,
+  survivalTime: 0,
+  cameraRef: null,
+  isFullscreenActive: false,
+  onToggleFullscreen: null,
+  warningActive: false,
+  failPhase: false,
+};
 
 export default VideoPlayer;
